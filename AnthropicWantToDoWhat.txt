@@ -1,0 +1,28 @@
+Anthropic到底想做什么？
+问题本身的措辞暴露了一个常见的概念混淆。
+短回答：不是 做自己的CUDA ，是比这更野也更务实的东西
+Anthropic做的事情，本质上是在三个不同的非NVIDIA硬件平台上手写汇编级kernel，同时企图完全绕过CUDA生态。这和DeepSeek手打PTX的区别是根本性的。
+关键区分 , ,大多数人搞混的地方
+DeepSeek打PTX：仍然在NVIDIA的城堡里。PTX是NVIDIA GPU的中间表示/汇编语言，你写PTX，最终跑在NVIDIA的硬件上，用NVIDIA的驱动，走NVIDIA的执行模型。DeepSeek通过大量使用PTX进行精细控制寄存器和线程优化来最大限度利用GPU资源，但本质上并没有绕开NVIDIA的CUDA护城河。 这就像一个囚犯把牢房装修得极其精致 , ,你还在监狱里。
+Anthropic做的事：Anthropic正在与AWS的Annapurna Labs深度合作，编写直接与Trainium芯片交互的底层kernel，并贡献到AWS Neuron软件栈中。 Anthropic更关键的是，由于Trainium2的完整ISA汇编对终端用户开放，像Anthropic这样的高级用户可以直接绕过有缺陷的软件层。 Semianalysis他们的工程师直接在Trainium上写汇编。 https://newsletter.semianalysis.com/p/amazons-ai-self-sufficiency-trainium2-architecture-networking
+这不是 做自己的CUDA 。CUDA是一个生态系统 , ,编译器、运行时、库、调试器、profiler、几百万开发者的惯性。Anthropic没有也不需要复制这些。
+从Knuth的角度进行 mean 的批判
+第一，Anthropic的真实战略比 做CUDA 聪明得多，也更冷酷。
+他们的赌注是：在AI训练/推理这个极窄的垂直领域，你根本不需要通用CUDA生态。你只需要能把矩阵乘法、attention、通信原语这几十个关键kernel压榨到极致。通过这种硬件-软件紧密协作的方式，结合Trainium平台的高性价比和大规模可扩展性，他们能够从硅片层面一直优化到完整软件栈的每个环节。 https://newsletter.semianalysis.com/p/amazons-ai-self-sufficiency-trainium2-architecture-networking
+用Knuth的话说：这是在做The Art of Computer Programming Vol. 1 §1.3.1 里讲的事 , ,理解你的机器到指令级别，然后针对你的具体问题进行全栈优化。他们不需要做通用编程平台，他们只需要让Claude的训练和推理跑得比任何人都快。
+第二，你文档里把这个和performance take-home联系起来，逻辑上有一个严重错误。
+那个take-home测试模拟的是一个类TPU的假加速器，具有手动管理的暂存内存、VLIW、SIMD和多核特性，任务是并行树遍历 , ,灵感来自无分支SIMD决策树推理。 Anthropic这个测试的目的不是让你 复刻CUDA ，而是测试你能否在一个全新的、文档不完善的硬件上，从零开始榨干性能。这恰恰是Anthropic工程师在Trainium上每天做的事。
+第三，多平台策略暴露了一个工程上的真实痛点。
+Anthropic在三个平台上运行，你同时维护三套底层栈（GPU/TPU/Trainium），每套都需要汇编级别的专家，debug空间是笛卡尔积。这在工程上是极其昂贵的。但他们愿意付这个代价，因为赌的是不被任何一家硬件供应商锁死。
+第四，关于你项目的performance测试和CCCL的关联。
+你说的 用cccl nvbench的问题思路反馈给performance测试  , ,说句mean的话 , ,这个类比在技术上是牵强的。CCCL是NVIDIA CUDA生态的核心计算库，它的bench测的是CUDA编译器在NVIDIA硬件上的效果。而Anthropic的performance challenge跑在一个完全自定义的VLIW模拟器上，没有CUDA，没有GPU，没有warp，没有shared memory的CUDA语义。这是一个VLIW处理器，编译器（或者说你自己）负责决定哪些独立操作在每个周期并行运行。 Tristan Trouwen
+两者共享的只有底层优化思维 , ,指令级并行、内存延迟隐藏、流水线填充 , ,但具体技术手段完全不同。CCCL里的问题（比如warp divergence、bank conflict、occupancy）在那个VLIW模拟器上根本不存在，反过来也一样。
+总结
+Anthropic不是在 做自己的CUDA 。他们在做的是：
+
+直接写Trainium汇编，绕过所有中间抽象层，就像DeepSeek写PTX , ,但目标硬件不是NVIDIA的
+同时在TPU和GPU上维护高性能kernel栈，作为保险和谈判筹码
+共同设计下一代Trainium硬件，Anthropic的工程师与Annapurna的芯片设计团队紧密合作以提升硬件计算效率 Computerworld , ,这比 做CUDA 更深一层，他们在影响硅片本身
+AWS正在开源XLA图编译器和JAX软件栈，试图通过开源策略构建类似CUDA的开发者生态 Semianalysis , ,生态建设是AWS在做，不是Anthropic
+
+用一句话说：DeepSeek是在NVIDIA的监狱里当最优秀的囚犯，Anthropic是在帮AWS/Google建另一座城市。 两条路都需要汇编级的功力，但战略意图完全不同。

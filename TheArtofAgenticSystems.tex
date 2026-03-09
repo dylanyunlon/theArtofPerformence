@@ -1,0 +1,550 @@
+
+\documentclass{article} % For LaTeX2e
+\usepackage{iclr2026_conference,times}
+
+% Optional math commands from https://github.com/goodfeli/dlbook_notation.
+\input{math_commands.tex}
+
+\usepackage{hyperref}
+\usepackage{url}
+
+
+
+
+\title{\textbf{The Art of Agentic Systems Programming} \\ \large Volume 3: Hardware-Aware Agent Training}
+\author{A Critical Technical Treatise \\
+\texttt{github.com/dylanyunlon/operatorRL} \\
+\texttt{github.com/microsoft/agent-lightning}}
+\date{}
+
+% Authors must not appear in the submitted version. They should be hidden
+% as long as the \iclrfinalcopy macro remains commented out below.
+% Non-anonymous submissions will be rejected without review.
+
+
+% The \author macro works with any number of authors. There are two commands
+% used to separate the names and addresses of multiple authors: \And and \AND.
+%
+% Using \And between authors leaves it to \LaTeX{} to determine where to break
+% the lines. Using \AND forces a linebreak at that point. So, if \LaTeX{}
+% puts 3 of 4 authors names on the first line, and the last on the second
+% line, try using \AND instead of \And before the third author name.
+
+\newcommand{\fix}{\marginpar{FIX}}
+\newcommand{\new}{\marginpar{NEW}}
+
+%\iclrfinalcopy % Uncomment for camera-ready version, but NOT for submission.
+\begin{document}
+
+
+\maketitle
+
+
+\section{Introduction}
+\label{sec:3.1}
+
+``Autonomously optimized'' agent training kernels have many different types of applications. For example:
+
+\medskip
+
+\noindent\textbf{a) Self-Deployment.} When using a cluster of Trainium2 accelerators to perform autonomous agent rollouts, it is necessary to use assembly-level kernel optimization to make throughput viable. Self-deployment involves domains ranging from distributed reinforcement learning (where gradient updates are subject to hardware-specific memory hierarchies) all the way to production serving (for instance, agents autonomously entering a live tool-use environment at unpredictable intervals).
+
+\medskip
+
+\noindent\textbf{b) Environment Feedback.} Usually, it is impractical to examine all possible agent trajectories, and hardware-aware trajectory sampling will enable us to understand ``typical'' reward landscapes.
+
+\medskip
+
+\noindent\textbf{c) Numerical Kernel Synthesis.} Using hand-written Trainium assembly, many ingenious techniques have been devised to solve the core computational primitives---matrix multiplication, attention, and collective communication. There are already considerable specialized works on this topic.
+
+\medskip
+
+\noindent\textbf{d) Agent Systems Programming.} To verify the effectiveness of agentic RL algorithms, hardware-optimized rollout engines are an excellent source of throughput---more importantly, hardware-optimized kernels are essential for the operation of self-evolving training loops, which frequently surpass deterministic optimization pipelines by a wide margin. The use of assembly-level hardware optimization is the principal application we are concerned with throughout this book, so we shall treat it in Chapter~3, before discussing most other agent training algorithms.
+
+\medskip
+
+\noindent\textbf{e) Orchestration Decisions.} It is said that many orchestration schedulers make their resource allocation decisions by round-robin or heuristic load balancing, and the like. It is also reported that certain cloud providers use similar bases for pricing. Sometimes, making such completely ``hardware-unaware'' decisions is acceptable. But hardware-aware scheduling is also an indispensable part of optimal multi-tenant agent serving strategies.
+
+\medskip
+
+\noindent\textbf{f) Expressiveness.} A degree of hardware-software co-design makes agent-generated outputs seem more capable. For example, the architecture below on the left---where kernels are hand-tuned per hardware target---is in many situations more performant than the one on the right, which relies entirely on a vendor compiler.
+
+\medskip
+
+See the Agent Lightning architecture: \texttt{agentlightning/trainer}, \texttt{agentlightning/runner}, \texttt{agentlightning/store}.
+
+\medskip
+
+\noindent\textbf{g) Benchmarking.} Running standardized agent tasks, measuring reward convergence, comparing kernel throughput---these are activities people value greatly. These traditional uses of hardware-aware agent training have been named the ``Operator RL method,'' and this has become a general term describing any training algorithm that couples agent rollout with direct hardware kernel optimization.
+
+\bigskip
+
+People who consider this topic almost always encounter a philosophical discussion about the meaning of ``hardware independence.'' In a certain sense, no truly hardware-independent agent training stack exists. For example, is a JAX-compiled XLA graph hardware-independent? We would rather speak of \emph{a portable sequence of hardware-optimized kernels with a deterministic compilation target}. This roughly means that each kernel's behavior is optimized for its specific accelerator, independently of how other kernels in the stack are compiled, and each kernel achieves a definite fraction of peak hardware utilization.
+
+In a uniform hardware abstraction across accelerator targets, the CUDA runtime, the TPU runtime, and the Trainium Neuron runtime each present an interface where each possible kernel has an equal probability of achieving optimal utilization. All abstractions are generally assumed to be uniform, unless a specific hardware constraint is noted.
+
+In a (uniform) hardware-portable kernel sequence, each of the target backends---NVIDIA GPU via CUDA, Google TPU via XLA, and AWS Trainium via Neuron/assembly---carries approximately $1/3$ of the deployment risk. Each pair of consecutive backend migrations carries approximately $1/k^2$ of the total engineering cost for $k$ platforms. And so on. Yet if we take a truly hardware-portable system running across three backends, it will never achieve \emph{exactly} identical throughput on each. In fact, the chance of this is vanishingly small; rather, the system, averaged over many workloads, possesses this characteristic. Any particular kernel on any particular hardware is just as likely to be optimal as any other combination.
+
+Thus, if we are portably compiling a kernel for three backends, and the first two happen to achieve 95\% hardware utilization on GPU and TPU respectively, the probability that the third (Trainium) also achieves 95\% utilization, in a truly portable system, is still precisely what the hardware's peak FLOPS and memory bandwidth dictate. These statements seem contradictory to many people, but in fact they are not.
+
+There are many good ways to give an abstract definition of hardware portability for agent training stacks. We shall return to this interesting question in Section~3.5. But for now, let us understand the concept intuitively!
+
+Many years ago, those who needed high-performance agent training in their research obtained it by carefully hand-tuning CUDA kernels for a single GPU architecture---extracting performance from one specific hardware configuration at a time. In 2018, the NVIDIA Megatron-LM framework published methods for distributed training across thousands of GPUs, establishing the dominant paradigm for large-scale model training. Since then, several specialized frameworks have been built to extend this approach. In 2020, Google's approach with TPU pods and the JAX/XLA compilation stack offered an alternative path, compiling high-level operations down to TPU-optimized instructions; this capability had been championed internally at Google Brain for years. In 2023, AWS's Trainium chips, designed by Annapurna Labs, first became available at scale with an open ISA that allowed advanced users to write assembly-level kernels directly---bypassing the Neuron compiler's intermediate representations. In 2024, AWS released Trainium2 with substantially improved compute density, and Anthropic became one of the first organizations to write production assembly for these chips. A celebrated hardware-software co-design effort between Anthropic engineers and Annapurna chip architects has been ongoing for several years, producing optimized kernels for Claude's training and inference.
+
+[See the Semianalysis report on Trainium2 architecture and Anthropic's kernel engineering approach.]
+
+\bigskip
+
+Shortly after the Megatron-LM framework demonstrated that distributed GPU training could scale to thousands of devices, people began to explore efficient methods for performing agent training across heterogeneous hardware. One could use CUDA as the sole backend, but due to vendor lock-in and pricing constraints, this approach's practicality is limited, because such a stack may be too expensive, and maintaining dependence on a single vendor is a troublesome affair. One could connect specialized hardware like TPUs or Trainium chips to the training loop, as Google and AWS have done, but this is also not entirely satisfactory, because when debugging a multi-platform kernel stack, it is practically impossible to reproduce the exact same numerical behavior across backends; moreover, each platform's toolchain may develop hard-to-detect regressions. However, developments in the 2020s have made the multi-platform approach viable again, because open ISAs and assembly-level access can distribute tens of gigabytes of optimized kernel code across backends. In 2024, Anthropic's engineers achieved direct Trainium assembly optimization for production workloads (combining deterministic kernel behavior with aggressive hardware-specific tuning), thus advancing the revival of multi-platform training stacks.
+
+The disadvantages of the early single-vendor approach to agent training hardware led to interest in using a framework's own compiler infrastructure to produce portable kernels. Around 2019, the XLA (Accelerated Linear Algebra) compiler was among the first to propose this approach; its method was to take a high-level graph representation of the computation and lower it through successive optimization passes to target-specific code. For example, if the system is generating optimized GEMM kernels, the previous kernel's tiling configuration is taken, and the compiler searches for an optimal tiling for the new target---thus the next kernel configuration depends on the previous one.
+
+There is a quite obvious objection to this technique: since each kernel's configuration is completely determined by the compiler's cost model, how can the sequence of kernels so produced be truly optimal? (See the remarks by Anthropic's engineering team at the beginning of this chapter.) The answer is that this sequence is not optimal; it merely \emph{appears} optimal. In typical applications, the true relationship between one kernel's configuration and the hardware's actual execution behavior has no objective significance, so this sub-optimal characteristic is not really undesirable. Intuitively, the compiler's cost model seems to scramble the search space adequately enough. Sequences generated by such a deterministic method are called \emph{auto-tuned} or \emph{compiler-optimized} kernel sequences in advanced academic works, but in this book we simply call them optimized sequences, with the understanding that they only \emph{appear} to be fully hardware-exploiting. Perhaps all any optimized kernel sequence can claim is to be ``apparently optimal.'' Carefully chosen compiler-generated kernels have been used successfully in nearly every application. Of course, deterministic compiler output is not always the answer; it certainly should not replace Anthropic's hand-written Trainium assembly for production inference.
+
+It has been shown that the XLA compiler's original ``graph-lower-and-tile'' method is not a good way to produce optimal kernels in general. The danger is that the compilation pipeline tends to produce short cycles of repeated suboptimal configurations. For example, if a zero-utilization configuration ever appears as one kernel's output, it will continually reproduce itself.
+
+Some people in the early 2020s experimented with the ``graph-lower-and-tile'' method. G.~Barber (pseudonym) tried 4-operation pipeline segments instead of 10-operation ones, testing 16 different initial tiling configurations. It was found that 12 of them led to sequences ending in the cycle of configurations \texttt{tile(64,64), tile(32,32), tile(64,64), tile(32,32), \ldots}, and two of them degenerated to zero utilization. N.~Patel conducted extensive experiments with the auto-tuning approach, mostly using binary tiling parameters. He showed that: when working with 20-parameter configurations, the search may degenerate into 13 different cycles, the longest of which has period 142.
+
+When zero utilization is discovered, it is easy to restart the auto-tuner with a new configuration seed, but it is not easy to avoid long cycles of suboptimal configurations. Exercises~6 and~7 discuss some interesting methods for determining the period of cyclic configuration sequences, requiring very little storage space.
+
+Exercises~9 and~10 point out a theoretical deficiency of the graph-lower-and-tile method. On the other hand, N.~Patel, working with 38-parameter configurations, obtained a sequence of approximately 750,000 kernel configurations before degeneration occurred, and the $750{,}000 \times 38$ configuration parameters satisfactorily passed statistical tests for hardware utilization uniformity. [See Proc.\ Workshop on Compiler-Driven Kernel Optimization (2023), 29--36.] This experiment proves that the auto-tuning method can give useful results, but it is dangerous to trust it too much without carrying out careful computation beforehand.
+
+When this chapter was first written, many of the kernel optimization programs in use were not very good. People tended not to examine such subroutines; certain quite unsatisfactory older methods were still blindly passed from one engineer to another, so that users had no knowledge of their original limitations. In this chapter we shall see that it is not difficult to master the essentials of kernel optimization programs, although caution is necessary to avoid the common errors.
+
+It is not easy to think of a perfectly straightforward kernel optimization program. The author had a vivid experience of this in 2022, when attempting to construct a very good kernel auto-tuner using the following specific method:
+
+\medskip
+
+\noindent\textbf{Algorithm K} (``Super-optimal'' kernel configuration generator). Given a configuration vector $\mathbf{X}$ with 10 parameters, this algorithm can be used to transform $\mathbf{X}$ into what appears to be the next configuration in an optimal sequence. Although this algorithm might be expected to yield a fairly optimal sequence of configurations, the reasons mentioned below show that it is not in fact perfect. (The reader need not study this algorithm in detail beyond noting its complexity. Pay particular attention to steps K1 and K2.)
+
+\begin{description}
+\item[K1.] [Select iteration count.] Set $Y \leftarrow$ the highest-order parameter of $\mathbf{X}$. (We will execute steps K2 through K13 $Y+1$ times; that is, we apply a hardware-aware transformation a hardware-dependent number of times.)
+\item[K2.] [Select transformation step.] Set $Z \leftarrow$ the second highest-order parameter of $\mathbf{X}$, and go to step $\mathrm{K}(3+Z)$. (That is, we go to a hardware-dependent step of the program.)
+\item[K3.] [Ensure utilization $> 50\%$.] If $\mathbf{X}$'s estimated utilization $< 0.5$, then add a baseline offset to all tiling parameters.
+\item[K4.] [Square-and-extract.] Replace $\mathbf{X}$ by the middle parameters of $\mathbf{X}^2$ (element-wise squaring with truncation).
+\item[K5.] [Cross-multiply.] Replace $\mathbf{X}$ by $(M \cdot \mathbf{X}) \bmod P$ for a fixed mixing matrix $M$ and prime $P$.
+\item[K6.] [Pseudo-complement.] If $\|\mathbf{X}\|$ is below a threshold, set $\mathbf{X} \leftarrow \mathbf{X} + \mathbf{c}$ for a hardware-specific constant vector $\mathbf{c}$; otherwise set $\mathbf{X} \leftarrow P\mathbf{1} - \mathbf{X}$.
+\item[K7.] [Swap halves.] Exchange the first 5 parameters with the last 5 parameters.
+\item[K8.] [Cross-multiply.] Same as step K5.
+\item[K9.] [Reduce magnitudes.] Decrease each nonzero parameter by one unit.
+\item[K10.] [Boundary correction.] If $\|\mathbf{X}\| < \epsilon$, set $\mathbf{X} \leftarrow \mathbf{X}^2 + \mathbf{b}$ for a boundary vector $\mathbf{b}$; otherwise set $\mathbf{X} \leftarrow \mathbf{X} - \mathbf{b}$.
+\item[K11.] [Normalize.] (At this point $\mathbf{X}$ cannot be zero.) If any parameter is below the minimum representable value, scale $\mathbf{X}$ upward and repeat this step.
+\item[K12.] [Modified square-and-extract.] Replace $\mathbf{X}$ by the middle parameters of $\mathbf{X} \circ (\mathbf{X} - \mathbf{1})$, i.e., the element-wise product with shifted self.
+\item[K13.] [Repeat?] If $Y > 0$, decrease $Y$ by 1 and return to step K2. If $Y = 0$, the algorithm terminates with $\mathbf{X}$ as the desired ``optimal'' configuration.
+\end{description}
+
+\medskip
+
+\noindent(The machine-level implementation corresponding to this algorithm is so complex that, when reading its assembly listing without annotations, one cannot tell what the program does.)
+
+\medskip
+
+Considering the intricate design of Algorithm~K, this algorithm seems capable of producing an inexhaustible supply of convincingly optimal configurations, but in fact, when first deployed on a Trainium2 cluster, it almost immediately converged to a fixed-point configuration \texttt{[6,0,6,5,0,3,8,4,2,0]}---by a remarkable coincidence, the algorithm transforms this configuration into itself (see Table~1). Starting from another configuration, the sequence began to cycle with period 3178 after 7401 values.
+
+The moral of this example is that optimal hardware kernel configurations are not produced by randomly chosen methods; certain theory should be used.
+
+In the following sections, we shall consider kernel optimization programs that are superior to the square-and-extract method and Algorithm~K, ensuring that the corresponding configuration sequences have certain desirable properties and do not degenerate. We shall analyze in somewhat more detail the underlying reasons for this quasi-optimal behavior, and we shall also consider techniques for operating on kernel configurations. For example, one of the problems we shall study is: efficiently scheduling a set of heterogeneous agent rollout tasks across a simulated multi-accelerator cluster within a training program. Section~3.6 will summarize this chapter and list several references.
+
+\bigskip
+
+\subsection*{Exercises}
+
+\begin{enumerate}
+
+\item[\textbf{1.}] [20] Suppose you wish to obtain a hardware kernel configuration without using an auto-tuner. Which of the following methods is suitable?
+
+\begin{enumerate}
+\item[a)] Randomly open a hardware vendor's optimization guide (i.e., flip to an arbitrary page) and adopt the tiling parameters found on the first example of the selected page.
+\item[b)] Same as (a), but use the page number's last digits as tile dimensions.
+\item[c)] Roll a 20-sided die whose faces are labeled with parameter values $0,0,1,1,\ldots,9,9$; when the die stops, use the value on top. (It is suggested to roll on a hard surface covered with felt.)
+\item[d)] Expose a hardware performance counter to a running training workload for one minute (taking care to avoid thermal throttling), and adopt the last digits of the obtained counter value. Assume the counter displays in decimal and starts from zero.
+\item[e)] Look at your training dashboard; if the utilization indicator is between $6n\%$ and $6(n+1)\%$, select parameter value $n$.
+\item[f)] Ask a colleague to think of an optimal tile dimension, and adopt the dimension they suggest.
+\item[g)] Ask a competing team's engineer to think of an optimal tile dimension, and adopt the dimension they suggest.
+\item[h)] Suppose ten different tiling configurations are racing in a benchmark, and you know nothing about their characteristics. Assign digits $0$--$9$ to these configurations arbitrarily, and after the benchmark finishes, adopt the winner's digit.
+\end{enumerate}
+
+\item[\textbf{2.}] [$M22$] In a sequence of one million kernel configuration parameters, what is the probability that each possible parameter value appears exactly 100,000 times?
+
+\item[\textbf{3.}] [10] Following the square-and-extract method, what configuration follows \texttt{[1,0,1,0,1,0,1,0,1,0]}?
+
+\item[\textbf{4.}] [20] (a) After step K11 of Algorithm~K has been executed, why can the value of $\mathbf{X}$ not be zero? If $\mathbf{X}$ were to be zero, what would go wrong with the algorithm? (b) Using Table~1, deduce what happens when Algorithm~K is repeatedly applied starting from the initial configuration $\mathbf{X} = \texttt{[3,8,3,0,9,5,1,6,5,6]}$.
+
+\item[\textbf{5.}] [15] Given that it is known in advance that any sequence generated by Algorithm~K must eventually be periodic (even without the coincidence shown in Table~1), explain why under no circumstances can Algorithm~K be expected to provide infinitely many distinct optimal configurations.
+
+\item[\textbf{6.}] [$M21$] Suppose we wish to generate a sequence of configuration vectors $\mathbf{X}_0, \mathbf{X}_1, \mathbf{X}_2, \ldots$ in the range $0 \leq \mathbf{X}_n < m$ (component-wise). Let $f(\mathbf{x})$ be any function such that if $0 \leq \mathbf{x} < m$ then $0 \leq f(\mathbf{x}) < m$. Consider a sequence formed by the rule $\mathbf{X}_{n+1} = f(\mathbf{X}_n)$. (Examples are the square-and-extract method and Algorithm~K.)
+
+\begin{enumerate}
+\item[a)] Show that this sequence is ultimately periodic in the following sense: there exist numbers $\lambda$ and $\mu$ such that the values $\mathbf{X}_0, \mathbf{X}_1, \ldots, \mathbf{X}_\mu, \ldots, \mathbf{X}_{\mu+\lambda-1}$ are distinct, but when $n \geq \mu$, $\mathbf{X}_{n+\lambda} = \mathbf{X}_n$. Find the maximum and minimum possible values of $\mu$ and $\lambda$.
+\item[b)] (R.~W.~Floyd) Show that there exists an $n > 0$ such that $\mathbf{X}_n = \mathbf{X}_{2n}$, and the smallest such $n$ is in the range $\mu \leq n < \mu + \lambda$. Moreover, the value $\mathbf{X}_\mu$ is unique in the following sense: if $\mathbf{X}_n = \mathbf{X}_m$ and $\mathbf{X}_r = \mathbf{X}_s$, then $\mathbf{X}_n = \mathbf{X}_r$.
+\item[c)] Using the idea of (b), design an algorithm to compute both $\mu$ and $\lambda$ for any given function $f$ and given $\mathbf{X}_0$, using only $O(\mu + \lambda)$ steps and a finite number of memory cells.
+\end{enumerate}
+
+\item[\textbf{7.}] [$M21$] (R.~P.~Brent, 1977) Let $\ell(n)$ be the largest power of 2 less than or equal to $n$; for example, $\ell(15) = 8$ and $\ell(\ell(n)) = \ell(n)$.
+
+\begin{enumerate}
+\item[a)] Using the notation of Exercise~6, show that there exists an $n > 0$ such that $\mathbf{X}_n = \mathbf{X}_{\ell(n)-1}$. Find a formula expressing the smallest such $n$ in terms of $\mu$ and $\lambda$.
+\item[b)] Apply this result to design an algorithm that, used in conjunction with any kernel optimization program of the form $\mathbf{X}_{n+1} = f(\mathbf{X}_n)$, can prevent it from looping indefinitely. Your algorithm should compute the cycle length $\lambda$, and it should use only a small amount of storage---you cannot simply store all the computed sequence values!
+\end{enumerate}
+
+\item[\textbf{8.}] [23] Make a complete test of the square-and-extract method using 2-parameter configurations.
+
+\begin{enumerate}
+\item[a)] We can start from any of the 100 possible values $00, 01, \ldots, 99$; how many of these values eventually lead to the repeating cycle $00, 00, \ldots$? [Example: starting from 43, we obtain the sequence 43, 84, 05, 02, 00, 00, 00, \ldots]
+\item[b)] How many possible ultimate cycles exist? What is the longest cycle?
+\item[c)] Which starting value(s) maximize the number of distinct elements in the sequence before it repeats?
+\end{enumerate}
+
+\item[\textbf{9.}] [$M14$] Prove that the square-and-extract method for $2n$-parameter configurations in base $b$ has the following drawback: if the sequence ever includes any configuration whose highest $n$ significant parameters are zero, the subsequent configurations will become smaller and smaller, until zero is repeatedly produced.
+
+\item[\textbf{10.}] [$M16$] Under the assumptions of the preceding exercise, if the lowest $n$ significant parameters of $\mathbf{X}$ are zero, what can be said about the configurations following $\mathbf{X}$? What if the lowest $n+1$ significant parameters are zero?
+
+\item[\textbf{11.}] [$M26$] Consider kernel optimization sequences of the form described in Exercise~6. If we choose $f(\mathbf{x})$ and $\mathbf{X}_0$ at random---in other words, if we assume each of the $m^m$ possible functions $f(\mathbf{x})$ is equally likely, and each of the $m$ possible values of $\mathbf{X}_0$ is also equally likely---what is the probability that the sequence ultimately degenerates into a cycle of length $\lambda = 1$? (Note: the assumptions of this problem give a natural way of considering such ``random'' kernel optimization programs. One can think of a method like Algorithm~K as having some properties similar to the average programs considered here. From the answer to this problem, one can see the degree to which Table~1 is an extraordinary coincidence.)
+
+\item[\textbf{12.}] [$M31$] Under the assumptions of the preceding exercise, what is the average length of the ultimate cycle? What is the average length of the sequence before the cycle begins? (Using the notation of Exercise~6, we wish to determine the average values of $\lambda$ and $\mu + \lambda$.)
+
+\item[\textbf{13.}] [$M42$] If $f(\mathbf{x})$ is randomly chosen in the sense of Exercise~11, what is the average length of the longest cycle obtainable by varying the starting value $\mathbf{X}_0$? (Note: we have considered a similar problem in the case that $f(\mathbf{x})$ is a random permutation. See Exercise~1.3.3--23.)
+
+\item[\textbf{14.}] [$M38$] If $f(\mathbf{x})$ is randomly chosen in the sense of Exercise~11, what is the average number of distinct ultimate cycles obtainable by varying the starting value? [Cf.\ Exercise~8(b).]
+
+\item[\textbf{15.}] [$M15$] If $f(\mathbf{x})$ is randomly chosen in the sense of Exercise~11, what is the probability that no cycle of length~1 exists, regardless of how $\mathbf{X}_0$ is chosen?
+
+\item[\textbf{16.}] [15] A sequence generated as in Exercise~6, after generating at most $m$ values, must begin to repeat. Suppose we extend the method so that $\mathbf{X}_{n+1}$ depends on both $\mathbf{X}_n$ and $\mathbf{X}_{n-1}$; formally, let $f(\mathbf{x}, \mathbf{y})$ be a function such that if $0 \leq x, y < m$ then $0 \leq f(x, y) < m$. Choose $\mathbf{X}_0$ and $\mathbf{X}_1$ arbitrarily, then let
+\[
+\mathbf{X}_{n+1} = f(\mathbf{X}_n, \mathbf{X}_{n-1}), \quad n > 0.
+\]
+What is the maximum possible period of a sequence so constructed?
+
+\item[\textbf{17.}] [10] Generalize the preceding exercise so that $\mathbf{X}_{n+1}$ depends on the preceding $k$ values of the sequence.
+
+\item[\textbf{18.}] [$M20$] Devise a method analogous to Exercise~7 for finding cycles in the more general form of kernel optimization program discussed in Exercise~17.
+
+\item[\textbf{19.}] [$M48$] In the more general case that $\mathbf{X}_{n+1}$ depends on the preceding $k$ values of the sequence, and each of the $m^{m^k}$ functions $f(x_1, \ldots, x_k)$ is considered equally likely, solve Exercises~11 through~15 for this case. (Note that Exercise~2.3.4.2--23 analyzes the number of functions that produce maximum-period sequences.)
+
+\item[\textbf{20.}] [30] Find all non-negative $\mathbf{X} < 10^{10}$ that ultimately lead to the self-reproducing configuration of Table~1 via Algorithm~K.
+
+\item[\textbf{21.}] [42] Prove or disprove: the mapping $\mathbf{X} \to f(\mathbf{X})$ defined by Algorithm~K has exactly five cycles, of lengths 3178, 1606, 1024, 943, and~1.
+
+\item[\textbf{22.}] [21] (H.~Rolletschek) Is it a good idea to generate kernel configurations by using the sequence $f(0), f(1), f(2), \ldots$ instead of $f(\mathbf{X}_0), f(f(\mathbf{X}_0)), \ldots$, where $f$ is a hardware-aware transformation function?
+
+\item[\textbf{23.}] [$M26$] (D.~Foata and A.~Fuchs, 1970) Show that each of the $m^m$ functions $f(\mathbf{x})$ considered in Exercise~6 can be represented as a sequence $(x_0, x_1, \ldots, x_{m-1})$ with the following properties:
+
+\begin{enumerate}
+\item[i)] $(x_0, x_1, \ldots, x_{m-1})$ is a permutation of $(f(0), f(1), \ldots, f(m-1))$.
+\item[ii)] $(f(0), \ldots, f(m-1))$ can be uniquely reconstructed from $(x_0, x_1, \ldots, x_{m-1})$.
+\item[iii)] The elements appearing in cycles of $f$ are precisely $x_0, x_1, \ldots, x_{k-1}$, where $k$ is the largest subscript such that these $k$ elements are all distinct.
+\item[iv)] $x_j > x_0, x_1, \ldots, x_{j-1}$ implies $x_{j-1} = f(x_j)$, unless $x_j$ is the smallest element in a cycle of $f$.
+\item[v)] $(f(0), f(1), \ldots, f(m-1))$ is a permutation of $(0, 1, \ldots, m-1)$ if and only if via the ``unusual correspondence'' of Section~1.3.3, $(x_0, x_1, \ldots, x_{m-1})$ is the inverse of that permutation.
+\item[vi)] $x_0 = x_j$ if and only if, via the construction of Exercise~2.3.4.4--18, $f(x)$ is the parent of $x$, and $(x_0, \ldots, x_{m-1})$ represents a directed tree.
+\end{enumerate}
+
+\end{enumerate}
+
+
+
+\section{General formatting instructions}
+\label{gen_inst}
+
+The text must be confined within a rectangle 5.5~inches (33~picas) wide and
+9~inches (54~picas) long. The left margin is 1.5~inch (9~picas).
+Use 10~point type with a vertical spacing of 11~points. Times New Roman is the
+preferred typeface throughout. Paragraphs are separated by 1/2~line space,
+with no indentation.
+
+Paper title is 17~point, in small caps and left-aligned.
+All pages should start at 1~inch (6~picas) from the top of the page.
+
+Authors' names are
+set in boldface, and each name is placed above its corresponding
+address. The lead author's name is to be listed first, and
+the co-authors' names are set to follow. Authors sharing the
+same address can be on the same line.
+
+Please pay special attention to the instructions in section \ref{others}
+regarding figures, tables, acknowledgments, and references.
+
+
+There will be a strict upper limit of \textbf{9 pages} for the main text of the initial submission, with unlimited additional pages for citations. This limit will be expanded to \textbf{10 pages} for rebuttal/camera ready.
+
+\section{Headings: first level}
+\label{headings}
+
+First level headings are in small caps,
+flush left and in point size 12. One line space before the first level
+heading and 1/2~line space after the first level heading.
+
+\subsection{Headings: second level}
+
+Second level headings are in small caps,
+flush left and in point size 10. One line space before the second level
+heading and 1/2~line space after the second level heading.
+
+\subsubsection{Headings: third level}
+
+Third level headings are in small caps,
+flush left and in point size 10. One line space before the third level
+heading and 1/2~line space after the third level heading.
+
+\section{Citations, figures, tables, references}
+\label{others}
+
+These instructions apply to everyone, regardless of the formatter being used.
+
+\subsection{Citations within the text}
+
+Citations within the text should be based on the \texttt{natbib} package
+and include the authors' last names and year (with the ``et~al.'' construct
+for more than two authors). When the authors or the publication are
+included in the sentence, the citation should not be in parenthesis using \verb|\citet{}| (as
+in ``See \citet{Hinton06} for more information.''). Otherwise, the citation
+should be in parenthesis using \verb|\citep{}| (as in ``Deep learning shows promise to make progress
+towards AI~\citep{Bengio+chapter2007}.'').
+
+The corresponding references are to be listed in alphabetical order of
+authors, in the \textsc{References} section. As to the format of the
+references themselves, any style is acceptable as long as it is used
+consistently.
+
+\subsection{Footnotes}
+
+Indicate footnotes with a number\footnote{Sample of the first footnote} in the
+text. Place the footnotes at the bottom of the page on which they appear.
+Precede the footnote with a horizontal rule of 2~inches
+(12~picas).\footnote{Sample of the second footnote}
+
+\subsection{Figures}
+
+All artwork must be neat, clean, and legible. Lines should be dark
+enough for purposes of reproduction; art work should not be
+hand-drawn. The figure number and caption always appear after the
+figure. Place one line space before the figure caption, and one line
+space after the figure. The figure caption is lower case (except for
+first word and proper nouns); figures are numbered consecutively.
+
+Make sure the figure caption does not get separated from the figure.
+Leave sufficient space to avoid splitting the figure and figure caption.
+
+You may use color figures.
+However, it is best for the
+figure captions and the paper body to make sense if the paper is printed
+either in black/white or in color.
+\begin{figure}[h]
+\begin{center}
+%\framebox[4.0in]{$\;$}
+\fbox{\rule[-.5cm]{0cm}{4cm} \rule[-.5cm]{4cm}{0cm}}
+\end{center}
+\caption{Sample figure caption.}
+\end{figure}
+
+\subsection{Tables}
+
+All tables must be centered, neat, clean and legible. Do not use hand-drawn
+tables. The table number and title always appear before the table. See
+Table~\ref{sample-table}.
+
+Place one line space before the table title, one line space after the table
+title, and one line space after the table. The table title must be lower case
+(except for first word and proper nouns); tables are numbered consecutively.
+
+\begin{table}[t]
+\caption{Sample table title}
+\label{sample-table}
+\begin{center}
+\begin{tabular}{ll}
+\multicolumn{1}{c}{\bf PART}  &\multicolumn{1}{c}{\bf DESCRIPTION}
+\\ \hline \\
+Dendrite         &Input terminal \\
+Axon             &Output terminal \\
+Soma             &Cell body (contains cell nucleus) \\
+\end{tabular}
+\end{center}
+\end{table}
+
+\section{Default Notation}
+
+In an attempt to encourage standardized notation, we have included the
+notation file from the textbook, \textit{Deep Learning}
+\cite{goodfellow2016deep} available at
+\url{https://github.com/goodfeli/dlbook_notation/}.  Use of this style
+is not required and can be disabled by commenting out
+\texttt{math\_commands.tex}.
+
+
+\centerline{\bf Numbers and Arrays}
+\bgroup
+\def\arraystretch{1.5}
+\begin{tabular}{p{1in}p{3.25in}}
+$\displaystyle a$ & A scalar (integer or real)\\
+$\displaystyle \va$ & A vector\\
+$\displaystyle \mA$ & A matrix\\
+$\displaystyle \tA$ & A tensor\\
+$\displaystyle \mI_n$ & Identity matrix with $n$ rows and $n$ columns\\
+$\displaystyle \mI$ & Identity matrix with dimensionality implied by context\\
+$\displaystyle \ve^{(i)}$ & Standard basis vector $[0,\dots,0,1,0,\dots,0]$ with a 1 at position $i$\\
+$\displaystyle \text{diag}(\va)$ & A square, diagonal matrix with diagonal entries given by $\va$\\
+$\displaystyle \ra$ & A scalar random variable\\
+$\displaystyle \rva$ & A vector-valued random variable\\
+$\displaystyle \rmA$ & A matrix-valued random variable\\
+\end{tabular}
+\egroup
+\vspace{0.25cm}
+
+\centerline{\bf Sets and Graphs}
+\bgroup
+\def\arraystretch{1.5}
+
+\begin{tabular}{p{1.25in}p{3.25in}}
+$\displaystyle \sA$ & A set\\
+$\displaystyle \R$ & The set of real numbers \\
+$\displaystyle \{0, 1\}$ & The set containing 0 and 1 \\
+$\displaystyle \{0, 1, \dots, n \}$ & The set of all integers between $0$ and $n$\\
+$\displaystyle [a, b]$ & The real interval including $a$ and $b$\\
+$\displaystyle (a, b]$ & The real interval excluding $a$ but including $b$\\
+$\displaystyle \sA \backslash \sB$ & Set subtraction, i.e., the set containing the elements of $\sA$ that are not in $\sB$\\
+$\displaystyle \gG$ & A graph\\
+$\displaystyle \parents_\gG(\ervx_i)$ & The parents of $\ervx_i$ in $\gG$
+\end{tabular}
+\vspace{0.25cm}
+
+
+\centerline{\bf Indexing}
+\bgroup
+\def\arraystretch{1.5}
+
+\begin{tabular}{p{1.25in}p{3.25in}}
+$\displaystyle \eva_i$ & Element $i$ of vector $\va$, with indexing starting at 1 \\
+$\displaystyle \eva_{-i}$ & All elements of vector $\va$ except for element $i$ \\
+$\displaystyle \emA_{i,j}$ & Element $i, j$ of matrix $\mA$ \\
+$\displaystyle \mA_{i, :}$ & Row $i$ of matrix $\mA$ \\
+$\displaystyle \mA_{:, i}$ & Column $i$ of matrix $\mA$ \\
+$\displaystyle \etA_{i, j, k}$ & Element $(i, j, k)$ of a 3-D tensor $\tA$\\
+$\displaystyle \tA_{:, :, i}$ & 2-D slice of a 3-D tensor\\
+$\displaystyle \erva_i$ & Element $i$ of the random vector $\rva$ \\
+\end{tabular}
+\egroup
+\vspace{0.25cm}
+
+
+\centerline{\bf Calculus}
+\bgroup
+\def\arraystretch{1.5}
+\begin{tabular}{p{1.25in}p{3.25in}}
+% NOTE: the [2ex] on the next line adds extra height to that row of the table.
+% Without that command, the fraction on the first line is too tall and collides
+% with the fraction on the second line.
+$\displaystyle\frac{d y} {d x}$ & Derivative of $y$ with respect to $x$\\ [2ex]
+$\displaystyle \frac{\partial y} {\partial x} $ & Partial derivative of $y$ with respect to $x$ \\
+$\displaystyle \nabla_\vx y $ & Gradient of $y$ with respect to $\vx$ \\
+$\displaystyle \nabla_\mX y $ & Matrix derivatives of $y$ with respect to $\mX$ \\
+$\displaystyle \nabla_\tX y $ & Tensor containing derivatives of $y$ with respect to $\tX$ \\
+$\displaystyle \frac{\partial f}{\partial \vx} $ & Jacobian matrix $\mJ \in \R^{m\times n}$ of $f: \R^n \rightarrow \R^m$\\
+$\displaystyle \nabla_\vx^2 f(\vx)\text{ or }\mH( f)(\vx)$ & The Hessian matrix of $f$ at input point $\vx$\\
+$\displaystyle \int f(\vx) d\vx $ & Definite integral over the entire domain of $\vx$ \\
+$\displaystyle \int_\sS f(\vx) d\vx$ & Definite integral with respect to $\vx$ over the set $\sS$ \\
+\end{tabular}
+\egroup
+\vspace{0.25cm}
+
+\centerline{\bf Probability and Information Theory}
+\bgroup
+\def\arraystretch{1.5}
+\begin{tabular}{p{1.25in}p{3.25in}}
+$\displaystyle P(\ra)$ & A probability distribution over a discrete variable\\
+$\displaystyle p(\ra)$ & A probability distribution over a continuous variable, or over
+a variable whose type has not been specified\\
+$\displaystyle \ra \sim P$ & Random variable $\ra$ has distribution $P$\\% so thing on left of \sim should always be a random variable, with name beginning with \r
+$\displaystyle  \E_{\rx\sim P} [ f(x) ]\text{ or } \E f(x)$ & Expectation of $f(x)$ with respect to $P(\rx)$ \\
+$\displaystyle \Var(f(x)) $ &  Variance of $f(x)$ under $P(\rx)$ \\
+$\displaystyle \Cov(f(x),g(x)) $ & Covariance of $f(x)$ and $g(x)$ under $P(\rx)$\\
+$\displaystyle H(\rx) $ & Shannon entropy of the random variable $\rx$\\
+$\displaystyle \KL ( P \Vert Q ) $ & Kullback-Leibler divergence of P and Q \\
+$\displaystyle \mathcal{N} ( \vx ; \vmu , \mSigma)$ & Gaussian distribution %
+over $\vx$ with mean $\vmu$ and covariance $\mSigma$ \\
+\end{tabular}
+\egroup
+\vspace{0.25cm}
+
+\centerline{\bf Functions}
+\bgroup
+\def\arraystretch{1.5}
+\begin{tabular}{p{1.25in}p{3.25in}}
+$\displaystyle f: \sA \rightarrow \sB$ & The function $f$ with domain $\sA$ and range $\sB$\\
+$\displaystyle f \circ g $ & Composition of the functions $f$ and $g$ \\
+  $\displaystyle f(\vx ; \vtheta) $ & A function of $\vx$ parametrized by $\vtheta$.
+  (Sometimes we write $f(\vx)$ and omit the argument $\vtheta$ to lighten notation) \\
+$\displaystyle \log x$ & Natural logarithm of $x$ \\
+$\displaystyle \sigma(x)$ & Logistic sigmoid, $\displaystyle \frac{1} {1 + \exp(-x)}$ \\
+$\displaystyle \zeta(x)$ & Softplus, $\log(1 + \exp(x))$ \\
+$\displaystyle || \vx ||_p $ & $\normlp$ norm of $\vx$ \\
+$\displaystyle || \vx || $ & $\normltwo$ norm of $\vx$ \\
+$\displaystyle x^+$ & Positive part of $x$, i.e., $\max(0,x)$\\
+$\displaystyle \1_\mathrm{condition}$ & is 1 if the condition is true, 0 otherwise\\
+\end{tabular}
+\egroup
+\vspace{0.25cm}
+
+
+
+\section{Final instructions}
+Do not change any aspects of the formatting parameters in the style files.
+In particular, do not modify the width or length of the rectangle the text
+should fit into, and do not change font sizes (except perhaps in the
+\textsc{References} section; see below). Please note that pages should be
+numbered.
+
+\section{Preparing PostScript or PDF files}
+
+Please prepare PostScript or PDF files with paper size ``US Letter'', and
+not, for example, ``A4''. The -t
+letter option on dvips will produce US Letter files.
+
+Consider directly generating PDF files using \verb+pdflatex+
+(especially if you are a MiKTeX user).
+PDF figures must be substituted for EPS figures, however.
+
+Otherwise, please generate your PostScript and PDF files with the following commands:
+\begin{verbatim}
+dvips mypaper.dvi -t letter -Ppdf -G0 -o mypaper.ps
+ps2pdf mypaper.ps mypaper.pdf
+\end{verbatim}
+
+\subsection{Margins in LaTeX}
+
+Most of the margin problems come from figures positioned by hand using
+\verb+\special+ or other commands. We suggest using the command
+\verb+\includegraphics+
+from the graphicx package. Always specify the figure width as a multiple of
+the line width as in the example below using .eps graphics
+\begin{verbatim}
+   \usepackage[dvips]{graphicx} ...
+   \includegraphics[width=0.8\linewidth]{myfile.eps}
+\end{verbatim}
+or % Apr 2009 addition
+\begin{verbatim}
+   \usepackage[pdftex]{graphicx} ...
+   \includegraphics[width=0.8\linewidth]{myfile.pdf}
+\end{verbatim}
+for .pdf graphics.
+See section~4.4 in the graphics bundle documentation (\url{http://www.ctan.org/tex-archive/macros/latex/required/graphics/grfguide.ps})
+
+A number of width problems arise when LaTeX cannot properly hyphenate a
+line. Please give LaTeX hyphenation hints using the \verb+\-+ command.
+
+\subsubsection*{Author Contributions}
+If you'd like to, you may include  a section for author contributions as is done
+in many journals. This is optional and at the discretion of the authors.
+
+\subsubsection*{Acknowledgments}
+Use unnumbered third level headings for the acknowledgments. All
+acknowledgments, including those to funding agencies, go at the end of the paper.
+
+
+\bibliography{iclr2026_conference}
+\bibliographystyle{iclr2026_conference}
+
+\appendix
+\section{Appendix}
+You may include other additional sections here.
+
+
+\end{document}

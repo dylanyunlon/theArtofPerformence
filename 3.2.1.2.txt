@@ -1,0 +1,236 @@
+3.2.1.2 乘数的选择 在这一小节中,我们将说明怎样选择乘数a,以给出具有极大长度的周期。长的周期对干任何用作随机数来源的序列来说是必不可少的。确实,我们总是希望这个周期所含的数比任何具体应用中所需求的要多得多。因此,在本节中,我们将研究周期长度的问题。然而,读者应该记住,长周期对于序列的随机性说来,仅仅是所希望的准则之一。例如,当a=c=1时,这个序列只不过是X„+1=(X„+1)mod m,它显然有长度为m的周期,但它绝不是随机的。有关选
+择一个乘数的其它考虑,将在这一章的后面部分给出。由于只可能有m个不同的值,故周期确实不可能大于m。我们能达到极大长度m吗?上面的例子说明这总是可能的,但是选取a=c=1不能产生所求的序列。让我们来研究得到周期长度m的a,和X的所有可能的选择。结果是,所有这样的参数值都可非常简单地加以表征;当m是不同素数的积时,只有a=1才产生完全的周期,但当m可被某个素数的高次幂整除时,a的选择才有相当大的范围。下面的定理使我们很容易指出周期是否为极大。
+定理A 由m,a,c和Xo所定义的线性同余序列有周期长度m当且仅当i)c与m互素;ii)对于整除m的每个素数p,b=a-1是p的倍数;
+iii)如果m是4的倍数,则b也是4的倍数。用于证明这个定理的思想至少可追溯到100年前。但在m=2的特殊情况下,在这种具体形式下的定理的头一个证明是由M.Greenberger给出的[见 JACM 8(1961),163~167],而 Hull 和 Dobell证明了在一般情况下条件i),ii)和iii)的充分性见SIAM Review4(1962),230~254]。为证明这个定理,我们首先要考虑本身就很有趣的某些辅助性的数论结果。
+则
+\textbf{引理 P} \quad 设 $p$ 是一个素数, $e$ 是一个正整数, 其中 $p^e > 2$, 如果
+\begin{equation}
+x \equiv 1 \pmod{p^e}, \quad x \not\equiv 1 \pmod{p^{e+1}}
+\end{equation}
+则
+\begin{equation}
+x^p \equiv 1 \pmod{p^{e+1}}, \quad x^p \not\equiv 1 \pmod{p^{e+2}}
+\end{equation}
+
+\textbf{证明} \quad 对于不是 $p$ 的倍数的某个整数 $q$, 我们有 $x = 1 + q\,p^e$。由二项式公式
+
+\begin{align}
+x^p &= 1 + \binom{p}{1} q\,p^e + \cdots + \binom{p}{p-1} q^{p-1} p^{(p-1)e} + q^p p^{pe} = \\
+&= 1 + q\,p^{e+1} \left( 1 + \frac{1}{p}\binom{p}{2} q\,p^e + \frac{1}{p}\binom{p}{3} q^2 p^{2e} + \cdots + \frac{1}{p}\binom{p}{p} q^{p-1} p^{(p-1)e} \right)
+\end{align}
+圆括弧中的量是一个整数,而且事实上圆括弧中除去第一项之外,各项都是力的倍数,因为如果 1<k<p,则二项式系数!,可为户所整除(参见习题 1.2.6-10)。因此
+\[
+\frac{1}{p}\binom{p}{k} q^{k-1} p^{(k-1)e}
+\]
+可为 $p^{(k-1)e}$ 所整除。最后一项是 $q^{p-1}p^{(p-1)e-1}$, 由于当 $p^e > 2$ 时, $(p-1)e > 1$, 因而它可为 $p$ 所整除。于是 $x^p \equiv 1 + qp^{e+1} \pmod{p^{e+2}}$, 证毕。（注：习题 3.2.2-11a）是这个结果的推广。） \blacksquare
+
+\bigskip
+
+\textbf{引理 Q} \quad 设把 $m$ 分解成素因子
+\begin{equation}
+m = p_1^{e_1} \cdots p_t^{e_t}
+\end{equation}
+则由 $(X_0, a, c, m)$ 所确定的线性同余序列的周期长度 $\lambda$, 是诸线性同余序列 $(X_0 \bmod p_j^{e_j}, a \bmod p_j^{e_j}, c \bmod p_j^{e_j}, p_j^{e_j})$ 的周期长度 $\lambda_j$ 的最小公倍数, 其中, $1 \leqslant j \leqslant t$。
+
+\textbf{证明} \quad 对 $t$ 用归纳法, 只须证明, 如果 $m_1$ 与 $m_2$ 互素, 则由 $(X_0, a, c, m_1 m_2)$ 所确定的线性同余序列的周期长度 $\lambda$ 是序列 $(X_0 \bmod m_1, a \bmod m_1, c \bmod m_1, m_1)$ 和 $(X_0 \bmod m_2, a \bmod m_2, c \bmod m_2, m_2)$ 的周期长度 $\lambda_1$ 和 $\lambda_2$ 的最小公倍数。根据 3.2.1.1 小节的等式 (4), 如果这三个序列的元素分别记为 $X_n, Y_n, Z_n$, 则将有
+\[
+Y_n = X_n \bmod m_1 \quad \text{和} \quad Z_n = X_n \bmod m_2, \quad \text{对于所有 } n \geqslant 0
+\]
+因此, 由 1.2.4 小节的定律 D, 我们发现
+\begin{equation}
+X_n = X_k \quad \text{当且仅当} \quad Y_n = Y_k \text{ 和 } Z_n = Z_k
+\end{equation}
+设 $\lambda'$ 是 $\lambda_1$ 和 $\lambda_2$ 的最小公倍数; 我们希望证明 $\lambda' = \lambda$。由于对于所有适当大的 $n$, $X_n = X_{n+\lambda}$, 我们有 $Y_n = Y_{n+\lambda}$（因此 $\lambda$ 是 $\lambda_1$ 的倍数）, 且 $Z_n = Z_{n+\lambda}$（因此 $\lambda$ 是 $\lambda_2$ 的倍数）, 所以必然 $\lambda \geqslant \lambda'$。其次, 我们知道, 对于所有适当大的 $n$, $Y_n = Y_{n+\lambda'}$, $Z_n = Z_{n+\lambda'}$; 因此由式 (4), $X_n = X_{n+\lambda'}$。这证明 $\lambda \leqslant \lambda'$。所以 $\lambda = \lambda'$。\blacksquare
+
+\bigskip
+
+现在着手证明定理 A。由引理 Q 知, 只须对 $m$ 是一个素数的乘幂这种特殊情况证明定理 A 就够了。这是因为, 当且仅当对于 $1 \leqslant j \leqslant t$, $\lambda_j = p_j^{e_j}$ 时,
+\[
+p_1^{e_1} \cdots p_t^{e_t} = \lambda = \operatorname{lcm}(\lambda_1, \cdots, \lambda_t) \leqslant \lambda_1 \cdots \lambda_t \leqslant p_1^{e_1} \cdots p_t^{e_t}
+\]
+为真。
+
+因此, 假定 $m = p^e$, 其中 $p$ 是素数, $e$ 是正整数。当 $a = 1$ 时定理显然为真, 所以可取 $a > 1$。当且仅当每个可能的整数 $0 \leqslant x < m$ 都出现于这个周期中时, 周期长度才能为 $m$。因为在周期中没有出现一次以上的值, 因此周期长度为 $m$ 当且仅当 $X_0 = 0$ 的序列的周期长度为 $m$, 而且有理由假设 $X_0 = 0$。由公式 3.2.1-(6), 我们有
+\begin{equation}
+X_n = \left(\frac{a^n - 1}{a - 1}\right) c \bmod m
+\end{equation}
+如果 $c$ 不与 $m$ 互素, 则 $X_n$ 绝不能为 1, 所以定理的条件 i) 是必要的。周期长度为 $m$ 的充要条件是, 使 $X_n = X_0 = 0$ 的 $n$ 的最小正值是 $n = m$。由关系式 (5) 和条件 i), 定理的证明便归结为证明如下事实：
+
+\bigskip
+
+\textbf{引理 R} \quad 假定 $1 < a < p^e$, 其中 $p$ 为素数, 如果 $\lambda$ 是使得 $(a^\lambda - 1)/(a - 1) \equiv$ $0 \pmod{p^e}$ 的最小正整数, 则
+\[
+\lambda = p^e \quad \text{当且仅当} \quad
+\begin{cases}
+a \equiv 1 \pmod{p}, & \text{当 } p > 2 \text{ 时} \\
+a \equiv 1 \pmod{4}, & \text{当 } p = 2 \text{ 时}
+\end{cases}
+\]
+
+\textbf{证明} \quad 假设 $\lambda = p^e$, 如果 $a \not\equiv 1 \pmod{p}$, 则当且仅当 $a^n - 1 \equiv 0 \pmod{p^e}$ 时, $(a^n - 1)/(a - 1) \equiv 0 \pmod{p^e}$。于是, 条件 $a^{p^e} - 1 \equiv 0 \pmod{p^e}$ 意味着 $a^{p^e} \equiv 1 \pmod{p}$; 但由定理 1.2.4F, $a^{p^e} \equiv a \pmod{p}$, 因此 $a \not\equiv 1 \pmod{p}$ 导致矛盾。如果 $p = 2$ 和 $a \equiv 3 \pmod{4}$, 则由习题 8 有
+\[
+(a^{2^{e-1}} - 1)/(a - 1) \equiv 0 \pmod{2^e}
+\]
+这些论证说明, 每当 $\lambda = p^e$ 时, 一般地必有 $a = 1 + qp^f$, 其中 $p^f > 2$ 且 $q$ 不是 $p$ 的倍数。
+
+剩下要证明的是, 这个条件对于导致 $\lambda = p^e$ 是充分的。通过重复地应用引理 P, 可以发现对所有 $g \geqslant 0$,
+\[
+a^{p^g} \equiv 1 \pmod{p^{f+g}}, \quad a^{p^g} \not\equiv 1 \pmod{p^{f+g+1}}
+\]
+因此,
+\begin{align}
+(a^{p^g} - 1)/(a - 1) &\equiv 0 \pmod{p^g} \tag{6} \\
+(a^{p^g} - 1)/(a - 1) &\not\equiv 0 \pmod{p^{g+1}}
+\end{align}
+特别是, $(a^{p^e} - 1)/(a - 1) \equiv 0 \pmod{p^e}$。现在, 同余序列 $(0, a, 1, p^e)$ 有 $X_n = (a^n - 1)/(a - 1) \bmod p^e$; 因此, 它有长度为 $\lambda$ 的周期, 即当且仅当 $n$ 是 $\lambda$ 的倍数时 $X_n = 0$。因此 $p^e$ 是 $\lambda$ 的倍数。仅当对于某个 $g$, $\lambda = p^g$ 时这才可能出现, 而且关系式 (6) 意味着 $\lambda = p^e$, 从而完成了证明。\blacksquare
+
+至此, 定理 A 的证明即告完成。\blacksquare
+
+\bigskip
+
+在结束本节之前, 让我们来考察一下 $c = 0$ 时纯乘法性生成程序的特殊情况。尽管在这种情况下, 随机数生成的过程稍微快些, 但定理 A 说明了极大周期长度不可能达到。事实上, 这是十分明显的。这是因为, 现在这一序列满足关系式
+\begin{equation}
+X_{n+1} = aX_n \bmod m \tag{7}
+\end{equation}
+而且 $X_n = 0$ 的值绝不会出现, 以免这个序列退化成 0。一般说来, 如果 $d$ 是 $m$ 的任何因子, 而且 $X_n$ 是 $d$ 的倍数, 则乘法性序列的所有随后的元素 $X_{n+1}, X_{n+2}, \cdots$, 都是 $d$ 的倍数。所以当 $c = 0$ 时, 要求对所有的 $n$, $X_n$ 与 $m$ 互素, 而这就限制了周期的长度至多为 $\varphi(m)$, 即 0 与 $m$ 之间同 $m$ 互素的整数个数。
+
+即使我们约定 $c = 0$, 仍有可能达到一个可接受的长周期。现在让我们来寻找关于乘数的条件, 使得在这个特殊情况下, 周期尽可能地长。
+
+根据引理 Q, 当 $m = p^e$ 时这个序列的周期完全依赖于诸序列的周期。我们来考虑该情况。我们有 $X_n = a^n X_0 \bmod p^e$, 显然, 如果 $a$ 是 $p$ 的倍数, 则这周期的长度将是 1, 所以我们取 $a$ 与 $p$ 互素。于是, 周期是使得 $X_0 = a^\lambda X_0 \bmod p^e$ 的最小整数$\lambda$。如果 $X_0$ 与 $p^e$ 的最大公因子是 $p^f$, 则这个条件就等价于
+\begin{equation}
+a^\lambda \equiv 1 \pmod{p^{e-f}} \tag{8}
+\end{equation}
+由欧拉定理（习题 1.2.4-28）, $a^{\varphi(p^{e-f})} \equiv 1 \pmod{p^{e-f}}$; 因此, $\lambda$ 是
+\[
+\varphi(p^{e-f}) = p^{e-f-1}(p-1)
+\]
+的一个因子。当 $a$ 与 $m$ 互素时, 使 $a^\lambda \equiv 1 \pmod{m}$ 的最小整数 $\lambda$ 通常称为 $a$ 模 $m$ 的阶。使模 $m$ 的阶达到最大的 $a$ 的任何值称为模 $m$ 的一个本原元（素）。
+
+设 $\lambda(m)$ 表示一本原元的阶, 即模 $m$ 的阶的极大值, 则据上边的分析说明 $\lambda(p^e)$ 是 $p^{e-1}(p-1)$ 的一个因子; 只须稍为留意（见以下的习题 $11 \sim 16$）, 即可给出在所有情形下 $\lambda(m)$ 的精确值如下：
+\begin{align}
+\lambda(2) &= 1, \quad \lambda(4) = 2, \quad \lambda(2^e) = 2^{e-2}, \text{如果 } e \geqslant 3 \notag \\
+\lambda(p^e) &= p^{e-1}(p-1), \quad \text{如果 } p > 2 \tag{9} \\
+\lambda(p_1^{e_1} \cdots p_t^{e_t}) &= \operatorname{lcm}(\lambda(p_1^{e_1}), \cdots, \lambda(p_t^{e_t})) \notag
+\end{align}
+我们的论述可以总结为下面的定理：
+
+\bigskip
+
+\textbf{定理 B}［C.\,F.\,Gauss, \textit{Disquisitiones Arithmeticæ} (1801), \S\,90 $\sim$ \S\,92］\quad 当 $c = 0$ 时, 可能的极大周期是 $\lambda(m)$, 其中 $\lambda(m)$ 在式 (9) 中定义。如果
+
+\quad i) $X_0$ 与 $m$ 互素,
+
+\quad ii) $a$ 是以 $m$ 为模的本原元,
+
+\noindent 则可实现这一周期。\blacksquare
+
+\bigskip
+
+注意, 如果 $m$ 为素数, 则可得到长度为 $m - 1$ 的周期; 这恰恰比极大长度小 1, 所以, 从实用的观点看, 这样一个周期已有我们所期望的长度。
+
+现在的问题是怎样才能找到以 $m$ 为模的本原元。这一节结尾的诸习题告诉我们, 当 $m$ 是素数或素数的幂时, 有一个相当简单的答案, 这即是在以下定理中所述的结果。
+
+\bigskip
+
+\textbf{定理 C} \quad 数 $a$ 是以 $p^e$ 为模的本原元, 当且仅当下列情况成立：
+
+\quad i) $p = 2, e = 1$, 且 $a$ 是奇数;
+
+\quad ii) $p = 2, e = 2$, 且 $a \bmod 4 = 3$;
+
+\quad iii) $p = 2, e = 3$, 且 $a \bmod 8 = 3, 5$ 或 $7$;
+
+\quad iv) $p = 2, e \geqslant 4$, 且 $a \bmod 8 = 3$ 或 $5$;
+
+\quad v) $p$ 是奇数, $e = 1$, $a \not\equiv 0 \pmod{p}$, 而且对 $p - 1$ 的任何素因子 $q$, $a^{(p-1)/q} \not\equiv 1 \pmod{p}$;
+
+\quad vi) $p$ 是奇数, $e > 1$, $a$ 满足 v), 而且 $a^{p-1} \not\equiv 1 \pmod{p^2}$。\blacksquare
+
+\bigskip
+
+对于充分大的 $p$ 值, 如果我们知道 $p - 1$ 的因子的话, 通过使用 4.6.3 小节讨论的计算乘方的有效方法, 很容易在一台计算机上检验这个定理的条件 v) 和 vi)。
+
+定理 C 只可应用于素数的幂。但如果已给出模 $p_j^{e_j}$ 本原的值 $a_j$, 则采用在 4.3.2 小节中讨论的中国剩余算法, 有可能找出一个 $a$ 的值, 使得 $a \equiv a_j \pmod{}$ $p_j^{e_j}$), $1 \leqslant j \leqslant t$, 而这个数 $a$ 将是以 $p_1^{e_1} \cdots p_t^{e_t}$ 为模的本原元。因此, 对任何适度大小的模数 $m$, 有一个相当有效的方法来构造满足定理 B 的条件的那些乘数, 尽管这些计算在一般情况下是比较冗长的。
+
+在 $m = 2^e$, $e \geqslant 4$ 的普通情况下, 上述条件简化成一个要求, 即 $a \equiv 3$ 或 $5 \pmod{8}$。这时, 所有可能的乘数的四分之一将使周期长度等于 $m/4$, 而当 $c = 0$ 时, $m/4$ 是可能的极大值。
+
+第二个最普通的情况是 $m = 10^e$。应用引理 P 和引理 Q, 不难得到在一台十进制的计算机上达到极大周期的必要和充分条件（参见习题 18）：
+
+\bigskip
+
+\textbf{定理 D} \quad 如果 $m = 10^e$, $e \geqslant 5$, $c = 0$ 且 $X_0$ 不是 2 或 5 的倍数, 则当且仅当 $a \bmod 200$ 等于下列 32 个值之一时, 线性同余序列的周期是 $5 \times 10^{e-2}$。
+\begin{align}
+&3, 11, 13, 19, 21, 27, 29, 37, 53, 59, 61, 67, 69, 77, 83, 91, 109, 117, \notag \\
+&123, 131, 133, 139, 141, 147, 163, 171, 173, 179, 181, 187, 189, 197 \quad \blacksquare \tag{10}
+\end{align}
+
+\bigskip
+
+\begin{center}
+\textbf{习 \quad 题}
+\end{center}
+
+\bigskip
+
+1.\,[$10$] 具有 $X_0 = 5772156648$, $a = 3141592621$, $c = 2718281829$ 和 $m = 10000000000$ 的线性同余序列的周期长度是多少？
+
+2.\,[$10$] 当 $m$ 是 2 的一个乘幂时, 下列两个条件是否足以保证极大长度的周期？``(i) $c$ 是奇数; (ii) $a \bmod 4 = 1$。''
+
+3.\,[$13$] 假设 $m = 10^e$, 其中 $e \geqslant 2$, 并进一步假设 $c$ 是奇数, 而且不是 5 的倍数。证明：当且仅当 $a \bmod 20 = 1$ 时, 该线性同余序列有极大长度的周期。
+
+4.\,[$M20$] 假设 $m = 2^e$ 和 $X_0 = 0$, 如果数 $a$ 和 $c$ 满足定理 A 的条件, 问 $X_{2^{e-1}}$ 的值是多少？
+
+5.\,[$14$] 当 $m = 2^{35} + 1$ 时, 试求满足定理 A 的条件的所有乘数 $a$（$m$ 的素因子可从表 3.2.1.1 -1 中找到）。
+
+$\blacktriangleright$ 6.\,[$20$] 当 $m = 10^6 - 1$ 时, 求出满足定理 A 的条件的所有乘数 $a$（见表 3.2.1.1-1）。
+
+$\blacktriangleright$ 7.\,[$M23$] 一个同余序列的周期不必以 $X_0$ 开始, 但总能找到下标 $\mu \geqslant 0$, $\lambda > 0$, 使得每当 $n \geqslant \mu$ 时 $X_{n+\lambda} = X_n$, 而且 $\mu$ 和 $\lambda$ 是具有这个性质的最小可能的值（参考习题 3.1-6 和习题 3.2.1-1）。若 $\mu_j$ 和 $\lambda_j$ 是对应于序列 $(X_0 \bmod p_j^{e_j}, a \bmod p_j^{e_j}, c \bmod p_j^{e_j}, p_j^{e_j})$ 的下标, 且 $\mu$ 和 $\lambda$ 对应于合成序列 $(X_0, a, c, p_1^{e_1} \cdots p_t^{e_t})$, 则引理 Q 指出, $\lambda$ 是 $\lambda_1, \cdots, \lambda_t$ 的最小公倍数。问如何借助于 $\mu_1, \cdots, \mu_t$ 表示 $\mu$ 的值？当 $m = p_1^{e_1} \cdots p_t^{e_t}$ 固定时, 通过改变 $X_0, a$ 和 $c$, 可以得到的 $\mu$ 的最大值等于多少？
+
+8.\,[$M20$] 证明：如果 $a \bmod 4 = 3$, 则当 $e > 1$ 时, $(a^{2^{e-1}} - 1)/(a - 1) \equiv 0 \pmod{2^e}$。（用引理 P。）
+
+$\blacktriangleright$ 9.\,[$M22$]（W.\,E.\,Thomson）当 $c = 0$ 和 $m = 2^e \geqslant 16$ 时, 定理 B 和 C 指出, 当且仅当乘数 $a$ 满足 $a \bmod 8 = 3$, 或者 $a \bmod 8 = 5$ 时周期的长度为 $2^{e-2}$。证明每个这样的序列在下列意义下, 实质上是一个 $m = 2^{e-2}$ 的满周期线性同余序列：
+
+\quad a) 如果 $X_{n+1} = (4c + 1)X_n \bmod 2^e$, 而且 $X_n = 4Y_n + 1$, 则
+\[
+Y_{n+1} = ((4c + 1)Y_n + c) \bmod 2^{e-2}
+\]
+
+\quad b) 如果 $X_{n+1} = (4c - 1)X_n \bmod 2^e$, 而且 $X_n = ((-1)^n(4Y_n + 1)) \bmod 2^e$, 则\[
+Y_{n+1} = ((1 - 4c)\,Y_n - c) \bmod 2^{e-2}
+\]
+［注：在这些公式中, $c$ 是一个奇整数。在文献中有过若干论断, 意思是说, 满足定理 B 且 $c = 0$ 的序列比满足定理 A 的序列更为随机, 尽管在定理 B 的情况下它的周期长度只达到四分之一。这一习题反驳了这样的论断; 实质上, 当 $m$ 是 2 的幂时, 人们必须抛弃字长中的两位, 以节省对 $c$ 的加法。］
+
+10.\,[$M21$] 当 $m$ 为什么值时, 有 $\lambda(m) = \varphi(m)$？
+
+$\blacktriangleright$ 11.\,[$M28$] 设 $x$ 是大于 1 的奇整数。(a) 证明存在惟一的整数 $f > 1$, 使得 $x \equiv 2^f \pm 1 \pmod{2^{f+1}}$。(b) 给定 $1 < x < 2^e - 1$, 而 $f$ 是由 (a) 得到的相应的整数, 证明 $x$ 模 $2^e$ 的阶是 $2^{e-f}$。(c) 特别是, 这证明了定理 C\,i)$\sim$iv)。
+
+12.\,[$M26$] 设 $p$ 为一奇素数。如果 $e > 1$, 证明：当且仅当 $a$ 为以 $p$ 为模的本原元且 $a^{p-1} \not\equiv 1 \pmod{p^2}$ 时, $a$ 也是以 $p^e$ 为模的本原元。（在本题中, 假设 $\lambda(p^e) = p^{e-1}(p-1)$。这个事实将在下面的习题 14 和 16 中证明。）
+
+13.\,[$M22$] 设 $p$ 是素数。若 $a$ 不是以 $p$ 为模的本原元, 证明：或者 $a$ 是 $p$ 的倍数, 或者对于整除 $p - 1$ 的某个素数 $q$, $a^{(p-1)/q} \equiv 1 \pmod{p}$。
+
+14.\,[$M18$] 如果 $e > 1$ 且 $p$ 是一个奇素数, 而且如果 $a$ 是以 $p$ 为模的本原元, 证明 $a$ 或者 $a + p$ 是以 $p^e$ 为模的本原元。［提示：见习题 12。］
+
+15.\,[$M29$] (a) 设 $a_1, a_2$ 与 $m$ 互素, 并令它们模 $m$ 的阶分别是 $\lambda_1$ 和 $\lambda_2$。如果 $\lambda$ 是 $\lambda_1$ 和 $\lambda_2$ 的最小公倍数, 证明：对于适当的整数 $\kappa_1$ 和 $\kappa_2$, $a_1^{\kappa_1} a_2^{\kappa_2}$ 有模 $m$ 的阶 $\lambda$。［提示：首先考虑 $\lambda_1$ 与 $\lambda_2$ 互素的情况。］(b) 设 $\lambda(m)$ 是任何元素的模 $m$ 极大阶, 证明 $\lambda(m)$ 是每个元素模 $m$ 的阶的倍数, 即证明每当 $a$ 与 $m$ 互素时, $a^{\lambda(m)} \equiv 1 \pmod{m}$。（不要使用定理 B。）
+
+$\blacktriangleright$ 16.\,[$M24$]（原根的存在性）设 $p$ 是一素数。
+
+\quad a) 考虑多项式 $f(x) = x^n + c_1 x^{n-1} + \cdots + c_n$, 其中诸 $c$ 为整数。假定 $a$ 是使得 $f(a) \equiv 0 \pmod{p}$ 的整数, 证明存在一个整系数的多项式 $q(x) = x^{n-1} + q_1 x^{n-2} + \cdots + q_{n-1}$, 使得对所有整数 $x$, $f(x) \equiv (x - a)\,q(x) \pmod{p}$。
+
+\quad b) 设 $f(x)$ 是如同 a) 中那样的多项式, 证明 $f(x)$ 至多有 $n$ 个模 $p$ 的不同的``根''; 即, 至多有 $n$ 个整数 $a$\,($0 \leqslant a < p$), 使得 $f(a) \equiv 0 \pmod{p}$。
+
+\quad c) 由习题 15(b), 多项式 $f(x) = x^{\lambda(p)} - 1$ 有 $p - 1$ 个不同的根, 因此有一个阶为 $p - 1$ 的整数 $a$。
+
+17.\,[$M26$] 并非定理 D 中所列的值全都能通过文中的方法构造出来; 例如, 11 就不是模 $5^e$ 本原的, 但根据定理 D, 11 是模 $10^e$ 的本原元, 试解释为什么会有上述结论？列在定理 D 中的那些值中, 哪些同时是模 $2^e$ 和 $5^e$ 这两者的本原元？
+
+18.\,[$M25$] 证明定理 D（参考上题）。
+
+19.\,[$40$] 假定 $c = 0$, 试对列在表 3.2.1.1-1 中的每个 $m$ 的值, 制作一张适当的乘数 $a$ 的表。
+
+$\blacktriangleright$ 20.\,[$M24$]（G.\,Marsaglia）本题的目的是研究一任意线性同余序列的周期长度。令 $Y_n = 1 + a + \cdots + a^{n-1}$, 使得对于由等式 3.2.1-(8) 得到的某个常数 $A$, $X_n = (AY_n + X_0) \bmod m$。
+
+\quad a) 证明 $\langle X_n \rangle$ 的周期长度即是 $\langle Y_n \bmod m' \rangle$ 的周期长度, 其中 $m' = m / \gcd(A, m)$。
+
+\quad b) 证明当 $p$ 为素数时 $\langle Y_n \bmod p^e \rangle$ 的周期长度满足下列条件：(i) 若 $a \bmod p = 0$, 则它为 1。(ii) 若 $a \bmod p = 1$, 则它为 $p^e$, 但 $p = 2$ 和 $e \geqslant 2$ 及 $a \bmod 4 = 3$ 时例外。(iii) 若 $p = 2$, $e \geqslant 2$ 及 $a \bmod 4 = 3$, 则它是 $a$ 模 $p^e$ 阶的两倍（参考习题 11）, 但 $a \equiv -1 \pmod{2^e}$ 时例外, 那时它为 2。(iv) 若 $a \bmod p > 1$, 则它为 $a$ 模 $p^e$ 的阶。
+21.[M25]在极大周期的一个线性同余序列中,令X=0和令s为使得a'≡l(modulo m)的
+最小正整数,证明gcd(X，m)=s。
+22.[M25〕试讨论求模 m=6+6±1的问题,使得习题 3.2.1.1-14的带借位减法和带进位加法生成程序将有很长的周期。
