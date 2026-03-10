@@ -24,7 +24,7 @@ I organize these into categories: **S** = Structural, **T** = Technical Content,
 
 **S3.** Section 3.3 (Statistical Tests) is the announced topic of the 3.3.txt source, but the tex file *never reaches 3.3*. The content jumps from §3.2.2 (Other Methods) directly to the Megatron/CCCL analysis without any section 3.3 heading. The 3.3.1 content promised in the title exists nowhere in the tex. **This is the most critical gap.**
 
-**S4.** The CCCL/DIA analysis (lines 892–930) is labeled `\section{CCCL and the DIA Project}` but should be §3.2.3 or an appendix subsection, not a standalone top-level section. It breaks the TAOCP chapter flow.
+**S4.** The CCCL analysis (lines 892–930) is labeled `\section{CCCL and the Project}` but should be §3.2.3 or an appendix subsection, not a standalone top-level section. It breaks the TAOCP chapter flow.
 
 **S5.** The Migration Map (lines 933–1007) should be §3.2.4, not a standalone `\section`. Same for §3.2.agenticrl (line 1010), §3.2.critical (line 1045), §3.2.opensource (line 1078), and §3.2.exercises (line 1112).
 
@@ -314,3 +314,432 @@ For each entry: [CURRENT → REPLACEMENT]
 | 18 | "$\chi^2$ distribution" | "kernel utilization $\chi^2$ distribution" |
 | 19 | "Kolmogorov-Smirnov" (§3.3) | "reward distribution convergence test" |
 | 20 | "Algorithm K" | "Algorithm K (Degenerate Configuration Generator)" → rename to "Algorithm D (Degenerate Auto-Tuner)" |
+
+# Second-Pass Critical Review: TheArtofAgenticSystems.tex
+
+## Reviewer Identity: Knuth + Mean NeurIPS 2026 Reviewer (二次批判)
+
+**Status:** plan.md covered 100 items. This document covers **100 NEW items** that plan.md did NOT address.
+
+**Methodology:** Line-by-line tex audit cross-referenced against:
+- `operatorRL/` full module tree (13 modules, 6.4MB)
+- `agent-lightning/` full source (524 files, 124 directories)
+- `issue_lighting.txt` (87 open, 60 closed)
+- `agent-lightning` tree structure provided
+- CCCL project board (github.com/orgs/NVIDIA/projects/6)
+- `Anthropic到底想做什么？` companion doc
+- 3.3.txt source (chi-square, KS, spectral tests — 582 lines, Chinese)
+
+**Tag Convention:** `[NEW-XX]` = item number. `→` = required action. `📁` = file reference. `🔧` = word replacement.
+
+---
+
+## SECTION I: TEX INFRASTRUCTURE FAILURES (NEW-1 through NEW-12)
+
+**[NEW-1]** The tex file `\input{math_commands.tex}` references `iclr2026/math_commands.tex` which defines `\vx`, `\vy`, `\mA`, `\mW` etc. — standard DL notation macros. **None of these macros are ever used in the actual text.** The file defines 120+ macros that are dead code.
+→ Either use them (e.g., replace all manual `$\mathbf{X}$` with `\vX`) or strip the import. For a TAOCP-style book, define our own macro set: `\HardwareSpace`, `\KernelConfig`, `\SchedulePeriod`, `\AgentState`, `\RolloutTrajectory`.
+
+**[NEW-2]** Line 37: `\iclrfinalcopy` is commented out. The entire ICLR submission machinery (`\iclrfinalcopy`, anonymous author check) is vestigial. The document class should be `book` or `report`, not `article`.
+→ Replace `\documentclass{article}` with `\documentclass[12pt]{book}`. Replace `\usepackage{iclr2026_conference,times}` with standalone packages.
+
+**[NEW-3]** The `\newtheorem` definitions (lines 11-13) define `Theorem`, `Lemma`, `Corollary` numbered by `section`. Since sections are misnumbered (see plan.md S2), theorem numbering will be wrong. E.g., Theorem 3.1 should be Theorem 3.2.1.1-A if it belongs in §3.2.1.1.
+→ Add `\newtheorem{algorithm}{Algorithm}[subsection]` and `\newtheorem{exercise}{Exercise}[section]` to match TAOCP's numbering convention.
+
+**[NEW-4]** No `\usepackage{listings}` or `\usepackage{minted}` for code. The "Trainium assembly" programs (lines 336-353, 787-797) are typeset in raw `\texttt{}` blocks within `\begin{verbatim}` or manual spacing. TAOCP uses a custom assembly listing format with op/operand columns.
+→ Define a custom `lstlisting` environment: `\lstdefinelanguage{NKI}{morekeywords={LOAD,MUL,TRUNC,ADD,STORE,BRPOS,SET,DMA_LOAD,DMA_STORE,VLIW_BUNDLE,MATMUL,REDUCE}}`.
+
+**[NEW-5]** No `\usepackage{tikz}` or `\usepackage{pgfplots}`. The tex contains zero figures. A TAOCP chapter has 10-20 figures minimum. The tex has zero.
+→ Add figures for: (a) 4-layer operatorRL architecturegram, (b) Megatron→Trainium migration flow, (c) CCCL position in NVIDIA stack hierarchy, (d) agent-lightning training loop, (e) VLIW instruction bundle layout, (f) SBUF/PSUM memory hierarchy.
+
+**[NEW-6]** The comparison table (lines 1094-1107) uses `\begin{tabular}` directly. Per TAOCP convention, every table should be numbered ("Table 3.2.4-1") and have a caption.
+→ Wrap in `\begin{table}[h]\caption{NVIDIA to AWS/Trainium Stack Correspondence}\label{tab:stack-map}`.
+
+**[NEW-7]** No index terms marked anywhere. TAOCP has an exhaustive index. Every key term — "VLIW", "NKI", "SBUF", "PSUM", "NeuronCore", "SCAK", "GRPO", "PPO" — should have `\index{}` entries.
+→ Add `\usepackage{makeidx}` and `\makeindex`. Mark at least 200 index entries.
+
+**[NEW-8]** No cross-references use `\ref{}` to equations. Lines 148, 359, 369 etc. reference "Theorem A", "Lemma Q" by name but with no `\label`/`\ref` system. If sections are renumbered, these break.
+→ Add `\label{thm:A}` to every theorem and `\ref{thm:A}` to every reference.
+
+**[NEW-9]** The `\medskip` / `\bigskip` spacing (used ~40 times) is ad-hoc. TAOCP uses consistent inter-item spacing via custom environments.
+→ Define `\newenvironment{application}{\medskip\noindent\textbf}{}` for the (a)-(g) application list in §3.1.
+
+**[NEW-10]** No `\usepackage{algorithm2e}` or `\usepackage{algorithmicx}`. Algorithm K (lines 124-140) is described in prose, not in formal pseudocode. TAOCP always presents algorithms in a numbered step format with bold labels.
+→ Typeset all algorithms (Algorithm A, Algorithm K, the proposed auto-tuner detection algorithm from Exercise 6) in formal `algorithm` environments with **K1.**, **K2.**, **K3.** step labels.
+
+**[NEW-11]** The `\begin{description}` environments (lines 870, 910, 969, 1001) use raw `\item[Thrust]` etc. These should be formatted as **Definition Lists** with consistent indentation. Currently, the CCCL description (line 910) uses different formatting than the Megatron description (line 870).
+→ Unify all `\description` blocks to use a custom `\newenvironment{techstack}` with consistent margins.
+
+**[NEW-12]** No `\usepackage{xcolor}` defined, yet the document will benefit from color-coded figures and syntax highlighting. TAOCP uses black-and-white for print, but our digital-first distribution should use strategic color forgrams.
+→ Add xcolor and define project palette: `\definecolor{nvidia}{HTML}{76B900}`, `\definecolor{aws}{HTML}{FF9900}`, `\definecolor{anthropic}{HTML}{C4A882}`.
+
+---
+
+## SECTION II: CONTENT THAT EXISTS BUT IS WRONG (NEW-13 through NEW-35)
+
+**[NEW-13]** Line 56 (Application a, "Self-Deployment"): "it is necessary to use assembly-level kernel optimization to make throughput viable." This is false as stated — throughput is *viable* without assembly (the Neuron compiler produces working code). Assembly makes throughput *competitive*.
+→ 🔧 Replace "to make throughput viable" with "to achieve competitive throughput parity with hand-optimized CUDA implementations on GPU"
+
+**[NEW-14]** Line 62 (Application b): "hardware-aware trajectory sampling." This term is invented and undefined. In agent-lightning, trajectory sampling is done by `agentlightning/runner/agent.py` which is hardware-agnostic — it calls the LLM proxy.
+→ 🔧 Replace "hardware-aware trajectory sampling" with "throughput-optimized trajectory generation via Agent Lightning's `AgentRunner`"
+
+**[NEW-15]** Line 73 (Application d): "hardware-optimized rollout engines are an excellent source of throughput." Rollout engines in agent-lightning (`agentlightning/runner/`) are *not* hardware-optimized — they're Python orchestrators that call vLLM/SGLang. The *inference server* underneath is hardware-optimized.
+→ 🔧 Replace "hardware-optimized rollout engines" with "LLM inference backends (vLLM, SGLang) with hardware-optimized attention kernels"
+
+**[NEW-16]** Line 80 (Application e): "round-robin or heuristic load balancing." In operatorRL, the control-plane scheduler (`modules/control-plane/`) uses policy-driven scheduling, not round-robin. This description applies to generic cloud, not to our system.
+→ 🔧 Replace with: "round-robin or heuristic load balancing — as opposed to the policy-engine-driven scheduling in operatorRL's control plane (`modules/control-plane`)"
+
+**[NEW-17]** Line 88 (Application g): "the Operator RL method" is defined as "any training algorithm that couples agent rollout with direct hardware kernel optimization." This is not what operatorRL does. OperatorRL is an **agent governance kernel** — it enforces policies, not kernel optimization.
+→ 🔧 Replace with: "the Operator RL method, a governance-first paradigm where agent rollout is coupled with policy enforcement at the kernel level, and hardware-aware training is delegated to the Agent Lightning backend"
+
+**[NEW-18]** Line 92: "each of the target backends carries approximately $1/3$ of the deployment risk" — plan.md flagged this (A2) but the tex still has it. More critically, the $1/k^2$ claim on line 93 has no derivation.
+→ Remove $1/k^2$ claim or derive it. If the claim is that *pairwise* migration cost is $1/k^2$ of *total* cost for $k$ platforms, this is only true if costs are uniform — which they aren't.
+
+**[NEW-19]** Line 96: "any particular kernel on any particular hardware is just as likely to be optimal as any other combination." This is provably false. Kernels are *not* uniformly distributed in quality across platforms — Trainium2 has fewer mature kernels than CUDA.
+→ 🔧 Delete this sentence. Replace with: "The probability of achieving equivalent utilization on each platform depends on kernel maturity and optimization investment — which is precisely why Anthropic dedicates assembly-level experts to each target."
+
+**[NEW-20]** Lines 112-116: The "G. Barber" and "N. Patel" citations are from TAOCP's original text (§3.1's fictional examples about auto-tuning degeneration). Plan.md flagged this (T21) but didn't specify the replacement.
+→ 🔧 Replace "G. Barber" with a real case study: the AWS Neuron compiler's early-version performance regression on large GEMM shapes (documented in Neuron SDK release notes between versions 2.15-2.18). Replace "N. Patel" with Anthropic's published kernel optimization results from the Semianalysis report.
+
+**[NEW-21]** Lines 275-718 (§3.2.1 through §3.2.1.3): These sections contain Knuth's original proofs verbatim with "MIX" → "Trainium." The *number theory* is correct, but every "MIX register" reference should map to a real Trainium2 architectural concept.
+→ 🔧 Systematic replacement table:
+- "MIX register rA" → "NeuronCore Tensor Engine accumulator (PSUM partition 0)"
+- "MIX register rX" → "SBUF input tile register"  
+- "MIX word size $w$" → "NeuronCore SBUF bank width (128 elements × 2 bytes = 256B for BF16)"
+- "overflow toggle" → "PSUM saturation flag"
+
+**[NEW-22]** Line 808: The 4-layer OperatorRL architecture is listed as "SCAK at Layer 4, policy engine at Layer 3, inter-agent trust protocol at Layer 2, core primitives at Layer 1." But per `ARCHITECTURE.md`, the actual layers are:
+- Layer 4: Intelligence (SCAK, mute-agent, MCP kernel server)
+- Layer 3: Framework (control-plane, observability, nexus)
+- Layer 2: Infrastructure (IATP, AMB, ATR)
+- Layer 1: Primitives (primitives, CMVK, EMK, CaaS)
+→ The tex omits **9 modules**: mute-agent, MCP kernel server, observability, nexus, AMB, ATR, CMVK, EMK, CaaS. List them all.
+
+**[NEW-23]** Line 817: The "best prisoner" / "building another city" metaphor is used a third time here (also at lines 832 and 1098). Plan.md flagged repetition (A4) but didn't note that the metaphor appears *four* times total across the tex.
+→ Use it exactly once in §3.1 (line 832). Replace all other occurrences with back-references: "As established in §3.1, the strategic distinction is between optimizing within a fixed platform versus migrating to a new one."
+
+**[NEW-24]** Line 873: "Megatron-Core (v0.11+) adds Sequence Parallelism (SP)" — plan.md flagged the version error (T4). The tex still says v0.11+. SP was in Megatron-LM v3 (2022). CP was in Megatron-Core 0.5+ (2024). EP was in Megatron-Core 0.7+ (2024).
+→ 🔧 Replace "Megatron-Core (v0.11+) adds SP, CP, and EP" with "Megatron-LM v3 introduced SP (2022); Megatron-Core added CP (v0.5, 2024) and EP (v0.7, 2024)"
+
+**[NEW-25]** Line 908: "The CCCL 3.0 release (July 2025)" — The latest CCCL release visible is v3.2 (per search results), with the cuda-cccl Python package at v0.5.1 (Feb 2026). CCCL 3.0 was released, but the date needs verification.
+→ 🔧 Replace "July 2025" with the actual release date. Add: "As of early 2026, CCCL has reached v3.2, introducing `cuda::stream`, `cuda::event`, `cuda::arch_traits`, and `cub::DeviceTopK`."
+
+**[NEW-26]** Line 953: "The Neuron Megatron reference only supports tensor parallelism (degree 8) and data parallelism (up to degree 64)." Plan.md flagged this (T7) — NxD 0.10+ added pipeline parallelism. But the tex also fails to mention **NxD Inference (NxDI)**, which is the successor to `neuronx-nemo-megatron`.
+→ 🔧 Add: "NxD 0.10+ (released late 2025) added pipeline parallelism. NxD Inference (NxDI) replaced the deprecated `neuronx-nemo-megatron` for inference-optimized deployment."
+
+**[NEW-27]** Line 981: "SBUF/PSUM orchestration" — plan.md flagged undefined terms (T8). But additionally, the tex never explains the **MatMul Engine** (MME), which is the actual hardware unit performing GEMMs. SBUF feeds MME; PSUM holds MME output.
+→ 🔧 Add definition: "Trainium2's MatMul Engine (MME) performs tiled matrix multiplication. Input operands are staged in SBUF (State Buffer, on-chip scratchpad), and partial products accumulate in PSUM (Partial Sum buffer). The programmer or NKI compiler manages data flow between HBM → SBUF → MME → PSUM → HBM."
+
+**[NEW-28]** Line 989: "DMA engines that can operate independently of the compute engines" — plan.md flagged the underselling (T9). Additionally, Trainium2's DMA supports **collective communication directly** — NeuronLink all-reduce can be overlapped with MME computation at the hardware level, unlike CUDA where NCCL kernels and compute kernels share the same SMs.
+→ 🔧 Add: "Trainium2's DMA engines support hardware-level multicast and collective communication via NeuronLink, enabling true concurrent compute-communication overlap without SM contention — a structural advantage over CUDA's shared-SM model."
+
+**[NEW-29]** Line 1022: "Reward computation is a standard inference workload." This is wrong for agentic RL. Reward computation in agent-lightning (`agentlightning/reward.py`) can involve:
+(a) model-based reward (another LLM call — 📁 `agentlightning/emitter/reward.py`)
+(b) environment reward (tool execution result)
+(c) credit assignment across multi-step trajectories (📁 agent-lightning issues #31, #111, #390)
+→ 🔧 Replace "a standard inference workload" with "a heterogeneous workload combining model-based reward scoring (requiring a second inference pass), environment-provided signals, and credit assignment across multi-step agent trajectories (see Agent Lightning's `emitter/reward.py` and open issues #31, #111)"
+
+**[NEW-30]** Line 1027: "The governance layer ensures safety constraints are maintained during autonomous operation." This is correct but vague. OperatorRL's governance layer (`modules/control-plane/`) enforces constraints via:
+- Policy Engine with semantic intent classification
+- Signal dispatch (SIGKILL for violations)
+- Flight Recorder audit logging
+- 📁 `operatorRL/docs/kernel-internals.md` for full specification
+→ 🔧 Replace with specific mechanism: "The governance layer (operatorRL control-plane) enforces safety via the Policy Engine's semantic intent classifier, dispatching SIGKILL signals for policy violations and maintaining a Flight Recorder audit log of all agent actions."
+
+**[NEW-31]** Line 1051: "the total debug space is $O(3kd)$ in the best case... and $O(3 \times k \times d)$ in the worst case." Plan.md flagged this (T1). But additionally, the variable definitions are missing. What are $k$ and $d$?
+→ 🔧 Define: "Let $k$ = number of critical kernels per platform (approximately 20 for a full training stack: GEMM variants, attention, normalization, activation, optimizer, communication). Let $d$ = number of failure modes per kernel (approximately 5-10, including numerical precision, memory access, synchronization, performance, correctness). The total debug space is $O(k + d)$ in the best case (failures are platform-independent and additive) and $O(3 \cdot k \cdot d)$ in the worst case (each platform-kernel-failure triple is unique)."
+
+**[NEW-32]** Lines 1094-1107: The comparison table is missing rows. Plan.md flagged profiling and debug tools (T22). Additionally missing:
+- **Distributed training framework**: Megatron-Core → NxD/NxDI
+- **Auto-tuner**: cuDNN heuristics / CUTLASS profiler → Neuron auto-tuner / NKI manual tuning
+- **Model format**: Megatron checkpoint → NeuronX distributed checkpoint
+- **Serving framework**: TensorRT-LLM / NeMo Inference → NxD Inference
+→ Add these 4 rows to the table.
+
+**[NEW-33]** The entire CCCL section (lines 892-930) uses present tense for what project board *tracks*, but never links to specific board items. The tex says "projects tracked on the project board include NVBench, cuCollections, and stdexec" — but doesn't explain what stands for or what the board's organizational structure is.
+→ 🔧 Add: "DIA (Device Infrastructure and Algorithms) is NVIDIA's internal project board (`github.com/orgs/NVIDIA/projects/6`) tracking development priorities for CCCL and related ecosystem projects. It organizes work into epics covering runtime modernization (cuda::stream, cuda::event), algorithm additions (DeviceTopK, DeviceSelect), and C++ standards integration (stdexec/P2300 senders). represents NVIDIA's investment in making the CUDA ecosystem self-reinforcing — each improvement makes migration away from CUDA more costly."
+
+**[NEW-34]** Line 970: "NKI API: A Python-like DSL" — NKI is not just "Python-like"; it *is* Python. NKI kernels are written in Python using decorators like `@nki.jit`. The tex makes it sound like a separate language.
+→ 🔧 Replace "A Python-like DSL" with "A Python-native DSL using the `@nki.jit` decorator, where Python code is traced and compiled to Trainium2 machine instructions"
+
+**[NEW-35]** Line 975: "NKI ISA: For maximum control, advanced users can bypass NKI's Python-level API and write instructions directly against the Trainium2 ISA." This is accurate, but the tex never gives a concrete ISA example. The only "assembly" shown (lines 336-353, 787-797) uses fake MIX-like mnemonics.
+→ Replace the fake assembly with a real NKI example. At minimum:
+```python
+@nki.jit
+def fused_rmsnorm_bf16(input_tensor, weight):
+    i_p = nl.arange(128)[:, None]
+    i_f = nl.arange(512)[None, :]
+    x = nl.load(input_tensor[i_p, i_f])
+    var = nl.sum(x * x, axis=[1]) / 512
+    x_norm = x * nl.rsqrt(var + 1e-6)
+    w = nl.load(weight[i_f])
+    return nl.store(x_norm * w)
+```
+
+---
+
+## SECTION III: MISSING AGENT-LIGHTNING TECHNICAL DEPTH (NEW-36 through NEW-55)
+
+**[NEW-36]** The tex never mentions `agentlightning/adapter/` — the adapter layer that converts between agent framework formats (LangChain, OpenAI Agents SDK, etc.) and agent-lightning's internal triplet representation.
+→ Add §3.2.5 subsection: "Adapter Architecture: Framework-Agnostic Trajectory Capture." Describe `adapter/base.py`, `adapter/messages.py`, `adapter/triplet.py`. The triplet (prompt, response, reward) is the fundamental data unit — analogous to the $(X_n, X_{n+1})$ pairs in LCG analysis.
+
+**[NEW-37]** The tex never mentions `agentlightning/execution/` — the execution module that handles inter-process communication for distributed rollout. Specifically, `execution/shared_memory.py` implements shared-memory trajectory exchange between rollout workers and the training process.
+→ Add to §3.2.agenticrl: "Agent Lightning's execution layer (`execution/shared_memory.py`) implements zero-copy trajectory exchange via shared memory segments, avoiding serialization overhead for large rollout batches."
+
+**[NEW-38]** The tex never mentions `agentlightning/litagent/` — the lightweight agent decorator that wraps any Python function as a trainable agent.
+→ Add to §3.2.agenticrl: "The `@litagent` decorator (`agentlightning/litagent/decorator.py`) transforms any Python callable into a trainable agent, automatically tracing inputs, outputs, and intermediate tool calls for RL training."
+
+**[NEW-39]** The tex never mentions `agentlightning/algorithm/apo/` — Automatic Prompt Optimization, a text-gradient-based algorithm that optimizes prompts without model weight updates. APO is qualitatively different from GRPO/PPO — it optimizes *prompts*, not *weights*.
+→ Add as a distinct algorithm class in §3.2.agenticrl: "APO (Automatic Prompt Optimization) uses text gradients — natural language descriptions of how a prompt should change — to iteratively refine agent instructions. This is a fundamentally different optimization surface from weight-space RL (GRPO/PPO), and can run without GPU/TPU/Trainium access entirely."
+
+**[NEW-40]** The tex says "GRPO or PPO via VERL" (line 807) but never defines what GRPO is. GRPO = Group Relative Policy Optimization, a variant of PPO that computes advantages within a group of sampled responses rather than using a learned value function.
+→ 🔧 Add formal definition: "GRPO (Group Relative Policy Optimization) generates $G$ responses per prompt, computes reward for each, and uses the group's reward statistics (mean, variance) to compute advantages without a separate value model. This eliminates the critic network, reducing memory requirements — a significant advantage when the critic would consume an entire NeuronCore."
+
+**[NEW-41]** The tex never discusses `agentlightning/instrumentation/` — the observability layer supporting AgentOps, Weave, LiteLLM, and vLLM instrumentation. Issues #47, #49, #56 are about AgentOps authentication/stream failures.
+→ Add to observability discussion: "Agent Lightning's instrumentation layer (`instrumentation/`) provides pluggable backends for experiment tracking (AgentOps, Weights & Biases Weave) and LLM proxy monitoring (LiteLLM). Production deployments frequently encounter authentication and streaming failures (Issues #47, #49, #56) — these are the 'compiler/runtime overhead' $c$ in our LCG analogy."
+
+**[NEW-42]** The `agentlightning/store/` module has 7 implementations: `memory.py`, `sqlite.py`, `mongo.py`, `client_server.py`, `collection_based.py`, `collection/memory.py`, `collection/mongo.py`. The tex mentions "LightningStore" once with a weak analogy.
+→ Add a formal description: "LightningStore implements the trajectory persistence layer with pluggable backends: in-memory (for debugging), SQLite (single-node), MongoDB (distributed), and client-server (decoupled). The collection abstraction groups trajectories by training iteration, enabling replay and off-policy training. The choice of backend is analogous to the choice of modulus $m$ — it determines the 'state space' available for storing and retrieving training trajectories."
+
+**[NEW-43]** The `agentlightning/tracer/` module (with backends: AgentOps, OTel, Weave, dummy) captures the complete agent interaction trace — the raw observation sequence that feeds RL training. The tex never describes this.
+→ Add: "The Tracer module converts raw agent interactions (LLM calls, tool invocations, environment observations) into structured spans with token IDs, logprobs, and timing metadata. This trace is the 'observation' in the MDP formulation — without faithful tracing, the RL training signal is corrupted. Issue #326 documents a bug where incorrect token_ids in traces caused training divergence."
+
+**[NEW-44]** The `agentlightning/emitter/` module handles structured data emission: `annotation.py`, `exception.py`, `message.py`, `object.py`, `reward.py`. The tex never mentions emitters.
+→ Add: "Emitters are the write-side interface to the training data pipeline. The reward emitter (`emitter/reward.py`) accepts scalar or structured rewards at arbitrary granularity — per-token, per-action, or per-episode — and associates them with the corresponding tracer spans."
+
+**[NEW-45]** The `agentlightning/cli/` module includes `prometheus.py`, `store.py`, `vllm.py` — command-line tools for launching Prometheus metric endpoints, store servers, and vLLM inference servers. The tex never discusses operational tooling.
+→ Add to §3.2.agenticrl (operational concerns): "Agent Lightning provides CLI tools (`cli/prometheus.py`, `cli/store.py`, `cli/vllm.py`) for launching the infrastructure stack. The `vllm.py` launcher starts the inference server that backs the rollout engine — this is where hardware-specific kernel optimization (CUDA/Trainium) enters the pipeline."
+
+**[NEW-46]** The `agentlightning/config.py` and `agentlightning/env_var.py` manage configuration and environment variables. The tex never discusses how hardware backend selection is configured.
+→ Add: "Backend selection is configured via environment variables (`env_var.py`): `AGL_DEVICE_TYPE={cuda,xla,neuron}` selects the accelerator, `AGL_PARALLELISM={tp,dp,pp}` selects the parallelism strategy, and `AGL_KERNEL_MODE={compiler,nki,assembly}` selects the optimization level."
+(Note: if these env vars don't exist yet, propose them as a contribution.)
+
+**[NEW-47]** The `agentlightning/llm_proxy.py` proxies LLM API calls to enable training-time interception of model outputs. The tex never explains how the rollout engine captures logprobs for RL.
+→ Add: "The LLM Proxy (`llm_proxy.py`) intercepts all inference calls during rollout, capturing token logprobs and completion metadata required for policy gradient computation. Issue #262 notes that streaming responses are not yet supported — a limitation that affects long-form agent generation on all hardware platforms."
+
+**[NEW-48]** The `agentlightning/server.py` implements the training server that coordinates between rollout workers and the RL trainer. The tex mentions the training loop abstractly but never describes the server architecture.
+→ Add: "The Agent Lightning server (`server.py`) implements a REST API for rollout submission, reward reporting, and training status queries. Issues #436, #449 document lifecycle and logging failures — these are the 'increment $c$' (runtime overhead) that degrades the training sequence's quality."
+
+**[NEW-49]** The `agentlightning/algorithm/decorator.py` provides algorithm registration via decorators. The tex never discusses the algorithm registry pattern.
+→ Add: "New RL algorithms are registered via the `@algorithm` decorator (`algorithm/decorator.py`), which auto-registers the algorithm in a global registry. This enables runtime algorithm selection — switching between GRPO, PPO, and APO without code changes, analogous to selecting different multiplier $a$ values while keeping the modulus fixed."
+
+**[NEW-50]** The `agentlightning/algorithm/verl/interface.py` is the integration point between Agent Lightning and VERL. The tex references VERL generically but never describes the interface.
+→ Add: "The VERL interface (`algorithm/verl/interface.py`) bridges Agent Lightning's trajectory format to VERL's training loop, handling the conversion of (prompt, response, reward) triplets to VERL's DataProto format for PPO/GRPO gradient computation. This conversion is where the hardware-specific training backend (PyTorch DDP on CUDA, NxD on Trainium) is first invoked."
+
+**[NEW-51]** The `agent-lightning/contrib/` directory contains community contributions: `contrib/adapter/agentos.py` (AgentOS adapter), `contrib/adapter/triplet_group.py`, `contrib/agent/env_agent.py`, `contrib/algorithm/env_verl/`. These are never mentioned.
+→ Add to §3.2.agenticrl: "Community contributions in `contrib/` extend Agent Lightning to new domains: the AgentOS adapter integrates with operatorRL's governance layer, and the env_verl module provides environment-interactive training where the RL loop includes real environment execution — the defining characteristic of *agentic* RL."
+
+**[NEW-52]** The `agent-lightning/contrib/recipes/` contains complete training recipes: `agentos/`, `envs/` (AlfWorld, ScienceWorld), `search_r1/`, `webshop/`. These represent the most concrete integration points between agent-lightning and real environments.
+→ Add as case studies: "Training recipes for AlfWorld, ScienceWorld, and WebShop environments demonstrate the full agentic RL loop: environment interaction → trajectory capture → reward computation → policy update. Each recipe requires different hardware configurations — AlfWorld's text-only environment is CPU-bounded during rollout but GPU-bounded during training; WebShop's browser-based environment requires headless rendering infrastructure."
+
+**[NEW-53]** The `agent-lightning/dashboard/` is a full React+Redux application for monitoring training. Components include `RolloutTable`, `TracesTable`, `WorkersTable`, `ResourcesTable`, `ResourcesTree`. Issue #369 documents a dashboard sorting bug.
+→ Add to observability: "The Agent Lightning dashboard (`dashboard/`) provides real-time visibility into training progress: rollout traces, worker status, and resource utilization. The Redux-based state management tracks `rollouts`, `traces`, `workers`, `resources`, and `config` slices."
+
+**[NEW-54]** The `agent-lightning/docker/` contains Docker Compose configurations for Grafana, Prometheus, MongoDB, and the store server. This is operational infrastructure never discussed in the tex.
+→ Add to §3.2.agenticrl: "Production deployment uses Docker Compose (`docker/`) to orchestrate: MongoDB (trajectory persistence), Prometheus (metrics), Grafana (dashboards with pre-built panels including `agentlightning.json`), and the store server. Hardware selection affects the inference container but not the orchestration layer."
+
+**[NEW-55]** The `agent-lightning/agentlightning/reward.py` file is imported in the tex (line 1022) but its actual implementation details — how reward is computed, how it's associated with trajectory spans, how multi-step credit assignment works — are never described.
+→ Add formal description: "The reward module (`reward.py`) computes reward signals at configurable granularity. For terminal rewards (common in single-turn tasks), the entire trajectory receives one scalar. For step-level rewards (required for agentic RL), each tool-use step receives an intermediate signal via the emitter. The credit assignment problem — how to distribute a terminal reward across N intermediate steps — remains open (Issues #31, #111, #390)."
+
+---
+
+## SECTION IV: MISSING OPERATORRL MODULE DEPTH (NEW-56 through NEW-70)
+
+**[NEW-56]** 📁 `modules/primitives/` (Layer 1) — 17KB. Contains core primitives that all higher layers depend on. The tex references "Layer 1: core primitives" once (line 809) without describing what primitives exist.
+→ Examine and list: signal types, execution request format, policy decision types, audit record format. Formalize each as a mathematical object in §3.2.agenticrl.
+
+**[NEW-57]** 📁 `modules/cmvk/` (Cross-Model Verification Kernel, Layer 1) — 129KB. Verifies that outputs from different models/hardware are consistent. The tex never mentions cross-model verification.
+→ Add to §3.2.critical: "The Cross-Model Verification Kernel (CMVK) in operatorRL validates output consistency when the same model runs on different hardware backends. After migrating a kernel from CUDA to Trainium2, CMVK performs statistical comparison of outputs to detect numerical divergence — analogous to the statistical tests of §3.3 applied to kernel correctness."
+
+**[NEW-58]** 📁 `modules/emk/` (Episodic Memory Kernel, Layer 1) — 140KB. Manages agent episodic memory across rollout episodes. The tex never discusses episodic memory.
+→ Add to §3.2.agenticrl: "The Episodic Memory Kernel (EMK) maintains persistent state across rollout episodes. In multi-turn agentic RL, the agent must remember past actions, tool results, and environmental observations across episode boundaries. EMK's memory management maps directly to the hardware memory hierarchy: frequently accessed memories in SBUF-equivalent fast storage, episodic archives in HBM."
+
+**[NEW-59]** 📁 `modules/caas/` (Context-as-a-Service, Layer 1) — 374KB. Provides context management for agents. The tex never mentions context management.
+→ Add: "Context-as-a-Service (CaaS) manages the agent's context window — tracking token usage, context truncation, and context injection. For large-model training on Trainium2, context management directly impacts memory allocation: longer contexts require more SBUF/PSUM space for KV-cache, affecting the available memory for batch processing."
+
+**[NEW-60]** 📁 `modules/amb/` (Agent Message Bus, Layer 2) — 320KB. Provides inter-agent communication. The tex never discusses message passing between agents.
+→ Add to §3.2.agenticrl: "The Agent Message Bus (AMB) provides publish-subscribe communication between agents in multi-agent training. When multiple agents share a Trainium2 cluster, AMB coordinates turn-taking and information sharing. The message bus's throughput is bounded by the interconnect: NeuronLink for intra-node, EFA for inter-node."
+
+**[NEW-61]** 📁 `modules/atr/` (Agent Tool Registry, Layer 2) — 400KB. Registers and manages tools available to agents. The tex never discusses tool registration.
+→ Add: "The Agent Tool Registry (ATR) maintains the catalog of tools available to each agent. During agentic RL training, tool availability affects the action space — adding or removing tools changes the MDP's action dimensionality. ATR's registry is the 'modulus $m$' of the agent's action space."
+
+**[NEW-62]** 📁 `modules/iatp/` (Inter-Agent Trust Protocol, Layer 2) — 518KB. The largest infrastructure module. Manages trust between agents. The tex mentions IATP once (line 809, "inter-agent trust protocol at Layer 2") without any detail.
+→ Add a full subsection: "The Inter-Agent Trust Protocol (IATP) establishes cryptographic trust chains between agents in multi-agent systems. When an agent trained on Trainium2 delegates a subtask to an agent on GPU, IATP verifies the delegation is authorized and the response is authentic. IATP's sidecar architecture enables transparent interception without modifying agent code."
+
+**[NEW-63]** 📁 `modules/nexus/` (Multi-Agent Coordination, Layer 3) — 210KB. Coordinates multiple agents. Issue #92 asks about multi-agent support. The tex never discusses Nexus.
+→ Add: "The Nexus module (`modules/nexus/`) orchestrates multi-agent coordination patterns: sequential delegation, parallel fork-join, and competitive evaluation. Nexus manages the agent topology — which agent talks to which — and the aggregation strategy for multi-agent rewards."
+
+**[NEW-64]** 📁 `modules/observability/` (Layer 3) — 220KB. Provides Prometheus + OpenTelemetry instrumentation. The tex never discusses hardware-level observability.
+→ Add: "The Observability module exposes Prometheus metrics and OpenTelemetry traces for the agent governance kernel. Metrics include: policy evaluation latency, signal dispatch count, audit log write throughput, and agent action rate. These metrics feed into the Grafana dashboards defined in `docker/grafana/dashboards/agentlightning.json`."
+
+**[NEW-65]** 📁 `modules/mute-agent/` (Layer 4) — 2.5MB (largest module!). The "Face/Hands Architecture" for agents. The tex never mentions mute-agent.
+→ Examine and describe. At 2.5MB, this is the most code-heavy module and likely contains significant algorithmic content relevant to the chapter.
+
+**[NEW-66]** 📁 `modules/mcp-kernel-server/` (Layer 4) — 152KB. MCP (Model Context Protocol) integration for the governance kernel. The tex never discusses MCP.
+→ Add: "The MCP Kernel Server exposes operatorRL's governance capabilities via the Model Context Protocol, enabling Claude and other MCP-compatible LLMs to directly invoke policy checks, audit queries, and governance operations as tool calls."
+
+**[NEW-67]** 📁 `modules/control-plane/` (Layer 3) — 1.1MB. The largest framework module. Contains the Policy Engine, Signal Dispatch, VFS, and Kernel/User Space separation. The tex mentions it three times but never describes its internals.
+→ Add a formal algorithm description: "Algorithm C (Control-Plane Request Lifecycle):" with steps C1-C7 matching the lifecycle in `docs/kernel-internals.md`: receive ExecutionRequest → evaluate policies → signal dispatch → execution → audit → response.
+
+**[NEW-68]** 📁 `operatorRL/src/agent_os/` — 799KB. The core agent OS source. The tex references `src/agent_os` (line 859) without describing its contents.
+→ Examine the source tree and add: key classes, the syscall interface, the policy evaluation loop, the flight recorder.
+
+**[NEW-69]** 📁 `operatorRL/benchmarks/` — contains `bench_kernel.py` (4.5KB), `bench_policy.py` (5.5KB), `bench_adapters.py` (5KB), `bench_audit.py` (4KB), `injection_benchmark.py` (23KB). The tex has zero benchmarks.
+→ Add benchmark results table: "Table 3.2.6-1: OperatorRL Kernel Benchmark Results" with columns: Operation, Latency (p50/p99), Throughput, Hardware.
+
+**[NEW-70]** 📁 `operatorRL/examples/agent-lightning-training/` — the literal integration point between the two repos. Contains `README.md` and `sql_agent.py`. Plan.md flagged this (M22) but it's still missing.
+→ Add as the primary case study in §3.2.agenticrl: "The SQL agent training example (`examples/agent-lightning-training/sql_agent.py`) demonstrates the complete integration: operatorRL provides governance (policy enforcement during SQL generation), while Agent Lightning provides the RL training loop (GRPO optimization of the SQL agent's policy). The agent executes queries against a live database, receives execution-based rewards, and updates its policy — the full self-deploying, self-evolving loop described in §3.1."
+
+---
+
+## SECTION V: ISSUE-DERIVED CONTENT NOT IN PLAN.MD (NEW-71 through NEW-85)
+
+**[NEW-71]** Issue #498 (calc-x example fails on `next` branch) — indicates active development instability. The tex should acknowledge that agent-lightning is rapidly evolving with breaking changes between versions.
+→ Add to §3.2.critical: "Agent Lightning's rapid iteration (27+ Neuron SDK versions, frequent breaking changes in Agent Lightning itself — Issue #498) means that training configurations are version-sensitive. A working configuration on version N may fail on version N+1, analogous to the sensitivity of LCG sequences to small parameter changes."
+
+**[NEW-72]** Issue #496 (pyright lint fails) — type-checking failures suggest the codebase has type safety gaps.
+→ Add as exercise: "Exercise [15]: Run `pyright` on the Agent Lightning codebase. Identify the top 5 type errors by frequency. Propose a type-safe interface for the adapter module that would eliminate these errors."
+
+**[NEW-73]** Issue #495 (Release EMPO2 checkpoints) — community request for model weights.
+→ Note in §3.2.agenticrl: "The EMPO2 training recipe (Issue #495) produces checkpoints that can be evaluated across hardware platforms — a concrete test case for CMVK's cross-model verification."
+
+**[NEW-74]** Issue #492 (RayPPOTrainer._dump_generations missing `gts` argument) — a concrete bug in the trainer.
+→ Add as exercise: "Exercise [10]: Examine `agentlightning/verl/trainer.py` and identify the `_dump_generations` call site. What does the missing `gts` (ground truth) argument imply about the trainer's data flow? Fix the bug."
+
+**[NEW-75]** Issue #464 (Which VERL hyperparameters don't take effect?) — documents a documentation gap.
+→ Add as exercise: "Exercise [20]: Read the VERL configuration schema and the Agent Lightning trainer source. Identify which hyperparameters are silently ignored. Formalize the 'effective configuration space' as a subset of the 'declared configuration space' and compute its dimension."
+
+**[NEW-76]** Issue #453 (Integrate Slime RL backend) — proposes an alternative RL backend.
+→ Add as open problem: "Exercise [35]: Design an abstract interface for RL training backends in Agent Lightning that supports both VERL and Slime RL. The interface must handle: (a) trajectory format conversion, (b) hardware backend selection, (c) gradient synchronization protocol. Prove that the interface does not restrict the set of expressible training algorithms."
+
+**[NEW-77]** Issue #447 (Why Tinker?) — questions the design rationale of the tinker module.
+→ The `agentlightning/examples/tinker/` is a lightweight RL training toolkit. Add: "The Tinker module provides a minimal, self-contained RL training loop for rapid prototyping. Unlike the full VERL-backed pipeline, Tinker runs on a single GPU (or even CPU) with no distributed infrastructure. This is the 'debugging configuration' — analogous to testing LCG parameters with small moduli before deploying on large hardware."
+
+**[NEW-78]** Issue #441 (Qwen2.5-VL-3B mRoPE position_ids mismatch) — multimodal training bug.
+→ Add to §3.2.critical: "Multimodal model training introduces additional hardware-specific complexity. Vision-language models (Issue #441) require image preprocessing kernels that map differently to each hardware backend: GPU uses cuDNN conv operations, TPU uses XLA-compiled convolutions, Trainium uses NKI custom kernels. The mRoPE position encoding bug demonstrates how model-specific assumptions can break on non-standard hardware."
+
+**[NEW-79]** Issue #438 (Potential Memory Leak) — OOM during training.
+→ Add to §3.2.migration.memory: "Memory leaks during multi-turn agent training (Issue #438) are exacerbated by Trainium2's lack of unified memory. On CUDA, leaked device memory is reclaimed when the process terminates; on Trainium, leaked NeuronCore memory may persist across XLA compilation boundaries, requiring explicit `torch_xla.core.xla_model.mark_step()` calls to trigger garbage collection."
+
+**[NEW-80]** Issue #437 (vllm.lora.models import error) — version compatibility.
+→ Add: "Upstream version churn creates compatibility cascades: Agent Lightning depends on VERL, which depends on vLLM, which depends on PyTorch, which depends on the hardware SDK (CUDA/Neuron). Issue #437's LoRA import error demonstrates how a single version mismatch in this 4-layer dependency chain can halt training."
+
+**[NEW-81]** Issue #365 (Different LoRA per sub-agent) — a deep multi-agent training question.
+→ Add as formal problem: "Problem: In multi-agent RL, each sub-agent may require a different LoRA adapter applied to a shared base model. On NVIDIA, vLLM supports LoRA adapter hot-swapping. On Trainium2, LoRA fused kernels must be recompiled for each adapter configuration. Formalize the cost: if there are $A$ agents with distinct LoRA adapters and compilation takes $T_c$ seconds, the total compilation overhead is $O(A \cdot T_c)$ per training iteration."
+
+**[NEW-82]** Issue #347 (Disable thinking mode) — relates to reasoning token overhead.
+→ Add: "Chain-of-thought reasoning tokens increase rollout length by 2-10x (Issue #347). During RL training, these thinking tokens consume compute (inference) and memory (KV-cache) but may not contribute to reward. On Trainium2, where SBUF capacity constrains KV-cache size, thinking tokens directly reduce the maximum batch size."
+
+**[NEW-83]** Issue #287 (Keep transitions from same rollout in one mini-batch) — training data batching.
+→ Add formal analysis: "Theorem (Temporal Correlation Preservation): If transitions from the same rollout are split across mini-batches during GRPO training, the per-step advantage estimates become biased. Proof sketch: GRPO computes advantages relative to the group mean. If the group contains transitions from different rollouts with different prompts, the mean is contaminated by prompt-level variance."
+
+**[NEW-84]** Issue #209 (Env-styled rollout) — architectural proposal for environment-interactive rollout.
+→ Add: "Environment-styled rollout (Issue #209) extends Agent Lightning's rollout model from 'generate a response and score it' to 'interact with an environment over multiple steps.' This is the defining feature of agentic RL — and the feature that creates the most hardware pressure, because each environment step requires a full inference pass."
+
+**[NEW-85]** Issue #119 (compute_response_mask placement) — a subtle memory contiguity bug.
+→ Add as exercise: "Exercise [20]: In `agentlightning/verl/daemon.py`, the `compute_response_mask` function creates a boolean mask indicating which tokens are responses vs. prompts. If this mask is computed in `trainer.py` instead, it may become non-contiguous in memory after VERL's internal data shuffling. Explain why non-contiguous tensors are problematic on Trainium2's SBUF (which requires contiguous DMA transfers) and propose a fix."
+
+---
+
+## SECTION VI: SECTION 3.3 INTEGRATION PLAN (NEW-86 through NEW-95)
+
+Plan.md identified §3.3 as the "most critical gap" (M1-M4). These items provide the specific integration plan for the 3.3.txt Chinese source material.
+
+**[NEW-86]** §3.3.0 (Introduction): The 3.3.txt opens with the philosophical question "如何判定一个序列是否充分地随机呢？" — How to determine if a sequence is sufficiently random? In our domain: **How to determine if an agent training run is producing genuinely improving policies, rather than oscillating or degenerating?**
+→ Write the §3.3.0 introduction mapping this question to: reward curve analysis, policy divergence detection, and kernel utilization stability testing.
+
+**[NEW-87]** §3.3.1 (Chi-Square Test): The 3.3.txt provides the full chi-square formulation (equations 3-8) with Tables 1-2. Map to: **Utilization Distribution Goodness-of-Fit**.
+→ Define: Given $k$ NeuronCores, each should receive approximately $n/k$ operations. The observed distribution $Y_1, \ldots, Y_k$ of operations per NeuronCore is tested against the uniform distribution $p_s = 1/k$ using $V = \sum_{s=1}^{k} (Y_s - n/k)^2 / (n/k)$ with $\nu = k-1$ degrees of freedom.
+→ Also apply to reward distribution: test whether the distribution of rollout rewards matches the expected distribution for a well-trained agent.
+
+**[NEW-88]** §3.3.1 (KS Test): The 3.3.txt covers Kolmogorov-Smirnov test (equations after chi-square). Map to: **Reward Distribution Convergence Test**.
+→ Define: Given two consecutive training iterations, the KS test compares their reward distributions. If $K_n^+ = \sqrt{n} \max_x (F_n(x) - F(x))$ exceeds the critical value, the policy has not converged.
+
+**[NEW-89]** §3.3.2 (Empirical Tests — Run Test): Map to **Rollout Length Consistency Test**.
+→ Define: In a sequence of rollout lengths $\ell_1, \ell_2, \ldots, \ell_N$, count the number of "runs" — maximal subsequences where $\ell_i$ is monotonically increasing or decreasing. Too few runs indicates systematic drift; too many indicates instability.
+
+**[NEW-90]** §3.3.2 (Gap Test): Map to **Inter-Failure Interval Test**.
+→ Define: Given a sequence of rollout outcomes (success/failure), the gap test measures the distribution of intervals between consecutive failures. An exponentially distributed gap indicates independent failure (healthy). A clustered failure pattern indicates systematic issues (hardware fault, policy degeneration).
+
+**[NEW-91]** §3.3.2 (Poker Test): Map to **Action Diversity Test**.
+→ Define: Partition the agent's action history into groups of $k$ consecutive actions. Classify each group by the number of distinct action types. The poker test checks whether the distribution of "hand types" (all same, pair, all different, etc.) matches the expected distribution for a uniformly random action selector. Too many "all same" hands indicates exploration collapse (Issue #490).
+
+**[NEW-92]** §3.3.2 (Serial Test): Map to **Consecutive-Step Correlation Test**.
+→ Define: For consecutive action pairs $(a_t, a_{t+1})$, count the frequency of each pair type. The serial test checks whether $a_{t+1}$ is independent of $a_t$. Correlation indicates the policy has learned stereotyped action sequences — the "cycle degeneration" of Algorithm K applied to agentic behavior.
+
+**[NEW-93]** §3.3.4 (Spectral Test): Map to **Kernel Schedule Lattice Structure Test**.
+→ The spectral test detects lattice structure in LCG outputs by computing the minimum distance between hyperplanes in the lattice generated by $(X_n, X_{n+1}, \ldots, X_{n+t-1})$. Map to: detecting periodic artifacts in kernel auto-tuner configuration sequences. If the auto-tuner explores a low-dimensional subspace of the configuration space, the spectral test will detect it.
+
+**[NEW-94]** §3.3 Tables: The 3.3.txt contains Table 1 (chi-square percentiles, $\nu = 1$ to $\nu \geq 30$) and Table 2 (KS critical values). These must be reproduced in the tex with TAOCP-style formatting.
+→ Create Table 3.3.1-1 and Table 3.3.1-2. Add our domain-specific interpretation column: "Utilization imbalance threshold" for chi-square, "Reward convergence threshold" for KS.
+
+**[NEW-95]** §3.3 Exercises: The 3.3.txt contains exercises at the end of each sub-section. Translate and adapt.
+→ New exercises:
+- "Exercise [15]: Apply the chi-square test to the NeuronCore utilization data from a Trainium2 GEMM kernel running at tile size 128×128. Test against the uniform distribution."
+- "Exercise [25]: Apply the spectral test to the output of a kernel auto-tuner running on Trainium2 for 1000 iterations. Does the auto-tuner explore the full configuration space, or does it collapse to a lattice?"
+- "Exercise [M30]: Prove that the serial correlation test applied to GRPO's group advantage estimates detects when the group size is too small relative to prompt diversity."
+
+---
+
+## SECTION VII: CCCL POSITION ANALYSIS (NEW-96 through NEW-100)
+
+**[NEW-96]** The project board (`github.com/orgs/NVIDIA/projects/6`) is the *development coordination board* for CCCL. Its position in the NVIDIA stack:
+
+**In the NVIDIA CUDA ecosystem:**
+- sits at the **foundation middleware** layer — above the CUDA driver/runtime, below cuBLAS/cuDNN/NCCL
+- It coordinates: Thrust (parallel algorithms), CUB (block/warp primitives), libcudacxx (C++ standard library for CUDA)
+- tracks development of new runtime APIs (cuda::stream, cuda::event) that modernize the CUDA programming model
+- **Strategic role:** makes CUDA *stickier* — the more convenient CUDA C++ becomes, the higher the switching cost to alternatives
+
+→ Add to §3.2.cccl: formalize this as "The board coordinates NVIDIA's developer retention strategy at the middleware layer."
+
+**[NEW-97]** **In our article's context (Anthropic到底想做什么？):**
+- represents the **"wall beautification"** effort — making the NVIDIA prison cell more comfortable
+-'s NVBench tracks benchmarking infrastructure — the NVIDIA equivalent of what Anthropic must build from scratch for Trainium2
+-'s cuCollections (GPU hash tables) is relevant to attention KV-cache management — the NKI equivalent must be hand-written
+-'s stdexec integration (C++26 senders) represents NVIDIA's investment in *future* CUDA standards — increasing the cost of leaving in 3-5 years
+
+→ Add: "DIA's long-term investment in stdexec/P2300 integration signals NVIDIA's intent to embed CUDA into the C++ standard itself. If successful, 'leaving CUDA' would mean 'leaving standard C++' — the ultimate vendor lock-in."
+
+**[NEW-98]** **Specific items and their Trainium2 migration implications:**
+
+| Item | NVIDIA Function | Trainium2 Equivalent | Migration Difficulty |
+|----------|----------------|---------------------|---------------------|
+| cub::BlockReduce | Warp-level reduction | NKI `nki.language.reduce` | Medium (VLIW scheduling) |
+| cub::DeviceRadixSort | GPU-wide sort | Custom NKI kernel (no equivalent) | Hard (must design from scratch) |
+| cub::DeviceTopK | Top-K selection | Custom NKI kernel | Hard |
+| thrust::sort | Parallel sort | JAX `jax.lax.sort` via XLA | Easy (if XLA performance is acceptable) |
+| cuda::atomic_ref | Lock-free atomics | NeuronCore has no equivalent (no shared memory) | N/A (architectural mismatch) |
+| cuda::stream | Execution stream | XLA compilation graph | Fundamentally different model |
+
+→ Add this table as "Table 3.2.3-1: CCCL Primitives and Their Trainium2 Migration Status."
+
+**[NEW-99]** The tex claims CCCL is the "equivalent of `libc` in the Unix world" (line 928). This analogy is imprecise. `libc` provides system call wrappers; CCCL provides parallel algorithm implementations. A better analogy: **CCCL is to CUDA what the C++ STL is to x86** — a standard library of optimized data structures and algorithms for a specific execution model.
+→ 🔧 Replace "the equivalent of `libc` in the Unix world" with "the equivalent of the C++ Standard Template Library (STL) for the CUDA execution model — providing optimized parallel algorithms that developers compose into higher-level applications."
+
+**[NEW-100]** **The missing connection: CCCL → Megatron → Anthropic pipeline.** The tex describes CCCL and describes Megatron but never traces the exact dependency path:
+1. Megatron-Core's fused MLP kernel calls cuBLAS (which internally uses CUB primitives from CCCL)
+2. Megatron-Core's TopK routing for MoE uses CUB's DeviceTopK (now tracked on board)
+3. Megatron-Core's gradient reduction uses NCCL (which uses CUB's block-level reductions)
+4. Anthropic must replace *this entire chain*: CCCL primitives → domain libraries → Megatron → training loop
+
+→ Add to §3.2.cccl: "The dependency chain is: CCCL (parallel primitives) → cuBLAS/cuDNN/NCCL (domain libraries) → Megatron-Core (distributed training) → Training loop. Migrating to Trainium2 requires replacing every link: NKI (primitives) → NKI Library/NxD (domain equivalents) → custom distributed training → Agent Lightning trainer. Every board item that adds a new CCCL primitive creates one more item on Anthropic's migration backlog."
+
+---
+
+## REQUESTS with next finish
+
+need the following from repo to complete the word replacements:
+
+1. **📁 `operatorRL/modules/mute-agent/`** — At 2.5MB, this is the largest module  Please run `tree -I __pycache__ operatorRL/modules/mute-agent/` and remembe the output. What is the "Face/Hands Architecture"?
+
+2. **📁 `operatorRL/src/agent_os/`** — 799KB of core source. Please run `tree -I __pycache__ operatorRL/src/agent_os/ ` so the key classes (PolicyEngine, FlightRecorder, SignalDispatch, etc.)
+
+3. **📁 `operatorRL/modules/control-plane/`** — 1.1MB. Please run `tree -I __pycache__ operatorRL/modules/control-plane/ `.
+
+4. **Agent Lightning issues with "closed/completed" status** — Several closed issues have solutions that should become case studies. Specifically, need the resolution details for: #67, #77, # 104, # 109 . 
+
+5. **📁 `agentlightning/verl/trainer.py`** — The core training loop. `head agentlightning/verl/trainer.py` would describe the exact VERL integration point.
+
+6. **📁 `agentlightning/algorithm/apo/prompts/`** — The `.poml` files contain the text gradient templates for APO. 
+
+7. **NVIDIA project board** — `github.com/orgs/NVIDIA/projects/6` requires authentication to view. 
