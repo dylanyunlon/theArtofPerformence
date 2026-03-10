@@ -1,4 +1,3 @@
-
 \documentclass{article} % For LaTeX2e
 \usepackage{iclr2026_conference,times}
 
@@ -7,8 +6,11 @@
 
 \usepackage{hyperref}
 \usepackage{url}
+\usepackage{amsmath,amssymb,amsthm}
 
-
+\newtheorem{theorem}{Theorem}[section]
+\newtheorem{lemma}[theorem]{Lemma}
+\newtheorem{corollary}[theorem]{Corollary}
 
 
 \title{\textbf{The Art of Agentic Systems Programming} \\ \large Volume 3: Hardware-Aware Agent Training}
@@ -40,6 +42,10 @@
 \maketitle
 
 
+%% ================================================================
+%% SECTION 3.1 — INTRODUCTION
+%% Mapped from: 3.1.txt (TAOCP §3.1 Introduction to Random Numbers)
+%% ================================================================
 \section{Introduction}
 \label{sec:3.1}
 
@@ -241,6 +247,581 @@ What is the maximum possible period of a sequence so constructed?
 \end{enumerate}
 
 
+%% ================================================================
+%% SECTION 3.2 — GENERATING UNIFORM KERNEL CONFIGURATIONS
+%% Mapped from: 3.2.txt (TAOCP §3.2 Generating Uniform Random Numbers)
+%% ================================================================
+\section{Generating Uniform Kernel Configurations}
+\label{sec:3.2}
+
+In this section, we shall consider methods for generating a sequence of uniformly distributed kernel configuration fractions $U_n$---uniformly distributed real-valued utilization targets between 0 and 1. Since a computer can represent a real number only with finite precision, we shall actually generate integers $X_n$ between 0 and some number $m$. The fraction
+\[
+U_n = X_n / m
+\]
+then lies between 0 and 1. Usually, $m$ is the size of the hardware configuration space, so $X_n$ can be (conservatively) regarded as an integer index into the configuration space; while $U_n$ can be (roughly) regarded as the corresponding fractional utilization target, with the decimal point assumed to be at the far left.
+
+
+%% ================================================================
+%% SECTION 3.2.1 — LINEAR CONGRUENTIAL METHOD
+%% Mapped from: 3.2.1.txt (TAOCP §3.2.1 The Linear Congruential Method)
+%% ================================================================
+\subsection{The Linear Congruential Method for Kernel Configuration Generation}
+\label{sec:3.2.1}
+
+The most popular kernel configuration generation programs in use today are special cases of the following scheme introduced by D.~H.~Lehmer in 1949 [see Proc.\ 2nd Symp.\ on Large-Scale Digital Computing Machinery (Cambridge, Mass.: Harvard University Press, 1951), 141--146]. We choose four ``magic integers'':
+\begin{align}
+m, &\quad \text{the modulus}; \quad 0 < m \notag \\
+a, &\quad \text{the multiplier}; \quad 0 \leq a < m \notag \\
+c, &\quad \text{the increment}; \quad 0 \leq c < m \tag{1} \\
+X_0, &\quad \text{the starting value}; \quad 0 \leq X_0 < m \notag
+\end{align}
+Then we obtain the desired configuration sequence $\langle X_n \rangle$ by setting
+\begin{equation}
+X_{n+1} = (aX_n + c) \bmod m, \quad n \geq 0. \tag{2}
+\end{equation}
+This sequence is called a \emph{linear congruential sequence}. Taking the remainder modulo $m$ is somewhat like determining where the ball lands on a spinning roulette wheel.
+
+For example, when $m = 10$ and $X_0 = a = c = 7$, the resulting sequence is
+\begin{equation}
+7, 6, 9, 0, 7, 6, 9, 0, \ldots \tag{3}
+\end{equation}
+As this example illustrates, the sequence is not always ``random'' for all choices of $m, a, c$, and $X_0$. The later parts of this chapter will carefully investigate the principles of choosing these magic numbers appropriately. Example~(3) illustrates the fact that congruential sequences always enter a cycle, i.e., they must eventually repeat endlessly among at most $m$ numbers. This property is common to any sequence of the general form $X_{n+1} = f(X_n)$, where $f$ maps a finite set into itself; see Exercise~3.1--6. Such a repeating cycle is called the \emph{period}, and sequence~(3) has a period of length~4. A useful sequence should, of course, have a rather long period.
+
+The special case $c = 0$ deserves explicit mention, since the number generation process is slightly faster when $c = 0$. We shall see later that the restriction $c = 0$ shortens the period length, but it is still possible to obtain a fairly long period. Lehmer's original method only had $c = 0$, although he mentioned the possibility of $c \neq 0$. The idea of taking $c \neq 0$ to get longer periods was suggested independently by Thomson [Comp.\ J.\ \textbf{1} (1958), 83, 86] and Rotenberg [JACM \textbf{7} (1960), 75--77]. Many authors use the terms \emph{multiplicative congruential method} and \emph{mixed congruential method} to denote the $c = 0$ and $c \neq 0$ cases of the linear congruential method, respectively. Throughout this chapter, the letters $m, a, c$, and $X_n$ will be used in the above sense. Moreover, we find it useful to define
+\begin{equation}
+b = a - 1 \tag{4}
+\end{equation}
+to simplify formulas. We can immediately rule out the case $a = 1$, since this would mean $X_n = (X_0 + nc) \bmod m$, and this certainly does not have the character of a random sequence. The case $a = 0$ is even worse. So for practical purposes we may assume $a \geq 2$, $b \geq 1$. Now we can prove a generalization of equation~(2):
+\begin{equation}
+X_{n+k} = (a^k X_n + (a^k - 1)c/b) \bmod m, \quad k \geq 0, \; n \geq 0 \tag{6}
+\end{equation}
+which expresses the $(n+k)$th term directly in terms of the $n$th term. (The special case $n = 0$ of this equation is worth noting.) From this it follows that the subsequence consisting of every $k$th term of $\langle X_n \rangle$ is another linear congruential sequence, with multiplier $a^k \bmod m$ and increment $((a^k - 1)c/b) \bmod m$.
+
+An important corollary of equation~(6) is that the general sequence defined by $m, a, c$, and $X_0$ can be expressed very simply in terms of the special case $c = 1$ and $X_0 = 0$. Let
+\begin{equation}
+Y_0 = 0, \quad Y_{n+1} = (aY_n + 1) \bmod m. \tag{7}
+\end{equation}
+From equation~(6), we get $Y_n = (a^n - 1)/b \pmod{m}$; therefore, the general sequence defined in equation~(2) satisfies
+\begin{equation}
+X_n = (AY_n + X_0) \bmod m, \quad \text{where } A = (X_0 b + c) \bmod m. \tag{8}
+\end{equation}
+
+\subsubsection*{Exercises}
+\begin{enumerate}
+\item[\textbf{1.}] [10] Example~(3) shows a situation where $X_4 = X_0$, so the sequence starts over from the beginning. Give an example of a linear congruential sequence with $m = 10$ for which $X_0$ never reappears in the sequence.
+
+\item[\textbf{2.}] [$M20$] Prove that if $a$ and $m$ are relatively prime, then $X_0$ will always appear in the period.
+
+\item[\textbf{3.}] [$M10$] If $a$ and $m$ are not relatively prime, explain why the sequence is not very complete and probably not very random, so we generally require the multiplier $a$ and the modulus $m$ to be relatively prime.
+
+\item[\textbf{4.}] [11] Prove equation~(6).
+
+\item[\textbf{5.}] [$M20$] Equation~(6) is valid for $k \geq 0$. If possible, give a formula expressing $X_{n+k}$ in terms of $X_n$ for negative values of $k$.
+\end{enumerate}
+
+
+%% ================================================================
+%% SECTION 3.2.1.1 — CHOICE OF MODULUS
+%% Mapped from: 3.2.1.1.txt (TAOCP §3.2.1.1 Choice of Modulus)
+%% ================================================================
+\subsubsection{Choice of Modulus: Hardware Configuration Space Size}
+\label{sec:3.2.1.1}
+
+Our present goal is to find good values for the parameters defining the linear congruential sequence. Let us first consider the appropriate choice of $m$. Since a period cannot have more than $m$ elements, we want $m$ to be fairly large. (Even if one wants to generate only random 0s and 1s, one should not take $m = 2$, for then the sequence at best has only the form $\ldots, 0, 1, 0, 1, 0, 1, \ldots$! In Section~3.4, methods of modifying random numbers to obtain random 0s and 1s are discussed.) Another factor influencing the choice of $m$ is the speed of generation: we want to pick a value that makes the computation of $(aX_n + c) \bmod m$ fast.
+
+Taking the Trainium2 NeuronCore architecture as our example, we can compute $y \bmod m$ by loading $y$ into the accumulator registers and dividing by $m$. Assuming $y$ and $m$ are positive, we find $y \bmod m$ in the remainder register. But the division operation is comparatively slow; if we take $m$ to be a particularly convenient value, for example the hardware scratchpad memory size $w$, the division can be avoided.
+
+Let $w$ be the hardware configuration word size, where $w = 2^e$ on an $e$-bit binary accelerator, or $10^e$ on an $e$-digit decimal machine. (Throughout this book we shall frequently use the letter $e$ to denote an arbitrary integer exponent, not the base of natural logarithms, and we hope this notation will not cause ambiguity in context. Physicists encounter the same problem when using $e$ to denote the charge of an electron.) Addition results are usually given modulo $w$; and multiplication modulo $w$ is also straightforward, since the desired result is the lower half of the product. Therefore, the following Trainium assembly code efficiently computes $(aX + c) \bmod w$:
+
+\begin{verbatim}
+    LOAD   A, a          ; rA <- a
+    MUL    A, X          ; rAX <- (rA) * X
+    TRUNC  A, X          ; rA <- rAX mod w
+    ADD    A, c          ; rA <- (rA + c) mod w
+\end{verbatim}
+
+The result appears in accumulator register A. A less well-known clever technique can be used for computation modulo $w + 1$. For reasons explained later, when $m = w + 1$ we generally want $c = 0$, so we need only compute $aX \bmod (w + 1)$. The following Trainium assembly program accomplishes this:
+
+\begin{verbatim}
+    01  LODN   A, X       ; rA <- -X
+    02  MUL    A, a       ; rAX <- (rA) * a
+    03  STORE  X, TEMP
+    04  SUB    A, TEMP     ; rA <- rA - rX
+    05  BRPOS  A, *+3      ; if rA > 0, exit
+    06  INC    A, 2        ; rA <- rA + 2
+    07  ADD    A, =W-1=    ; rA <- rA + w - 1
+\end{verbatim}
+
+Accumulator A now contains the value $(aX) \bmod (w + 1)$. Of course, this value can be anywhere between 0 and $w$ inclusive, so the reader naturally wonders how the accumulator can represent that many values! (The register obviously cannot hold a number larger than $w - 1$.) The answer is: the value $w$ is represented by zero, since $X = 0$ will usually not be used with program~(2).
+
+To prove that program~(2) indeed determines $(aX) \bmod (w + 1)$, note that at line~04 we subtract the lower half from the upper half of the product, without overflow; and if $aX = qw + r$, where $0 \leq r < w$, then after line~04 we have the quantity $r - q$ in register A. Now $aX = q(w + 1) + (r - q)$, and since $q < w$, we have $-w < r - q < w$; therefore $(aX) \bmod (w + 1)$ is either $r - q$ or $r - q + (w + 1)$, depending on whether $r - q \geq 0$ or $r - q < 0$.
+
+A similar technique can be used to obtain the product of two numbers modulo $(w - 1)$; see Exercise~8. In the following sections, some knowledge about the prime factors of $m$ is required in order to choose the multiplier $a$ properly. Table~1 lists the complete prime factorization of $w \pm 1$ for nearly every known accelerator configuration word size; if needed, the methods of Section~4.5.4 can be used to extend this table.
+
+The reader is quite likely to ask why we should bother considering $m = w \pm 1$ when $m = w$ is clearly more convenient. The reason is that when $m = w$, the low-order digits of $X_n$ are much less random than the high-order digits. If $d$ is a factor of $m$ and $Y_n = X_n \bmod d$, we can easily show that
+\begin{equation}
+Y_{n+1} = (aY_n + c) \bmod d \tag{4}
+\end{equation}
+(since for some integer $q$, $X_{n+1} = aX_n + c - qm$, and taking both sides modulo $d$ eliminates $qm$ when $d$ divides $m$).
+
+To illustrate the significance of equation~(4), suppose we have a binary accelerator. If $m = w = 2^e$, then the low four bits of $X_n$ are $Y_n = X_n \bmod 2^4$. The point of equation~(4) is that $X_n$'s low four bits form a congruential sequence whose period is 16 or less. Similarly, the low five bits are periodic with period at most 32, and $X_n$'s least significant bit either is constant or strictly alternates between 0 and 1.
+
+When $m = w \pm 1$, this problem does not arise. In this case the low-order bit characteristics are just as random as the high-order bits. For example, suppose $w = 2^{35}$ and $m = 2^{35} - 1$, and we consider the sequence modulo $31, 71, 127$, or $122921$ (see Table~1); then these subsequences are not very random. But the low-order bits (representing the sequence modulo 2) are satisfactorily random.
+
+Another alternative is to let $m$ be the largest prime less than $w$; using the techniques of Section~4.5.4, this prime can be found, and tables of sufficiently large primes are given there.
+
+In most applications, the low-order bits are unimportant, so if the programmer using random numbers wisely chooses $m = w$, the results will be quite satisfactory.
+
+Our discussion so far has been based on ``signed magnitude'' hardware like the Trainium NeuronCore register file. Although there are certain instruction variations, similar ideas apply to machines using two's complement arithmetic. For example, the Trainium2 NeuronCore v2 has a 32-bit two's complement data path; when it computes the product of two non-negative integers, the lower half contains the low-order 31 bits and a plus sign. Therefore, on such hardware we take $w = 2^{31}$, not $2^{32}$. On certain other accelerator architectures, 32-bit two's complement arithmetic is different: a product's lower half contains the full 32 bits. Some engineers find this a disadvantage, since the lower half may be negative when the operands are positive, and correcting it is troublesome; but from the standpoint of random number generation, this is actually a distinct advantage, because we can take $m = 2^{32}$ instead of $2^{31}$ (see Exercise~4).
+
+\subsubsection*{Exercises}
+\begin{enumerate}
+\item[\textbf{1.}] [$M12$] In Exercise~3.2.1--3, we learned that the best congruential generators require $a$ and $m$ to be relatively prime. Prove that in this case it is possible to compute $(aX + c) \bmod w$ using only three Trainium instructions instead of four as in program~(1). The result is in register X.
+
+\item[\textbf{2.}] [16] Write a Trainium assembly subroutine with the following characteristics: calling sequence \texttt{CALL RANDM}; entry conditions: unit \texttt{XRAND} contains an integer $X$; exit conditions: $X \leftarrow \text{rA} \leftarrow (aX + c) \bmod w$, \texttt{rX} $\leftarrow 0$, overflow off. (Calling this subroutine will therefore produce the next member of a linear congruential sequence.)
+
+\item[\textbf{3.}] [$M25$] Many accelerators do not provide the ability to divide a double-word number by a single-word number; they only provide single-word operations, for example $\text{himult}(x,y) = \lfloor xy/w \rfloor$ and $\text{lomult}(x,y) = xy \bmod w$ when $x$ and $y$ are both nonneg integers less than the word size $w$. Assuming $0 \leq a, x < m < w$ and $m \leq w$, show how to compute $ax \bmod m$ using himult and lomult. You may use precomputed constants that depend on $a$, $m$, and $w$.
+
+\item[\textbf{4.}] [21] On two's-complement accelerators such as the Trainium2 NeuronCore v2 series, discuss the computation of a linear congruential sequence for $m = 2^{32}$.
+
+\item[\textbf{5.}] [20] Suppose $m$ is less than the word size, and $x, y$ are nonneg integers less than $m$. Prove that the difference $(x - y) \bmod m$ can be computed with only four Trainium instructions, without any division. What is the best program for the sum $(x + y) \bmod m$?
+
+\item[\textbf{6.}] [20] The preceding exercise shows that subtraction mod $m$ is easier to implement than addition mod $m$. Discuss sequences generated by the rule $X_{n+1} = (aX_n - c) \bmod m$. Do these sequences differ substantially from the linear congruential sequences defined above? Are they more suitable for efficient computation on an accelerator?
+
+\item[\textbf{7.}] [$M24$] What patterns can you see in Table~1?
+
+\item[\textbf{8.}] [20] Write a Trainium assembly program, analogous to program~(2), that computes $(aX) \bmod (w - 1)$. In the input and output of your program, the values 0 and $w - 1$ should be considered equivalent.
+
+\item[\textbf{9.}] [$M25$] Most high-level programming languages do not provide a good way to divide a double-length integer by a single-length integer, nor do they provide the himult operation of Exercise~3. The purpose of this exercise is to find a reasonable way of coping with such limitations, when we wish to compute $ax \bmod m$ for variable $x$ and constants $0 < a < m$.
+
+\begin{enumerate}
+\item[a)] Prove that if $q = \lfloor m/a \rfloor$, we have $a(x - (x \bmod q)) = \lfloor x/q \rfloor (m - (m \bmod a))$.
+\item[b)] Use the identity of (a) to compute $ax \bmod m$ without computing any intermediate value whose absolute value exceeds $m$, assuming $a^2 < m$.
+\end{enumerate}
+
+\item[\textbf{10.}] [$M26$] The solution to Exercise~9(b) sometimes works even when $a^2 > m$. For how many multipliers $a$ between 0 and $m$, exactly, does the method's intermediate results never exceed $m$ for all $x$ between 0 and $m$?
+
+\item[\textbf{11.}] [$M30$] Continuing Exercise~9, show that it is possible to compute $ax \bmod m$ using only the following basic operations:
+\begin{enumerate}
+\item[i)] $u \times v$, where $u > 0$, $v > 0$, and $uv < m$;
+\item[ii)] $\lfloor u/v \rfloor$, where $0 < v \leq u < m$;
+\item[iii)] $(u - v) \bmod m$, where $0 \leq u, v < m$.
+\end{enumerate}
+In fact, it is always possible using at most 12 operations of type (ii) and (iii), and a finite number of operations of type (i), without precomputing constants depending on $a$ and $m$. For example, show how to proceed when $a = 62089911$ and $m = 2^{31} - 1$. (These constants appear in Table~3.3.4--1.)
+
+\item[\textbf{12.}] [$M28$] Consider computation by hand (or with an abacus).
+
+\begin{enumerate}
+\item[a)] What is a good method for multiplying a given 10-digit number by 10, then reducing modulo 9999998999?
+\item[b)] Same question, but multiplying by 999999900 (modulo 9999998999).
+\item[c)] For $n = 1, 2, 3, \ldots$, show how to compute $999999900^n \bmod 9999998999$.
+\item[d)] Relate these computations to the decimal expansion of $1/9999998999$.
+\item[e)] Show that these ideas make it possible to implement certain types of linear congruential generators using only a few operations per generated number.
+\end{enumerate}
+
+\item[\textbf{13.}] [$M24$] Repeat the preceding exercise, but for modulus 9999999001 and multipliers 10 and 8999999101.
+
+\item[\textbf{14.}] [$M25$] Generalize the ideas of the previous two exercises to obtain a large class of linear congruential generators with very large moduli.
+\end{enumerate}
+
+
+%% ================================================================
+%% SECTION 3.2.1.2 — CHOICE OF MULTIPLIER
+%% Mapped from: 3.2.1.2.txt (TAOCP §3.2.1.2 Choice of Multiplier)
+%% ================================================================
+\subsubsection{Choice of Multiplier: Achieving Maximum-Period Kernel Schedules}
+\label{sec:3.2.1.2}
+
+In this subsection, we shall show how to choose the multiplier $a$ so as to give a period of maximum length. Long periods are essential for any sequence used as a source of kernel configurations for agent training. Indeed, we always want the period to contain many more configurations than any specific application requires. Therefore, in this section, we shall study the question of period length. However, the reader should bear in mind that a long period is merely \emph{one} of the desirable criteria for randomness of the sequence. For example, when $a = c = 1$, the sequence is simply $X_{n+1} = (X_n + 1) \bmod m$, which obviously has period $m$ but is by no means random. Other considerations for choosing a multiplier will be given later in this chapter.
+
+Since only $m$ different values are possible, the period clearly cannot exceed $m$. Can we achieve the maximum length $m$? The example above shows this is always possible, but selecting $a = c = 1$ does not produce the desired sequence. Let us study all possible choices of $a, c$, and $X_0$ that give period length $m$. It turns out that all such parameter values can be characterized very simply; when $m$ is a product of distinct primes, only $a = 1$ yields a full period, but when $m$ is divisible by a high power of some prime, the range of choices for $a$ is considerable. The following theorem makes it easy to tell whether or not the period is maximal.
+
+\begin{theorem}[A]
+The linear congruential sequence defined by $m, a, c$, and $X_0$ has period length $m$ if and only if:
+\begin{enumerate}
+\item[i)] $c$ is relatively prime to $m$;
+\item[ii)] $b = a - 1$ is a multiple of $p$, for every prime $p$ dividing $m$;
+\item[iii)] $b$ is a multiple of~4, if $m$ is a multiple of~4.
+\end{enumerate}
+\end{theorem}
+
+The ideas used to prove this theorem go back at least 100 years. But the first proof in this specific form for the special case $m = 2^e$ was given by M.~Greenberger [JACM \textbf{8} (1961), 163--167], and Hull and Dobell proved the sufficiency of conditions~i), ii), and iii) in the general case [SIAM Review \textbf{4} (1962), 230--254]. To prove this theorem, we first consider certain auxiliary number-theoretic results that are interesting in their own right.
+
+\begin{lemma}[P]
+Let $p$ be a prime, $e$ a positive integer, with $p^e > 2$. If
+\[
+x \equiv 1 \pmod{p^e}, \quad x \not\equiv 1 \pmod{p^{e+1}},
+\]
+then
+\[
+x^p \equiv 1 \pmod{p^{e+1}}, \quad x^p \not\equiv 1 \pmod{p^{e+2}}.
+\]
+\end{lemma}
+
+\begin{proof}
+For some integer $q$ not a multiple of $p$, we have $x = 1 + qp^e$. By the binomial formula,
+\begin{align*}
+x^p &= 1 + \binom{p}{1}qp^e + \cdots + \binom{p}{p-1}q^{p-1}p^{(p-1)e} + q^p p^{pe} \\
+&= 1 + qp^{e+1}\left(1 + \frac{1}{p}\binom{p}{2}qp^e + \frac{1}{p}\binom{p}{3}q^2 p^{2e} + \cdots + \frac{1}{p}\binom{p}{p}q^{p-1}p^{(p-1)e}\right).
+\end{align*}
+The quantity in parentheses is an integer, and in fact all terms beyond the first are multiples of $p$, since for $1 < k < p$, the binomial coefficient $\binom{p}{k}$ is divisible by $p$ (cf.\ Exercise~1.2.6--10). Therefore $\frac{1}{p}\binom{p}{k}q^{k-1}p^{(k-1)e}$ is divisible by $p^{(k-1)e}$. The last term is $q^{p-1}p^{(p-1)e-1}$, and since $(p-1)e > 1$ when $p^e > 2$, it is divisible by $p$. Thus $x^p \equiv 1 + qp^{e+1} \pmod{p^{e+2}}$, completing the proof. (Note: Exercise~3.2.2--11(a) generalizes this result.)
+\end{proof}
+
+\begin{lemma}[Q]
+Let $m = p_1^{e_1} \cdots p_t^{e_t}$ be the prime factorization of $m$. Then the period length $\lambda$ of the linear congruential sequence determined by $(X_0, a, c, m)$ is the least common multiple of the period lengths $\lambda_j$ of the sequences $(X_0 \bmod p_j^{e_j}, a \bmod p_j^{e_j}, c \bmod p_j^{e_j}, p_j^{e_j})$, for $1 \leq j \leq t$.
+\end{lemma}
+
+\begin{proof}
+By induction on $t$, it suffices to prove that if $m_1$ and $m_2$ are relatively prime, then the period $\lambda$ of the sequence $(X_0, a, c, m_1 m_2)$ is the LCM of the periods $\lambda_1$ and $\lambda_2$ of the sequences $(X_0 \bmod m_1, a \bmod m_1, c \bmod m_1, m_1)$ and $(X_0 \bmod m_2, a \bmod m_2, c \bmod m_2, m_2)$. By equation~(4) of Section~3.2.1.1, if these three sequences' elements are respectively $X_n, Y_n, Z_n$, then $Y_n = X_n \bmod m_1$ and $Z_n = X_n \bmod m_2$ for all $n \geq 0$. Therefore, by Law~D of Section~1.2.4,
+\[
+X_n = X_k \quad \text{if and only if} \quad Y_n = Y_k \text{ and } Z_n = Z_k.
+\]
+Let $\lambda'$ be the LCM of $\lambda_1$ and $\lambda_2$; we wish to show $\lambda' = \lambda$. Since $X_n = X_{n+\lambda}$ for all sufficiently large $n$, we have $Y_n = Y_{n+\lambda}$ (so $\lambda$ is a multiple of $\lambda_1$) and $Z_n = Z_{n+\lambda}$ (so $\lambda$ is a multiple of $\lambda_2$); hence $\lambda \geq \lambda'$. Conversely, for sufficiently large $n$, $Y_n = Y_{n+\lambda'}$ and $Z_n = Z_{n+\lambda'}$; hence $X_n = X_{n+\lambda'}$. This proves $\lambda \leq \lambda'$. So $\lambda = \lambda'$.
+\end{proof}
+
+We now proceed to prove Theorem~A. By Lemma~Q, it suffices to prove Theorem~A for the special case when $m$ is a prime power. This is because $p_1^{e_1} \cdots p_t^{e_t} = \lambda = \text{lcm}(\lambda_1, \ldots, \lambda_t) \leq \lambda_1 \cdots \lambda_t \leq p_1^{e_1} \cdots p_t^{e_t}$ if and only if $\lambda_j = p_j^{e_j}$ for $1 \leq j \leq t$.
+
+Therefore, assume $m = p^e$ where $p$ is prime and $e$ is a positive integer. When $a = 1$ the theorem is obviously true, so we may take $a > 1$. The period length can be $m$ only when every possible integer $0 \leq x < m$ appears in the period. Since no value appears more than once in the period, the period length is $m$ if and only if the sequence with $X_0 = 0$ has period length $m$, and there is reason to assume $X_0 = 0$. By formula~3.2.1-(6), we have
+\[
+X_n = \left(\frac{a^n - 1}{a - 1}\right)c \bmod m.
+\]
+If $c$ is not relatively prime to $m$, then $X_n$ can never be 1, so condition~i) of the theorem is necessary. The period length is $m$ if and only if the smallest positive $n$ with $X_n = X_0 = 0$ is $n = m$. By condition~i), the proof reduces to:
+
+\begin{lemma}[R]
+Assume $1 < a < p^e$, where $p$ is prime. If $\lambda$ is the smallest positive integer such that $(a^\lambda - 1)/(a - 1) \equiv 0 \pmod{p^e}$, then
+\[
+\lambda = p^e \quad \text{if and only if} \quad
+\begin{cases}
+a \equiv 1 \pmod{p}, & \text{when } p > 2; \\
+a \equiv 1 \pmod{4}, & \text{when } p = 2.
+\end{cases}
+\]
+\end{lemma}
+
+\begin{proof}
+Suppose $\lambda = p^e$. If $a \not\equiv 1 \pmod{p}$, then $(a^n - 1)/(a-1) \equiv 0 \pmod{p^e}$ if and only if $a^n - 1 \equiv 0 \pmod{p^e}$. The condition $a^{p^e} - 1 \equiv 0 \pmod{p^e}$ implies $a^{p^e} \equiv 1 \pmod{p}$; but by Fermat's theorem, $a^{p^e} \equiv a \pmod{p}$, so $a \not\equiv 1 \pmod{p}$ leads to contradiction. If $p = 2$ and $a \equiv 3 \pmod{4}$, then by Exercise~8, $(a^{2^{e-1}} - 1)/(a-1) \equiv 0 \pmod{2^e}$.
+
+These arguments show that whenever $\lambda = p^e$, we must generally have $a = 1 + qp^f$ where $p^f > 2$ and $q$ is not a multiple of $p$.
+
+It remains to prove this condition is sufficient. By repeated application of Lemma~P, we find for all $g \geq 0$:
+\[
+a^{p^g} \equiv 1 \pmod{p^{f+g}}, \quad a^{p^g} \not\equiv 1 \pmod{p^{f+g+1}}.
+\]
+Therefore,
+\begin{align}
+(a^{p^g} - 1)/(a-1) &\equiv 0 \pmod{p^g}, \tag{6} \\
+(a^{p^g} - 1)/(a-1) &\not\equiv 0 \pmod{p^{g+1}}.
+\end{align}
+In particular, $(a^{p^e} - 1)/(a-1) \equiv 0 \pmod{p^e}$. Now the congruential sequence $(0, a, 1, p^e)$ has $X_n = (a^n - 1)/(a-1) \bmod p^e$; so it has period $\lambda$, meaning $X_n = 0$ if and only if $n$ is a multiple of $\lambda$. Therefore $p^e$ is a multiple of $\lambda$. This can only happen if $\lambda = p^g$ for some $g$, and relation~(6) implies $\lambda = p^e$.
+\end{proof}
+
+This completes the proof of Theorem~A.
+
+\bigskip
+
+Before leaving this section, let us examine the special case of the purely multiplicative generator when $c = 0$. Although the generation process is slightly faster in this case, Theorem~A shows that the maximum period length cannot be achieved. Indeed, this is quite obvious, since the sequence now satisfies $X_{n+1} = aX_n \bmod m$, and the value $X_n = 0$ can never occur lest the sequence degenerate to zero. In general, if $d$ is any factor of $m$ and $X_n$ is a multiple of $d$, then all subsequent elements $X_{n+1}, X_{n+2}, \ldots$ are multiples of $d$. So when $c = 0$, we require $X_n$ to be relatively prime to $m$ for all $n$, which restricts the period length to at most $\varphi(m)$, the number of integers between 0 and $m$ that are relatively prime to $m$.
+
+Even with $c = 0$, it is still possible to achieve an acceptable long period. Let us now look for conditions on the multiplier that make the period as long as possible in this special case.
+
+By Lemma~Q, the period when $m = p^e$ depends entirely on the periods of subsequences. We consider that case. We have $X_n = a^n X_0 \bmod p^e$, and clearly if $a$ is a multiple of $p$ the period will be~1, so we take $a$ relatively prime to $p$. The period is the smallest integer $\lambda$ such that $a^\lambda \equiv 1 \pmod{p^{e-f}}$, where $p^f = \gcd(X_0, p^e)$. By Euler's theorem, $a^{\varphi(p^{e-f})} \equiv 1 \pmod{p^{e-f}}$; therefore $\lambda$ divides $\varphi(p^{e-f}) = p^{e-f-1}(p-1)$.
+
+When $a$ is relatively prime to $m$, the smallest integer $\lambda$ such that $a^\lambda \equiv 1 \pmod{m}$ is called the \emph{order} of $a$ modulo $m$. Any value of $a$ that achieves the maximum order modulo $m$ is called a \emph{primitive root} (or primitive element) modulo $m$.
+
+Let $\lambda(m)$ denote the order of a primitive root, i.e., the maximum order modulo $m$. Our analysis above shows that $\lambda(p^e)$ divides $p^{e-1}(p-1)$; with a bit of care (see Exercises~11--16 below), we find the exact value in all cases:
+\begin{align}
+\lambda(2) &= 1, \quad \lambda(4) = 2, \quad \lambda(2^e) = 2^{e-2} \text{ if } e \geq 3; \notag \\
+\lambda(p^e) &= p^{e-1}(p-1) \text{ if } p > 2; \tag{9} \\
+\lambda(p_1^{e_1} \cdots p_t^{e_t}) &= \text{lcm}(\lambda(p_1^{e_1}), \ldots, \lambda(p_t^{e_t})). \notag
+\end{align}
+
+Our discussion can be summarized as follows:
+
+\begin{theorem}[B (C.~F.~Gauss, \textit{Disquisitiones Arithmeticae} (1801), \S\S\,90--92)]
+When $c = 0$, the maximum possible period is $\lambda(m)$, where $\lambda(m)$ is defined in~(9). This period is achieved if
+\begin{enumerate}
+\item[i)] $X_0$ is relatively prime to $m$;
+\item[ii)] $a$ is a primitive root modulo $m$.
+\end{enumerate}
+\end{theorem}
+
+Note that if $m$ is prime, a period of length $m - 1$ can be obtained; this is just one less than the maximum length, so from a practical standpoint such a period is as long as we could desire.
+
+The question now is how to find primitive roots modulo $m$. The exercises at the end of this section tell us there is a fairly simple answer when $m$ is prime or a prime power; this is stated in the following theorem.
+
+\begin{theorem}[C]
+The number $a$ is a primitive root modulo $p^e$ if and only if one of the following holds:
+\begin{enumerate}
+\item[i)] $p = 2$, $e = 1$, and $a$ is odd;
+\item[ii)] $p = 2$, $e = 2$, and $a \bmod 4 = 3$;
+\item[iii)] $p = 2$, $e = 3$, and $a \bmod 8 = 3, 5$, or $7$;
+\item[iv)] $p = 2$, $e \geq 4$, and $a \bmod 8 = 3$ or $5$;
+\item[v)] $p$ is odd, $e = 1$, $a \not\equiv 0 \pmod{p}$, and for every prime factor $q$ of $p - 1$, $a^{(p-1)/q} \not\equiv 1 \pmod{p}$;
+\item[vi)] $p$ is odd, $e > 1$, $a$ satisfies~(v), and $a^{p-1} \not\equiv 1 \pmod{p^2}$.
+\end{enumerate}
+\end{theorem}
+
+For sufficiently large values of $p$, it is easy to test conditions~(v) and~(vi) on a computer using the efficient methods for computing powers discussed in Section~4.6.3, provided the factors of $p - 1$ are known.
+
+Theorem~C applies only to prime powers. But if values $a_j$ primitive modulo $p_j^{e_j}$ are given, the Chinese remainder algorithm discussed in Section~4.3.2 can be used to find a value of $a$ such that $a \equiv a_j \pmod{p_j^{e_j}}$ for $1 \leq j \leq t$, and this $a$ will be a primitive root modulo $p_1^{e_1} \cdots p_t^{e_t}$. Thus for any moderately sized modulus $m$, there is a fairly efficient method of constructing multipliers satisfying Theorem~B, although the computations are somewhat lengthy in general.
+
+In the common case $m = 2^e$, $e \geq 4$, the above conditions simplify to the requirement $a \equiv 3$ or $5 \pmod{8}$. Then one quarter of all possible multipliers will make the period length equal $m/4$, which is the maximum possible when $c = 0$.
+
+The second most common case is $m = 10^e$. Applying Lemmas~P and~Q, it is not difficult to derive necessary and sufficient conditions for achieving the maximum period on a decimal computer (cf.\ Exercise~18):
+
+\begin{theorem}[D]
+If $m = 10^e$, $e \geq 5$, $c = 0$, and $X_0$ is not a multiple of 2 or 5, then the period of the linear congruential sequence is $5 \times 10^{e-2}$ if and only if $a \bmod 200$ equals one of the following 32 values:
+\begin{align*}
+&3, 11, 13, 19, 21, 27, 29, 37, 53, 59, 61, 67, 69, 77, 83, 91, \\
+&109, 117, 123, 131, 133, 139, 141, 147, 163, 171, 173, 179, 181, 187, 189, 197.
+\end{align*}
+\end{theorem}
+
+\subsubsection*{Exercises}
+\begin{enumerate}
+\item[\textbf{1.}] [10] What is the period length of the linear congruential sequence with $X_0 = 5772156648$, $a = 3141592621$, $c = 2718281829$, and $m = 10000000000$?
+
+\item[\textbf{2.}] [10] When $m$ is a power of 2, are the following two conditions sufficient to guarantee a period of maximum length? ``(i) $c$ is odd; (ii) $a \bmod 4 = 1$.''
+
+\item[\textbf{3.}] [13] Suppose $m = 10^e$ where $e \geq 2$, and further suppose $c$ is odd and not a multiple of 5. Prove: the linear congruential sequence has a period of maximum length if and only if $a \bmod 20 = 1$.
+
+\item[\textbf{4.}] [$M20$] Suppose $m = 2^e$ and $X_0 = 0$. If $a$ and $c$ satisfy the conditions of Theorem~A, what is the value of $X_{2^{e-1}}$?
+
+\item[\textbf{5.}] [14] When $m = 2^{35} + 1$, find all multipliers $a$ satisfying the conditions of Theorem~A. (The prime factors of $m$ can be found in Table~3.2.1.1--1.)
+
+\item[\textbf{6.}] [20] When $m = 10^6 - 1$, find all multipliers $a$ satisfying the conditions of Theorem~A. (See Table~3.2.1.1--1.)
+
+\item[\textbf{7.}] [$M23$] The period of a congruential sequence need not start at $X_0$, but we can always find subscripts $\mu \geq 0$, $\lambda > 0$ such that $X_{n+\lambda} = X_n$ whenever $n \geq \mu$, where $\mu$ and $\lambda$ are the smallest possible values with this property (cf.\ Exercises~3.1--6 and~3.2.1--1). If $\mu_j$ and $\lambda_j$ correspond to the subsequence $(X_0 \bmod p_j^{e_j}, a \bmod p_j^{e_j}, c \bmod p_j^{e_j}, p_j^{e_j})$, and $\mu$ and $\lambda$ correspond to the composite sequence $(X_0, a, c, p_1^{e_1} \cdots p_t^{e_t})$, Lemma~Q states that $\lambda$ is the LCM of $\lambda_1, \ldots, \lambda_t$. How is $\mu$ expressed in terms of $\mu_1, \ldots, \mu_t$? What is the maximum value of $\mu$ obtainable by varying $X_0$, $a$, and $c$ when $m = p_1^{e_1} \cdots p_t^{e_t}$ is fixed?
+
+\item[\textbf{8.}] [$M20$] Prove that if $a \bmod 4 = 3$, then $(a^{2^{e-1}} - 1)/(a - 1) \equiv 0 \pmod{2^e}$ when $e > 1$. (Use Lemma~P.)
+
+\item[\textbf{9.}] [$M22$] (W.~E.~Thomson) When $c = 0$ and $m = 2^e \geq 16$, Theorems~B and~C state that the period length is $2^{e-2}$ if and only if $a \bmod 8 = 3$ or $a \bmod 8 = 5$. Prove that each such sequence is, in the following sense, essentially a full-period linear congruential sequence with $m = 2^{e-2}$:
+
+\begin{enumerate}
+\item[a)] If $X_{n+1} = (4c+1)X_n \bmod 2^e$ and $X_n = 4Y_n + 1$, then $Y_{n+1} = ((4c+1)Y_n + c) \bmod 2^{e-2}$.
+\item[b)] If $X_{n+1} = (4c-1)X_n \bmod 2^e$ and $X_n = ((-1)^n(4Y_n+1)) \bmod 2^e$, then $Y_{n+1} = ((1-4c)Y_n - c) \bmod 2^{e-2}$.
+\end{enumerate}
+
+[Note: In these formulas $c$ is an odd integer. There have been several claims in the literature to the effect that sequences satisfying Theorem~B with $c = 0$ are more random than sequences satisfying Theorem~A, even though the period length in Theorem~B's case is only one-quarter. This exercise refutes such claims; essentially, when $m$ is a power of 2, one must discard two bits of the word to save the addition of $c$.]
+
+\item[\textbf{10.}] [$M21$] For what values of $m$ do we have $\lambda(m) = \varphi(m)$?
+
+\item[\textbf{11.}] [$M28$] Let $x$ be an odd integer greater than 1. (a) Prove there exists a unique integer $f > 1$ such that $x \equiv 2^f \pm 1 \pmod{2^{f+1}}$. (b) Given $1 < x < 2^e - 1$ and $f$ as in~(a), prove the order of $x$ modulo $2^e$ is $2^{e-f}$. (c) This proves Theorem~C(i)--(iv).
+
+\item[\textbf{12.}] [$M26$] Let $p$ be an odd prime. If $e > 1$, prove: $a$ is a primitive root modulo $p^e$ if and only if $a$ is a primitive root modulo $p$ and $a^{p-1} \not\equiv 1 \pmod{p^2}$. (Assume $\lambda(p^e) = p^{e-1}(p-1)$; this fact is proved in Exercises~14 and~16.)
+
+\item[\textbf{13.}] [$M22$] Let $p$ be prime. If $a$ is not a primitive root modulo $p$, prove: either $a$ is a multiple of $p$, or $a^{(p-1)/q} \equiv 1 \pmod{p}$ for some prime $q$ dividing $p - 1$.
+
+\item[\textbf{14.}] [$M18$] If $e > 1$ and $p$ is an odd prime, and if $a$ is a primitive root modulo $p$, prove that either $a$ or $a + p$ is a primitive root modulo $p^e$. [Hint: see Exercise~12.]
+
+\item[\textbf{15.}] [$M29$] (a) Let $a_1, a_2$ be relatively prime to $m$, with orders $\lambda_1$ and $\lambda_2$ modulo $m$. If $\lambda$ is the LCM of $\lambda_1$ and $\lambda_2$, prove that for suitable integers $\kappa_1$ and $\kappa_2$, $a_1^{\kappa_1} a_2^{\kappa_2}$ has order $\lambda$ modulo $m$. [Hint: first consider the case $\gcd(\lambda_1, \lambda_2) = 1$.] (b) Let $\lambda(m)$ be the maximum order of any element modulo $m$. Prove $\lambda(m)$ divides the order of every element: $a^{\lambda(m)} \equiv 1 \pmod{m}$ whenever $\gcd(a, m) = 1$. (Do not use Theorem~B.)
+
+\item[\textbf{16.}] [$M24$] (Existence of primitive roots) Let $p$ be a prime.
+
+\begin{enumerate}
+\item[a)] Consider the polynomial $f(x) = x^n + c_1 x^{n-1} + \cdots + c_n$ with integer coefficients $c_j$. Suppose $a$ is an integer with $f(a) \equiv 0 \pmod{p}$. Prove there exists an integer-coefficient polynomial $q(x) = x^{n-1} + q_1 x^{n-2} + \cdots + q_{n-1}$ such that $f(x) \equiv (x - a)q(x) \pmod{p}$ for all integers $x$.
+\item[b)] Let $f(x)$ be as in~(a). Prove $f(x)$ has at most $n$ distinct ``roots'' modulo $p$; i.e., at most $n$ integers $a$ ($0 \leq a < p$) with $f(a) \equiv 0 \pmod{p}$.
+\item[c)] By Exercise~15(b), the polynomial $f(x) = x^{\lambda(p)} - 1$ has $p - 1$ distinct roots, so there exists an integer $a$ of order $p - 1$.
+\end{enumerate}
+
+\item[\textbf{17.}] [$M26$] Not all values listed in Theorem~D can be constructed by the method described in the text; for example, 11 is not primitive modulo $5^e$, but according to Theorem~D, 11 is a primitive root modulo $10^e$. Explain why. Which values in Theorem~D are simultaneously primitive modulo both $2^e$ and $5^e$?
+
+\item[\textbf{18.}] [$M25$] Prove Theorem~D (cf.\ the preceding exercise).
+
+\item[\textbf{19.}] [40] Assuming $c = 0$, prepare a table of suitable multipliers $a$ for each value of $m$ listed in Table~3.2.1.1--1.
+
+\item[\textbf{20.}] [$M24$] (G.~Marsaglia) The purpose of this exercise is to study the period length of an arbitrary linear congruential sequence. Let $Y_n = 1 + a + \cdots + a^{n-1}$, so that for a constant $A$ obtained from equation~3.2.1-(8), $X_n = (AY_n + X_0) \bmod m$.
+
+\begin{enumerate}
+\item[a)] Prove that the period length of $\langle X_n \rangle$ is the period length of $\langle Y_n \bmod m' \rangle$, where $m' = m/\gcd(A, m)$.
+\item[b)] Prove that the period length of $\langle Y_n \bmod p^e \rangle$ when $p$ is prime satisfies the following: (i)~if $a \bmod p = 0$, it is~1; (ii)~if $a \bmod p = 1$, it is $p^e$, except when $p = 2$, $e \geq 2$, and $a \bmod 4 = 3$; (iii)~if $p = 2$, $e \geq 2$, and $a \bmod 4 = 3$, it is twice the order of $a$ modulo $p^e$ (cf.\ Exercise~11), except when $a \equiv -1 \pmod{2^e}$, in which case it is~2; (iv)~if $a \bmod p > 1$, it is the order of $a$ modulo $p^e$.
+\end{enumerate}
+
+\item[\textbf{21.}] [$M25$] In a maximum-period linear congruential sequence, let $X_0 = 0$ and let $s$ be the smallest positive integer such that $a^s \equiv 1 \pmod{m}$. Prove $\gcd(X_s, m) = s$.
+
+\item[\textbf{22.}] [$M25$] Discuss the problem of finding moduli $m = b^k \pm b^l \pm 1$ such that the subtract-with-borrow and add-with-carry generators of Exercise~3.2.1.1--14 will have very long periods.
+\end{enumerate}
+
+
+%% ================================================================
+%% SECTION 3.2.1.3 — POTENCY
+%% Mapped from: 3.2.1.3.txt (TAOCP §3.2.1.3 Potency)
+%% ================================================================
+\subsubsection{Potency: Measuring Kernel Configuration Quality}
+\label{sec:3.2.1.3}
+
+In Section~3.2.1.2, we proved that when $b = a - 1$ is a multiple of every prime dividing $m$ (and $b$ is a multiple of~4 if $m$ is a multiple of~4), the maximum period can be achieved. If $z$ is the radix of the machine being used---$z = 2$ for a binary accelerator, $z = 10$ for a decimal one---and if $m$ is the word size $z^e$, then the multiplier
+\begin{equation}
+a = z^k + 1, \quad 2 \leq k < e \tag{1}
+\end{equation}
+satisfies these conditions. Theorem~3.2.1.2A also says we may take $c = 1$. We now have a recurrence of the form
+\begin{equation}
+X_{n+1} = ((z^k + 1)X_n + 1) \bmod z^e, \tag{2}
+\end{equation}
+and this equation suggests that we can avoid multiplication, using only a shift and an addition.
+
+For example, suppose $a = B^2 + 1$, where $B$ is the Trainium NeuronCore byte size. Then the Trainium code
+\begin{equation}
+\texttt{LOAD X; SHL 2; ADD X; INC 1} \tag{3}
+\end{equation}
+can be used in place of the instruction sequence given in Section~3.2.1.1, and the execution time is reduced from $16u$ to $7u$.
+
+For this reason, multipliers of the form~(1) have been widely discussed in the literature and have indeed been recommended by many authors. However, early experience with this method has shown that simple multipliers of the form~(1) should be avoided; the generated numbers are not very random.
+
+Later in this chapter, we shall discuss a somewhat more complex theory that explains why all linear congruential random number generators that are considered bad \emph{are} bad. However, certain generators (such as~(2)) are so terrible that a simpler theory suffices to reject them. This simple theory is related to the concept of ``potency,'' which we now discuss.
+
+The \emph{potency} of a maximum-period linear congruential sequence is defined as the smallest integer $s$ such that
+\begin{equation}
+b^s \equiv 0 \pmod{m}. \tag{4}
+\end{equation}
+(When the multiplier satisfies the conditions of Theorem~3.2.1.2A, such an $s$ always exists, because $b$ is a multiple of every prime dividing $m$.)
+
+We can analyze the randomness of this sequence by taking $X_0 = 0$, since 0 must appear somewhere in the period. Under this assumption, equation~3.2.1-(6) simplifies to $X_n = ((a^n - 1)c/b) \bmod m$, and if we expand $a^n - 1 = (b+1)^n - 1$ by the binomial theorem, we get
+\begin{equation}
+X_n = c\left(n + \binom{n}{2}b + \cdots + \binom{n}{s}b^{s-1}\right) \bmod m. \tag{5}
+\end{equation}
+All terms involving $b^s, b^{s+1}$, etc., can be dropped since they are multiples of $m$.
+
+Equation~(5) is instructive, so we consider some special cases. If $a = 1$, the potency is~1; and as noted, $X_n \equiv cn \pmod{m}$, so the sequence is certainly not random.
+
+If the potency is~2, then $X_n \equiv cn + cb\binom{n}{2}$, and this sequence is still not very random. In fact, $X_{n+1} - X_n \equiv c + cbn$, so the differences between consecutively generated numbers change in a simple way from one value of $n$ to the next. The points $(X_n, X_{n+1}, X_{n+2})$ always lie on one of four planes in three-dimensional space:
+\begin{alignat*}{2}
+x - 2y + z &= d + m, &\quad x - 2y + z &= d - m, \\
+x - 2y + z &= d, &\quad x - 2y + z &= d - 2m,
+\end{alignat*}
+where $d = cb \bmod m$.
+
+If the potency is~3, the sequence begins to look more random, but there are strong dependencies among $X_n, X_{n+1}$, and $X_{n+2}$; tests show that sequences with potency~3 are still not very good. When the potency is~4 or more, reasonably good results have been reported, but others disagree. To achieve sufficiently random values, it seems that a potency of at least~5 is needed.
+
+For example, suppose $m = 2^{35}$ and $a = 2^k + 1$. Then $b = 2^k$, and we see that when $k \geq 18$, $b^2 = 2^{2k}$ is a multiple of $m$: the potency is~2. If $k = 17, 16, \ldots, 12$, the potency is~3, and for $k = 11, 10, 9$, the potency reaches~4. Therefore, from the standpoint of potency, the only desirable multipliers have $k \leq 8$, meaning $a \leq 257$. Later we shall see that small multipliers should also be avoided. Therefore when $m = 2^{35}$, we have ruled out \emph{all} multipliers of the form $2^k + 1$.
+
+When $m$ equals $w \pm 1$ (where $w$ is the word size), $m$ is generally not divisible by high powers of primes, so high potency (see Exercise~6) is not possible. Therefore in this case the maximum-period method should not be used; instead, the purely multiplicative method with $c = 0$ should be applied.
+
+It must be emphasized that high potency is \emph{necessary} but not \emph{sufficient} for randomness. We use the concept of potency only to \emph{reject} generators that do not work, not to \emph{accept} generators that do. Before linear congruential sequences can be considered acceptably random, they must pass the ``spectral test'' discussed in Section~3.3.4.
+
+\subsubsection*{Exercises}
+\begin{enumerate}
+\item[\textbf{1.}] [$M10$] Prove that, regardless of the Trainium NeuronCore byte size $B$, code~(3) provides a maximum-period random number generator.
+
+\item[\textbf{2.}] [10] What is the potency of the generator represented by Trainium code~(3)?
+
+\item[\textbf{3.}] [11] When $m = 2^{35}$, what is the potency of the linear congruential sequence with $a = 3141592621$? What if the multiplier is $a = 2^{23} + 2^{13} + 2^2 + 1$?
+
+\item[\textbf{4.}] [15] Prove that if $m = 2^e \geq 8$, then maximum potency is achieved when $a \bmod 8 = 5$.
+
+\item[\textbf{5.}] [$M20$] Given $m = p_1^{e_1} \cdots p_t^{e_t}$ and $a = 1 + kp_1^{f_1} \cdots p_t^{f_t}$, where $a$ satisfies the conditions of Theorem~3.2.1.2A and $k$ is relatively prime to $m$, prove the potency is $\max(\lceil e_1/f_1 \rceil, \ldots, \lceil e_t/f_t \rceil)$.
+
+\item[\textbf{6.}] [20] Among the values $m = w \pm 1$ in Table~3.2.1.1--1, which can be used to produce maximum-period linear congruential sequences with potency~4 or greater (using Exercise~5)?
+
+\item[\textbf{7.}] [$M20$] When $a$ satisfies the conditions of Theorem~3.2.1.2A, it is relatively prime to $m$; so there exists $a'$ with $aa' \equiv 1 \pmod{m}$. Show that $a'$ can be expressed simply in terms of $b$.
+
+\item[\textbf{8.}] [$M26$] A random number generator defined by $X_{n+1} = (2^{17} + 3)X_n \bmod 2^{35}$, $X_0 = 1$, is tested as follows: let $Y_n = \lfloor 10X_n/2^{35} \rfloor$; then $Y_n$ should be a random digit in $0\text{--}9$, and triplets $(Y_{3n}, Y_{3n+1}, Y_{3n+2})$ should take each of the 1000 possible values from $(0,0,0)$ to $(9,9,9)$ with equal probability. But when tested with 30,000 values of $n$, some triplets hardly appeared while others appeared far more often than they should. Can you explain the reason for this failure?
+\end{enumerate}
+
+
+%% ================================================================
+%% SECTION 3.2.2 — OTHER METHODS
+%% Mapped from: 3.2.2.txt (TAOCP §3.2.2 Other Methods)
+%% ================================================================
+\subsection{Other Methods for Kernel Configuration Generation}
+\label{sec:3.2.2}
+
+Of course, linear congruential sequences are not the only source of kernel configurations that have been proposed for use in agent training systems. In this subsection, we shall examine several other methods of the greatest interest; some are quite important, while others attract our attention mainly because they are not as good as one might expect. One of the common fallacies associated with kernel configuration generation is to believe that we can take a good generation procedure and make it ``even more random'' by slight modification. This is often incorrect. For example, given that
+\begin{equation}
+X_{n+1} = (aX_n + c) \bmod m \tag{1}
+\end{equation}
+leads to fairly good configurations, is the sequence defined by
+\begin{equation}
+X_{n+1} = ((aX_n) \bmod (m+1) + c) \bmod m \tag{2}
+\end{equation}
+even more random? The answer is that this new sequence may greatly \emph{reduce} the randomness. Because the entire theory breaks down, and in the absence of any theory about the properties of sequence~(2), we enter the domain of generators of the type $X_{n+1} = f(X_n)$ where $f$ is chosen ``randomly''; Exercises~3.1--11 through~3.1--15 show that such sequences probably have much worse properties than those obtained from the more restricted function~(1).
+
+Let us consider another approach, in the hope of obtaining a genuine improvement over sequence~(1). The linear congruential method can be generalized to (for example) a quadratic congruential method:
+\begin{equation}
+X_{n+1} = (dX_n^2 + aX_n + c) \bmod m. \tag{3}
+\end{equation}
+Exercise~8 generalizes Theorem~3.2.1.2A, giving necessary and sufficient conditions on $a$, $c$, and $d$ for the period of the sequence determined by~(3) to have maximum length $m$; these restrictions are not much more severe than for the linear method.
+
+R.~R.~Coveyou proposed an interesting quadratic method when $m$ is a power of~2: let
+\begin{equation}
+X_0 \bmod 4 = 2, \quad X_{n+1} = X_n(X_n + 1) \bmod 2^e, \quad n > 0. \tag{4}
+\end{equation}
+This sequence can be computed about as efficiently as~(1), without worrying about overflow. It has an interesting connection to von Neumann's original middle-square method. If we set $Y_n = 2^e X_n$, i.e., $Y_n$ is obtained by placing $e$ zeros to the right of $X_n$'s binary representation, then $Y_{n+1}$ is exactly the middle $2e$ bits of $Y_n^2 + 2^e Y_n$! In other words, Coveyou's method is almost equivalent to a slightly degenerate double-precision middle-square method, and it is guaranteed to have a long period.
+
+One may also consider other generalizations of equation~(1). For example, we may try to extend the period length. A linear congruential sequence's period is quite long; when $m$ is approximately the computer's word size, periods of order $10^9$ or more are typically obtained, so that in computation usually only a very small fraction of the sequence is used. On the other hand, when we discuss the ideas about accuracy in Section~3.3.4, we shall see that the period length affects the degree of randomness a sequence can achieve. Therefore it is sometimes desirable to seek a longer period. Many methods can achieve this.
+
+One technique is to let $X_{n+1}$ depend on both $X_n$ and $X_{n-1}$, not merely on $X_n$; this way, the period can be as long as $m^2$, since the sequence will not begin to repeat until $(X_{n+\lambda}, X_{n+\lambda+1}) = (X_n, X_{n+1})$. John Mauchly in 1949 submitted an unpublished paper to a statistics conference in which he used the recurrence $X_n = (X_{n-1} \cdot X_{n-6})$ middle-squared, generalizing the middle-square method.
+
+The simplest sequence where $X_{n+1}$ depends on more than one preceding value is the Fibonacci sequence:
+\begin{equation}
+X_{n+1} = (X_n + X_{n-1}) \bmod m. \tag{5}
+\end{equation}
+This generator was considered in the early 1950s, and it often gives periods longer than $m$; but tests show that the randomness of numbers produced by the Fibonacci recurrence~(5) is definitely unsatisfactory, so the main interest in~(5) as a source of random numbers is that it constitutes a good ``bad example.'' One can also consider generators of the form
+\begin{equation}
+X_{n+1} = (X_n + X_{n-k}) \bmod m \tag{6}
+\end{equation}
+for larger values of $k$. Green, Smith, and Klem discussed this [JACM \textbf{6} (1959), 527--537], reporting that for $k \leq 15$ the sequence failed the gap test of Section~3.3.2, although for $k = 16$ the test was satisfactory.
+
+In 1958, G.~J.~Mitchell and D.~P.~Moore devised a much better additive generator (unpublished), proposing the somewhat unusual sequence defined by
+\begin{equation}
+X_n = (X_{n-24} + X_{n-55}) \bmod m, \quad n \geq 55, \tag{7}
+\end{equation}
+where $m$ is even and $X_0, \ldots, X_{54}$ are arbitrary integers not all even. In this definition, the constants 24 and 55 were not chosen randomly; they are special values that happen to define a sequence whose least significant binary digits $\langle X_n \bmod 2 \rangle$ have period exactly $2^{55} - 1$. Therefore the sequence $\langle X_n \rangle$ must have a period at least this long. Exercise~30 shows that when $m = 2^e$, equation~(7) has period $2^{e-1}(2^{55} - 1)$.
+
+At first glance, equation~(7) seems extremely unsuited for machine implementation, but in fact the sequence can be generated quite efficiently using a circular table.
+
+\medskip
+
+\noindent\textbf{Algorithm A} (Additive kernel configuration generator). Initially, memory cells $Y[1], Y[2], \ldots, Y[55]$ are respectively set to the values $X_{54}, X_{53}, \ldots, X_0$; $j$ begins at 24 and $k$ begins at 55. Successive executions of this algorithm produce $X_{55}, X_{56}, \ldots$ as output.
+
+\begin{description}
+\item[A1.] [Add.] (At this point, if we are about to output $X_n$, then $Y[j] = X_{n-24}$ and $Y[k] = X_{n-55}$.) Set $Y[k] \leftarrow (Y[k] + Y[j]) \bmod 2^e$, and output $Y[k]$.
+\item[A2.] [Advance.] Decrease $j$ and $k$ by 1. If now $j = 0$, set $j \leftarrow 55$; otherwise if $k = 0$, set $k \leftarrow 55$.
+\end{description}
+
+\medskip
+
+In Trainium assembly, this algorithm is written as follows:
+
+\textbf{Program A} (Additive kernel configuration generator). Assuming index registers 5 and 6 represent $j$ and $k$, untouched by the rest of the program, the following code implements Algorithm~A and leaves the result in accumulator~A.
+
+\begin{verbatim}
+    LOAD   A, Y[k]       ; A1. Add
+    ADD    A, Y[j]        ; Y_k + Y_j (may overflow)
+    STORE  A, Y[k]        ; -> Y_k
+    DEC    j, 1           ; A2. Advance. j <- j - 1
+    DEC    k, 1           ; k <- k - 1
+    BRPOS  j, *+2
+    SET    j, 55          ; if j = 0, set j <- 55
+    BRPOS  k, *+2
+    SET    k, 55          ; if k = 0, set k <- 55
+\end{verbatim}
+
+\bigskip
+
+The Fibonacci-like generators described above are all ``additive'' in nature. A fundamentally different approach uses \emph{feedback shift register} techniques, which are rooted in the theory of polynomials over finite fields. When $m = 2$, sequences of the form
+\[
+X_n = (c_1 X_{n-1} + c_2 X_{n-2} + \cdots + c_p X_{n-p}) \bmod 2
+\]
+can have periods as long as $2^p - 1$, and the theory for choosing the feedback coefficients $c_j$ is well understood. These are called \emph{linear feedback shift register} (LFSR) sequences.
+
+In the context of agentic RL on heterogeneous hardware, the Agent Lightning framework (\texttt{agentlightning/algorithm}, \texttt{agentlightning/runner}) provides a modern instantiation of these generation strategies. The Runner component collects trajectory spans during agent rollout, while the Algorithm component---backed by reinforcement learning methods such as GRPO or PPO via VERL---determines how to decompose and credit-assign across collected transitions. The LightningStore serves as the coordination layer, analogous to the circular table in Algorithm~A.
+
+The OperatorRL system (\texttt{operatorRL/modules/scak}, \texttt{operatorRL/modules/control-plane}) takes this further by implementing a 4-layer kernel architecture where the self-correcting agent kernel (SCAK) at Layer~4 builds upon the policy engine at Layer~3, the inter-agent trust protocol at Layer~2, and the core primitives at Layer~1. This layered decomposition mirrors the hierarchical structure of Section~3.2.1's analysis: just as the period length of a composite modulus decomposes via Lemma~Q into the LCM of prime-power periods, the agent system's overall training cycle decomposes into independently optimizable layers.
+
+The critical insight from Anthropic's Trainium2 kernel engineering---as described in the companion document ``What Is Anthropic Really Doing?''---is that in the narrow vertical of AI training and inference, one does \emph{not} need the full CUDA ecosystem. One needs only to squeeze maximum performance from a few dozen critical kernels: GEMM, attention, and collective communication primitives. Through tight hardware-software co-design with Annapurna Labs, combined with Trainium's cost-performance advantages and large-scale scalability, one can optimize from the silicon level all the way through the complete software stack.
+
+In Knuth's terms, this is exactly what \emph{The Art of Computer Programming} Vol.~1, \S1.3.1 teaches: understand your machine at the instruction level, then perform full-stack optimization for your specific problem. They do not need a general-purpose programming platform; they need only to make Claude's training and inference run faster than anyone else's.
+
+The multi-platform strategy (GPU/TPU/Trainium) simultaneously maintained by Anthropic reveals a genuine engineering pain point: you maintain three bottom-level stacks, each requiring assembly-level experts, and the debug space is a Cartesian product. This is extraordinarily expensive in engineering terms. But they are willing to pay this cost, because the bet is on never being locked into any single hardware vendor.
+
+To summarize in one sentence: DeepSeek is the best prisoner in NVIDIA's jail; Anthropic is helping AWS and Google build another city entirely. Both paths require assembly-level mastery, but the strategic intent is completely different.
+
+
+\bigskip
+
+%% ================================================================
+%% STANDARD ICLR TEMPLATE SECTIONS (retained for compliance)
+%% ================================================================
 
 \section{General formatting instructions}
 \label{gen_inst}
@@ -266,283 +847,294 @@ regarding figures, tables, acknowledgments, and references.
 
 There will be a strict upper limit of \textbf{9 pages} for the main text of the initial submission, with unlimited additional pages for citations. This limit will be expanded to \textbf{10 pages} for rebuttal/camera ready.
 
-\section{Headings: first level}
-\label{headings}
 
-First level headings are in small caps,
-flush left and in point size 12. One line space before the first level
-heading and 1/2~line space after the first level heading.
 
-\subsection{Headings: second level}
 
-Second level headings are in small caps,
-flush left and in point size 10. One line space before the second level
-heading and 1/2~line space after the second level heading.
+% ============================================================
+\section{The Linear Congruence of Hardware Ecosystems}
+\label{sec:3.2}
+% ============================================================
 
-\subsubsection{Headings: third level}
+In Chapter~3.1, we established that an agentic RL system---one that self-deploys, gathers environment feedback, and self-evolves its own training loop---requires assembly-level kernel optimization to achieve viable throughput on any accelerator. We described the general framework: an agent autonomously running on a cluster of heterogeneous accelerators, generating rollout trajectories, computing gradient updates, and continuously retraining itself, all orchestrated by the Operator RL method (see \texttt{operatorRL/src/agent\_os}) with training algorithms from Agent Lightning (\texttt{agentlightning/trainer}, \texttt{agentlightning/runner}).
 
-Third level headings are in small caps,
-flush left and in point size 10. One line space before the third level
-heading and 1/2~line space after the third level heading.
+We now turn to a more specific and practically urgent question: \emph{how does one migrate the dominant GPU-native distributed training framework---NVIDIA Megatron-LM---to a non-NVIDIA accelerator, specifically AWS Trainium2, while preserving or exceeding the original performance?}
 
-\section{Citations, figures, tables, references}
-\label{others}
+This question is not academic. Anthropic's engineering team has demonstrated that production-scale AI training and inference can be executed on Trainium2 via hand-written assembly kernels, bypassing the Neuron compiler's intermediate representations entirely. The strategic motivation, as analyzed in the companion document \emph{Anthropic~WantToDoWhat}, is vendor independence: maintaining optimized kernel stacks across GPU, TPU, and Trainium simultaneously, so that no single hardware supplier holds monopoly leverage.
 
-These instructions apply to everyone, regardless of the formatter being used.
+The analogy to Chapter~3.1's discussion of random number generation is precise. Just as a linear congruential generator $X_{n+1} = (aX_n + c) \bmod m$ appears to produce random sequences but is entirely determined by its parameters, so too does a ``hardware-portable'' training framework \emph{appear} to abstract away hardware differences but is entirely determined by the quality of its lowest-level kernel implementations. The parameters $m$, $a$, $c$ of the congruential generator correspond to the hardware ISA, the kernel optimization strategy, and the compiler/runtime overhead respectively. Change $m$---change the hardware---and the entire sequence changes character, even if the abstract formula remains identical.
 
-\subsection{Citations within the text}
+\subsection{The Megatron Ecosystem: A Primer}
+\label{sec:3.2.megatron}
 
-Citations within the text should be based on the \texttt{natbib} package
-and include the authors' last names and year (with the ``et~al.'' construct
-for more than two authors). When the authors or the publication are
-included in the sentence, the citation should not be in parenthesis using \verb|\citet{}| (as
-in ``See \citet{Hinton06} for more information.''). Otherwise, the citation
-should be in parenthesis using \verb|\citep{}| (as in ``Deep learning shows promise to make progress
-towards AI~\citep{Bengio+chapter2007}.'').
+NVIDIA Megatron-LM, first published in 2019, established the dominant paradigm for distributed large-model training on GPU clusters. Its core contributions form a layered stack:
 
-The corresponding references are to be listed in alphabetical order of
-authors, in the \textsc{References} section. As to the format of the
-references themselves, any style is acceptable as long as it is used
-consistently.
+\medskip
 
-\subsection{Footnotes}
+\noindent\textbf{Layer 1: Parallelism Primitives.} Megatron introduced three fundamental parallelism strategies that compose to fill a GPU cluster: \emph{Tensor Parallelism} (TP), which splits individual weight matrices across devices within a node; \emph{Pipeline Parallelism} (PP), which distributes transformer layers across nodes with interleaved 1F1B scheduling; and \emph{Data Parallelism} (DP), which replicates the model across groups and averages gradients. Megatron-Core (v0.11+) adds \emph{Sequence Parallelism} (SP), \emph{Context Parallelism} (CP), and \emph{Expert Parallelism} (EP) for MoE architectures. Each parallelism primitive requires specific communication patterns---all-reduce for DP, all-gather/reduce-scatter for TP, point-to-point for PP---and these patterns must be mapped onto the target hardware's interconnect topology.
 
-Indicate footnotes with a number\footnote{Sample of the first footnote} in the
-text. Place the footnotes at the bottom of the page on which they appear.
-Precede the footnote with a horizontal rule of 2~inches
-(12~picas).\footnote{Sample of the second footnote}
+\medskip
 
-\subsection{Figures}
+\noindent\textbf{Layer 2: Fused Kernels.} Performance-critical operations---fused attention (FlashAttention variants), fused MLP layers, fused layer normalization with quantization---are implemented as hand-optimized CUDA kernels, often using NVIDIA's cuBLAS, cuDNN, and Transformer Engine libraries. These kernels exploit NVIDIA-specific hardware features: Tensor Cores for mixed-precision GEMM, shared memory for data reuse, warp-level primitives for fast reductions, and the FP8 data path on Hopper/Blackwell architectures.
 
-All artwork must be neat, clean, and legible. Lines should be dark
-enough for purposes of reproduction; art work should not be
-hand-drawn. The figure number and caption always appear after the
-figure. Place one line space before the figure caption, and one line
-space after the figure. The figure caption is lower case (except for
-first word and proper nouns); figures are numbered consecutively.
+\medskip
 
-Make sure the figure caption does not get separated from the figure.
-Leave sufficient space to avoid splitting the figure and figure caption.
+\noindent\textbf{Layer 3: Communication Overlap.} Megatron's highest-performing configurations overlap computation with communication: TP communication with GEMM execution (\texttt{--tp-comm-overlap}), DP gradient reduction with backward computation (\texttt{--overlap-grad-reduce}), and parameter gathering with forward computation (\texttt{--overlap-param-gather}). These overlaps are orchestrated through CUDA streams and events---fundamentally NVIDIA-specific scheduling primitives.
 
-You may use color figures.
-However, it is best for the
-figure captions and the paper body to make sense if the paper is printed
-either in black/white or in color.
-\begin{figure}[h]
+\medskip
+
+\noindent\textbf{Layer 4: Memory Management.} Distributed checkpointing, activation recomputation, CPU offloading, and gradient accumulation are implemented with assumptions about GPU memory hierarchy (HBM $\to$ L2 $\to$ shared memory $\to$ registers) and CUDA's unified memory model.
+
+\bigskip
+
+The critical observation is that \emph{none of these layers are hardware-portable by default}. Layers~2 and~3 are written in CUDA and depend on NVIDIA-specific hardware features. Layers~1 and~4 use NCCL for communication and CUDA APIs for memory management. Migrating Megatron to Trainium2 therefore requires rewriting or replacing every layer.
+
+% ============================================================
+\section{CCCL and the DIA Project: Position in the NVIDIA Fortress}
+\label{sec:3.2.cccl}
+% ============================================================
+
+Before analyzing the migration path \emph{away} from NVIDIA, we must understand what NVIDIA is building to keep developers \emph{inside} its ecosystem. The CUDA Core Compute Libraries (CCCL) and the associated DIA project board (\texttt{github.com/orgs/NVIDIA/projects/6}) are central to this strategy.
+
+\subsection{What CCCL Is}
+
+CCCL unifies three foundational CUDA C++ libraries into a single repository:
+
+\begin{description}
+\item[Thrust] -- A parallel algorithms library modeled on the C++ Standard Library, providing \texttt{thrust::sort}, \texttt{thrust::reduce}, \texttt{thrust::transform}, and similar high-level operations that dispatch to optimized GPU implementations.
+\item[CUB] -- A library of cooperative GPU primitives at the block and warp level: \texttt{cub::BlockReduce}, \texttt{cub::WarpScan}, \texttt{cub::DeviceRadixSort}. These are the building blocks from which higher-level algorithms are constructed.
+\item[libcudacxx] -- A CUDA-compatible implementation of the C++ Standard Library, including \texttt{cuda::std::atomic}, \texttt{cuda::std::tuple}, and memory order primitives that work across host and device code.
+\end{description}
+
+The CCCL 3.0 release (July 2025) modernized the codebase to require C++17 and CUDA Toolkit 12.0+, consolidated APIs from the \texttt{thrust::} and \texttt{cub::} namespaces into \texttt{cuda::} and \texttt{cuda::std::}, and introduced new runtime abstractions (\texttt{cuda::stream}, \texttt{cuda::event}, \texttt{cuda::arch\_traits}) and algorithms (\texttt{cub::DeviceTopK}).
+
+CCCL's stated mission is to be ``the Standard C++ Library for CUDA C++''---providing general-purpose, speed-of-light tools so that CUDA developers can focus on their domain problems. Related projects tracked on the DIA project board include NVBench (benchmarking), cuCollections (GPU hash tables), and stdexec (C++26 senders).
+
+\subsection{Where CCCL Sits in the NVIDIA Stack}
+
+The NVIDIA AI training stack can be visualized as a hierarchy. At the bottom lies the hardware (GPU silicon, NVLink/NVSwitch interconnect). Above it, the CUDA driver and runtime. Then CCCL, providing the fundamental parallel primitives. Above CCCL sit the domain-specific libraries: cuBLAS (GEMM), cuDNN (neural network primitives), Transformer Engine (FP8 transformer layers), NCCL (collective communication). Above these sits Megatron-Core, which composes these libraries into distributed training patterns. And at the top sit user-facing frameworks like NeMo and the NeMo Agent Toolkit.
+
+CCCL is thus the \emph{foundation layer}---the equivalent of \texttt{libc} in the Unix world. It does not directly perform matrix multiplication or attention computation, but it provides the parallel reduction, scan, sort, and atomic operations that every higher-level library depends upon. The DIA project board tracks the ongoing development of this foundation.
+
+\subsection{What CCCL Means for the Anthropic Migration}
+
+From the perspective of migrating to Trainium2, CCCL is \emph{precisely what you cannot use}. CCCL is CUDA-only. Its entire purpose is to make CUDA programming more pleasant---it makes the walls of the NVIDIA fortress more comfortable, but they remain fortress walls.
+
+The analogy from Chapter~3.1 is instructive. Recall DeepSeek's approach of writing PTX (NVIDIA's assembly language) to squeeze maximum performance from NVIDIA GPUs. Using CCCL's NVBench to measure performance, using CUB's block-level primitives to structure kernels---these are activities that occur \emph{entirely within} the NVIDIA ecosystem. They are analogous to optimizing the parameters $a$ and $c$ of a linear congruential generator while keeping the modulus $m$ fixed. You may achieve excellent sequences, but you are still bound to that specific modulus.
+
+Anthropic's approach is to change $m$ itself. When you write Trainium2 assembly, you are operating with a different ISA, a different memory hierarchy (no shared memory in the CUDA sense, no warps, no warp-level primitives), a different execution model (VLIW rather than SIMT). The concepts that CCCL abstracts---warp divergence, bank conflicts, occupancy---simply do not exist on Trainium2. Conversely, Trainium2 has its own concerns: VLIW instruction packing, scratchpad memory management via NKI (Neuron Kernel Interface), and the GPSIMD engine's instruction scheduling.
+
+\begin{quote}
+\emph{The shared territory between CCCL and Trainium2 kernel programming consists only of the most fundamental optimization principles: instruction-level parallelism, memory latency hiding, and pipeline utilization. The specific mechanisms for achieving these goals are entirely different.}
+\end{quote}
+
+This is why the companion document \emph{Anthropic~WantToDoWhat} states that comparing CCCL/NVBench benchmarking methodology with Anthropic's VLIW performance challenge is ``technically strained''---they share a philosophical lineage but inhabit different hardware universes.
+
+% ============================================================
+\section{The Migration Map: Megatron Primitives to Trainium2}
+\label{sec:3.2.migration}
+% ============================================================
+
+We now construct the concrete migration map for each Megatron layer, identifying which NVIDIA-specific components must be replaced and what their Trainium2/Neuron equivalents are (or must be hand-written as).
+
+\subsection{Layer 1: Parallelism $\to$ NxD (Neuron Distributed)}
+\label{sec:3.2.migration.parallelism}
+
+Megatron's parallelism primitives (TP, PP, DP, SP, CP, EP) communicate via NCCL, which implements collective operations optimized for NVLink and InfiniBand. On Trainium2, the equivalent is \texttt{neuronx-distributed} (NxD), which implements the same logical operations---all-reduce, all-gather, reduce-scatter---but mapped onto Trainium2's NeuronLink interconnect and EFA (Elastic Fabric Adapter) networking.
+
+The AWS Neuron team has published a reference adaptation of Megatron-LM for Trainium (\texttt{aws-neuron/aws-neuron-reference-for-megatron-lm}), though this has been deprecated in favor of NxD and the NeMo-Megatron reference (\texttt{aws-neuron/neuronx-nemo-megatron}). The key adaptations are:
+
+\begin{description}
+\item[Device replacement:] CUDA device references are replaced with PyTorch/XLA devices.
+\item[Communication backend:] NCCL is replaced with the PyTorch/XLA distributed backend, which bridges PyTorch's distributed APIs to XLA communication semantics over NeuronLink.
+\item[Data loading:] CUDA-specific data loading is replaced with \texttt{MpDeviceLoader}, which overlaps tracing, compilation, and data batch loading.
+\item[Optimizers:] CUDA fused optimizers (which use custom CUDA kernels internally) are replaced with generic PyTorch alternatives or Neuron-optimized variants.
+\end{description}
+
+\noindent\textbf{Critical limitation:} The Neuron Megatron reference only supports tensor parallelism (degree~8) and data parallelism (up to degree~64). Pipeline parallelism, sequence parallelism, context parallelism, and expert parallelism---all critical for training at Anthropic's scale---require custom implementation. This is precisely the kind of work Anthropic's kernel engineers perform: implementing parallelism strategies at the assembly level where the Neuron compiler's automatic partitioning falls short.
+
+For the Operator RL system (\texttt{operatorRL/src}), this means the agent governance kernel must be aware of which parallelism backend is active. The \texttt{agent\_os} module's policy enforcement and the \texttt{control-plane} scheduler must make hardware-aware decisions about how to partition agent rollout workers across NeuronCores versus GPU SMs.
+
+\subsection{Layer 2: Fused Kernels $\to$ NKI Assembly}
+\label{sec:3.2.migration.kernels}
+
+This is the deepest and most technically demanding layer of the migration. Megatron's performance depends on fused CUDA kernels---FlashAttention, fused GEMMs with bias and activation, fused layer normalization with quantization. On NVIDIA hardware, these are implemented using:
+
+\begin{itemize}
+\item Tensor Core instructions (\texttt{mma.sync}, \texttt{wgmma} on Hopper)
+\item Shared memory for operand staging and accumulation
+\item Warp-level primitives (\texttt{\_\_shfl\_sync}, \texttt{\_\_ballot\_sync})
+\item Register-level optimizations (register tiling, software pipelining)
+\end{itemize}
+
+On Trainium2, \emph{none of these exist}. The equivalent programming model uses the Neuron Kernel Interface (NKI), which as of Neuron SDK 2.27 provides:
+
+\begin{description}
+\item[NKI API:] A Python-like DSL (\texttt{nki.language.*}) for writing kernels that execute on Trainium's scalar, vector, and tensor engines. Operations include \texttt{nki.language.add}, \texttt{nki.language.multiply}, \texttt{nki.language.matmul} (mapped to the on-chip matrix engine), and memory operations for explicit DMA between HBM and on-chip SBUF/PSUM.
+\item[NKI Library:] Pre-optimized kernels for common operations: Attention (CTE and TKG variants), MLP, Output Projection, QKV, and RMSNorm-Quant. These are the Trainium2 equivalents of cuDNN/Transformer Engine fused kernels.
+\item[NKI ISA:] For maximum control, advanced users (such as Anthropic's engineers) can bypass NKI's Python-level API and write instructions directly against the Trainium2 ISA, which is openly documented. This is analogous to writing PTX on NVIDIA hardware, but with a critical difference: the Trainium2 ISA is a \emph{VLIW} (Very Long Instruction Word) architecture, where the programmer (or compiler) explicitly schedules independent operations into each instruction bundle, rather than relying on SIMT hardware to manage thread divergence and reconvergence.
+\end{description}
+
+The migration of each critical kernel type proceeds as follows:
+
+\medskip
+
+\noindent\textbf{GEMM (Matrix Multiply):} On NVIDIA, this is cuBLAS dispatching to Tensor Core \texttt{mma} instructions. On Trainium2, the on-chip matrix multiply engine (MatMul Engine) performs the equivalent operation, but tiling, data layout, and accumulation are managed through explicit SBUF/PSUM orchestration rather than shared memory and Tensor Core abstractions.
+
+\medskip
+
+\noindent\textbf{Attention:} FlashAttention on NVIDIA uses shared memory to tile Q, K, V matrices and compute softmax in a single fused kernel, avoiding materialization of the full attention matrix in HBM. On Trainium2, the NKI Library provides Attention CTE (Compile-Time Execution) and Attention TKG variants that achieve the same algorithmic optimization but map it onto Trainium's scratchpad architecture. Anthropic's engineers have written custom attention assembly that further optimizes these patterns for Claude's specific model dimensions.
+
+\medskip
+
+\noindent\textbf{Communication Primitives (AllReduce, AllGather):} On NVIDIA, NCCL uses GPU-initiated communication via NVLink and InfiniBand RDMA. On Trainium2, collective communication uses the NeuronLink interconnect with DMA engines that can operate independently of the compute engines. This architectural difference enables a different style of compute-communication overlap: rather than using CUDA streams to interleave kernel launches with NCCL calls, Trainium2 can use its DMA engines to perform data transfers \emph{concurrently with} tensor engine computation at the hardware level.
+
+\subsection{Layer 3: Communication Overlap $\to$ DMA Engine Orchestration}
+\label{sec:3.2.migration.overlap}
+
+Megatron's communication overlap patterns (\texttt{--tp-comm-overlap}, \texttt{--overlap-grad-reduce}) rely on CUDA streams and events to schedule independent work concurrently. On Trainium2, the equivalent capability comes from the chip's DMA engines, which can perform HBM-to-HBM and NeuronLink transfers independently of the compute pipeline.
+
+For Agent Lightning's training loop (\texttt{agentlightning/trainer}), this means the \texttt{verl}-based training orchestration must be adapted to exploit Trainium2's DMA-based overlap rather than stream-based overlap. The reward computation (\texttt{agentlightning/reward.py}) and trajectory storage (\texttt{agentlightning/store}) can remain hardware-agnostic, but the gradient synchronization in the training inner loop requires platform-specific code paths.
+
+\subsection{Layer 4: Memory Management $\to$ Neuron Runtime}
+\label{sec:3.2.migration.memory}
+
+Megatron's activation recomputation, gradient accumulation, and distributed checkpointing assume CUDA's memory model. On Trainium2, the Neuron Runtime manages HBM allocation and NeuronCore-local memory. The key differences are:
+
+\begin{description}
+\item[No unified memory:] Trainium2 does not support CUDA-style unified memory or managed memory. All data movement between host and device must be explicit.
+\item[Serialized checkpointing:] Neuron's checkpointing uses serialized tensor save/load with staggered writes to alleviate memory pressure---a different approach from Megatron's distributed checkpoint writer.
+\item[Compilation overhead:] The XLA compilation model means that the first execution of a new graph incurs compilation cost. Neuron's ahead-of-time parallel compilation mitigates this, but it represents a fundamentally different execution model from CUDA's eager kernel launch.
+\end{description}
+
+% ============================================================
+\section{The Agentic RL Integration: Self-Deploying Systems on Heterogeneous Hardware}
+\label{sec:3.2.agenticrl}
+% ============================================================
+
+We now connect the migration analysis to the central theme of this volume: agentic RL systems that self-deploy, gather environment feedback, and self-evolve. The key insight is that an agentic system like Claude Code running autonomously must be capable of \emph{selecting its own hardware backend} based on availability, cost, and performance---and the kernel stack must support this dynamic selection.
+
+\subsection{The Operator RL Architecture on Multi-Platform Kernels}
+
+The Operator RL system (\texttt{operatorRL}) provides the governance layer for autonomous agents. Its kernel architecture (\texttt{src/agent\_os}) acts as an operating system for agents, enforcing policies, managing resources, and scheduling tasks. When integrated with Agent Lightning's training infrastructure (\texttt{agentlightning}), the combined system forms a self-evolving training loop:
+
+\begin{enumerate}
+\item \textbf{Agent rollout} (Agent Lightning \texttt{runner}): The agent executes in a live environment, generating trajectories. The rollout engine must run on \emph{whatever hardware is available}---GPU, TPU, or Trainium2---and the kernel stack must provide equivalent throughput on each.
+
+\item \textbf{Reward computation} (Agent Lightning \texttt{reward.py}): Trajectory rewards are computed, potentially using a separate model (reward model or verifier). This is a standard inference workload that benefits from the same kernel optimizations as the main model.
+
+\item \textbf{Policy update} (Agent Lightning \texttt{trainer}, with \texttt{verl} backend): The agent's policy parameters are updated using RL algorithms. This is a distributed training step that requires all the Megatron-equivalent parallelism primitives discussed in Section~\ref{sec:3.2.migration.parallelism}.
+
+\item \textbf{Self-deployment} (Operator RL \texttt{control-plane}): The updated model is deployed back into the environment. The governance layer ensures safety constraints are maintained during autonomous operation.
+
+\item \textbf{Iteration}: The loop repeats, with the agent continuously improving through interaction with its environment.
+\end{enumerate}
+
+For this loop to function on Trainium2 specifically, each step requires the kernel migrations described in Section~\ref{sec:3.2.migration}. The critical path is Step~3 (policy update), where the full distributed training stack---parallelism, fused kernels, communication overlap, memory management---must operate at near-peak hardware utilization.
+
+\subsection{Why Megatron's Techniques Must Be Migrated, Not Abandoned}
+
+One might ask: why not simply use Trainium2's native Neuron SDK tools (\texttt{neuronx-distributed}, \texttt{neuronx-nemo-megatron}) and avoid the migration complexity? The answer lies in the performance gap between compiler-generated and hand-optimized kernels, which is precisely the theme of Chapter~3.1's discussion of ``apparently optimal'' versus truly optimal kernel configurations.
+
+The Neuron compiler's XLA-based optimization pipeline produces kernels that are ``apparently optimal''---they appear to utilize the hardware efficiently based on the compiler's cost model. But just as Algorithm~K in Chapter~3.1 appeared to produce an inexhaustible supply of convincingly optimal configurations yet immediately converged to a fixed point, compiler-generated kernels often leave significant performance on the table.
+
+Anthropic's engineers have demonstrated that hand-written Trainium2 assembly can substantially outperform compiler-generated code for the specific kernels that dominate training and inference time (GEMM, attention, collective communication). This is the same insight that led DeepSeek to write PTX for NVIDIA GPUs---but applied to a different hardware target.
+
+The moral, echoing Chapter~3.1: \emph{optimal hardware kernel configurations are not produced by randomly chosen methods; certain theory should be used.}
+
+% ============================================================
+\section{Critical Analysis: Engineering Cost and Degenerate Cases}
+\label{sec:3.2.critical}
+% ============================================================
+
+\subsection{The Cartesian Product of Debug Spaces}
+
+Maintaining optimized kernel stacks across three platforms (GPU/TPU/Trainium) simultaneously is extraordinarily expensive. If each platform has $k$ critical kernels and each kernel has $d$ potential failure modes, the total debug space is $O(3kd)$ in the best case (failures are platform-independent) and $O(3 \times k \times d)$ in the worst case (each platform has unique failure modes). In practice, the worst case is closer to reality: a bank conflict on GPU, a tiling inefficiency on TPU, and a VLIW scheduling stall on Trainium are completely different bugs requiring different debugging tools and expertise.
+
+This is the ``Cartesian product'' cost described in \emph{Anthropic~WantToDoWhat}. The justification for bearing this cost is strategic: vendor independence is worth the engineering investment because it provides negotiating leverage and protects against supply chain disruptions.
+
+\subsection{Degenerate Configurations in Cross-Platform Auto-Tuning}
+
+Consider an auto-tuner that searches for optimal kernel configurations across platforms. On each platform, the search space has a different structure: GPU configurations involve tile sizes, thread block dimensions, and shared memory allocation; TPU configurations involve XLA layout assignments and fusion decisions; Trainium configurations involve VLIW instruction packing and scratchpad allocation.
+
+A configuration that achieves 95\% utilization on GPU and TPU provides \emph{no information} about what will achieve 95\% on Trainium---the hardware architectures are sufficiently different that the configuration spaces are essentially independent. This is analogous to Exercise~6 of Chapter~3.1: the function $f(\mathbf{x})$ that maps one configuration to the next is different on each platform, so the cycle structure (period, pre-period length) is also different.
+
+\subsection{Where CCCL's DIA Board Fits---And Does Not Fit}
+
+The CCCL project board (DIA) tracks NVIDIA's efforts to build a ``Standard Library for CUDA C++.'' Within the NVIDIA ecosystem, this is enormously valuable: CCCL provides the vetted, high-performance building blocks (parallel sort, reduce, scan, atomics) that every CUDA developer needs. Projects like NVBench (benchmarking) and cuCollections (GPU data structures) extend this foundation.
+
+For our purposes---building hardware-portable agentic RL systems---CCCL/DIA occupies a specific and limited position:
+
+\begin{enumerate}
+\item \textbf{As reference implementation:} CCCL's algorithms (CUB's \texttt{BlockReduce}, \texttt{DeviceRadixSort}, \texttt{DeviceTopK}) represent the state of the art for GPU-optimized parallel primitives. When writing the Trainium2 equivalent of these algorithms, CCCL serves as the performance benchmark to beat---the ``gold standard'' configuration sequence against which new hardware's kernel quality is measured.
+
+\item \textbf{As non-portable dependency:} Any code that uses CCCL directly is locked to NVIDIA GPUs. For a multi-platform agentic system, CCCL code must be isolated behind a hardware abstraction layer and replaced with platform-specific implementations on TPU and Trainium2.
+
+\item \textbf{As ecosystem anchor:} CCCL is part of NVIDIA's strategy to make the CUDA ecosystem so comprehensive and convenient that developers never want to leave. The DIA board's tracking of features like \texttt{cuda::stream}, \texttt{cuda::event}, and C++26 senders integration shows NVIDIA investing in making CUDA C++ feel like modern C++---a powerful retention mechanism.
+\end{enumerate}
+
+In the language of \emph{Anthropic~WantToDoWhat}: CCCL makes the NVIDIA prison cell more luxurious. It does not help you escape.
+
+% ============================================================
+\section{The Open-Source Counterstrategy: XLA, JAX, and NKI}
+\label{sec:3.2.opensource}
+% ============================================================
+
+AWS's counterstrategy to CCCL is a three-pronged open-source effort:
+
+\begin{description}
+\item[XLA Graph Compiler:] Open-source compiler that lowers high-level computation graphs to hardware-specific instructions. Supports GPU (via CUDA), TPU, and Trainium (via Neuron). This is the ``portable'' layer---but as discussed, portability comes at a performance cost relative to hand-written kernels.
+
+\item[JAX Software Stack:] Functional transformation framework (grad, vmap, pmap, jit) built on XLA. Provides a hardware-agnostic programming model that compiles to any XLA backend. AWS is investing in JAX support on Trainium to attract researchers from the TPU/JAX ecosystem.
+
+\item[NKI (Neuron Kernel Interface):] The ``escape hatch'' for when XLA's auto-generated kernels are insufficient. NKI allows writing Trainium-native kernels in a Python-like DSL, with the option to drop down to ISA-level assembly for maximum control. The NKI Library provides pre-optimized kernels for the most critical operations.
+\end{description}
+
+The parallel to NVIDIA's stack is:
 \begin{center}
-%\framebox[4.0in]{$\;$}
-\fbox{\rule[-.5cm]{0cm}{4cm} \rule[-.5cm]{4cm}{0cm}}
-\end{center}
-\caption{Sample figure caption.}
-\end{figure}
-
-\subsection{Tables}
-
-All tables must be centered, neat, clean and legible. Do not use hand-drawn
-tables. The table number and title always appear before the table. See
-Table~\ref{sample-table}.
-
-Place one line space before the table title, one line space after the table
-title, and one line space after the table. The table title must be lower case
-(except for first word and proper nouns); tables are numbered consecutively.
-
-\begin{table}[t]
-\caption{Sample table title}
-\label{sample-table}
-\begin{center}
-\begin{tabular}{ll}
-\multicolumn{1}{c}{\bf PART}  &\multicolumn{1}{c}{\bf DESCRIPTION}
-\\ \hline \\
-Dendrite         &Input terminal \\
-Axon             &Output terminal \\
-Soma             &Cell body (contains cell nucleus) \\
+\begin{tabular}{@{}ll@{}}
+\toprule
+\textbf{NVIDIA Stack} & \textbf{AWS/Trainium Stack} \\
+\midrule
+CUDA Runtime & Neuron Runtime \\
+CCCL (Thrust/CUB/libcudacxx) & NKI Library (pre-built kernels) \\
+cuBLAS/cuDNN/Transformer Engine & NKI custom kernels / XLA auto-tuned \\
+NCCL & NeuronLink collectives (via NxD) \\
+Megatron-Core & neuronx-distributed (NxD) / NxD Inference \\
+NeMo Framework & neuronx-nemo-megatron (deprecated $\to$ NxDI) \\
+PTX (manual assembly) & Trainium2 ISA (manual assembly) \\
+\bottomrule
 \end{tabular}
 \end{center}
-\end{table}
 
-\section{Default Notation}
+The key asymmetry: NVIDIA's stack is mature, deeply integrated, and supported by millions of developers. AWS's stack is younger, evolving rapidly (the Neuron SDK has released 27+ major versions in quick succession, with breaking changes between versions), and supported by a smaller but growing community. Anthropic's bet is that for the narrow vertical of AI training/inference, a small team of assembly-level experts can achieve equivalent or superior performance on Trainium2, provided they have direct ISA access---which Trainium2's open architecture grants.
 
-In an attempt to encourage standardized notation, we have included the
-notation file from the textbook, \textit{Deep Learning}
-\cite{goodfellow2016deep} available at
-\url{https://github.com/goodfeli/dlbook_notation/}.  Use of this style
-is not required and can be disabled by commenting out
-\texttt{math\_commands.tex}.
+% ============================================================
+\section{Exercises}
+\label{sec:3.2.exercises}
+% ============================================================
 
+\begin{enumerate}
 
-\centerline{\bf Numbers and Arrays}
-\bgroup
-\def\arraystretch{1.5}
-\begin{tabular}{p{1in}p{3.25in}}
-$\displaystyle a$ & A scalar (integer or real)\\
-$\displaystyle \va$ & A vector\\
-$\displaystyle \mA$ & A matrix\\
-$\displaystyle \tA$ & A tensor\\
-$\displaystyle \mI_n$ & Identity matrix with $n$ rows and $n$ columns\\
-$\displaystyle \mI$ & Identity matrix with dimensionality implied by context\\
-$\displaystyle \ve^{(i)}$ & Standard basis vector $[0,\dots,0,1,0,\dots,0]$ with a 1 at position $i$\\
-$\displaystyle \text{diag}(\va)$ & A square, diagonal matrix with diagonal entries given by $\va$\\
-$\displaystyle \ra$ & A scalar random variable\\
-$\displaystyle \rva$ & A vector-valued random variable\\
-$\displaystyle \rmA$ & A matrix-valued random variable\\
-\end{tabular}
-\egroup
-\vspace{0.25cm}
+\item[\textbf{1.}] [15] Compare the memory hierarchy of an NVIDIA H100 GPU (HBM3 $\to$ L2 $\to$ shared memory $\to$ registers) with that of a Trainium2 chip (HBM $\to$ SBUF/PSUM scratchpad $\to$ engine-local registers). For a GEMM kernel with tile size $128 \times 128$ in BF16, compute the minimum data movement in bytes for each platform, assuming optimal tiling.
 
-\centerline{\bf Sets and Graphs}
-\bgroup
-\def\arraystretch{1.5}
+\item[\textbf{2.}] [$M20$] Megatron's tensor parallelism performs $2$ all-reduce operations per transformer layer in the forward pass and $2$ in the backward pass. If the model has $L$ layers, the hidden dimension is $H$, and the sequence length is $S$, express the total communication volume (in bytes, assuming BF16) as a function of $L$, $H$, $S$, and the tensor parallelism degree $T$. Under what conditions does the computation-to-communication ratio favor Trainium2's NeuronLink (800 GB/s bidirectional) over NVIDIA's NVLink (900 GB/s on H100)?
 
-\begin{tabular}{p{1.25in}p{3.25in}}
-$\displaystyle \sA$ & A set\\
-$\displaystyle \R$ & The set of real numbers \\
-$\displaystyle \{0, 1\}$ & The set containing 0 and 1 \\
-$\displaystyle \{0, 1, \dots, n \}$ & The set of all integers between $0$ and $n$\\
-$\displaystyle [a, b]$ & The real interval including $a$ and $b$\\
-$\displaystyle (a, b]$ & The real interval excluding $a$ but including $b$\\
-$\displaystyle \sA \backslash \sB$ & Set subtraction, i.e., the set containing the elements of $\sA$ that are not in $\sB$\\
-$\displaystyle \gG$ & A graph\\
-$\displaystyle \parents_\gG(\ervx_i)$ & The parents of $\ervx_i$ in $\gG$
-\end{tabular}
-\vspace{0.25cm}
+\item[\textbf{3.}] [25] The NKI Library provides optimized attention kernels in two variants: CTE (Compile-Time Execution) and TKG. Describe the algorithmic difference between these variants and explain why a single universal attention kernel cannot achieve peak utilization on Trainium2's VLIW architecture for all sequence lengths. (Hint: consider the relationship between the VLIW instruction bundle width and the number of independent operations available at different phases of the attention computation.)
 
+\item[\textbf{4.}] [$M30$] Design a hardware abstraction layer for the Operator RL system (\texttt{operatorRL/src/agent\_os}) that dispatches collective communication operations to NCCL (GPU), XLA collectives (TPU), or NxD (Trainium2) based on a runtime hardware detection mechanism. Your design should support the ``hot migration'' scenario where an agentic rollout worker is dynamically reassigned from one accelerator type to another mid-episode. Analyze the state synchronization overhead in terms of the number of bytes that must be transferred.
 
-\centerline{\bf Indexing}
-\bgroup
-\def\arraystretch{1.5}
+\item[\textbf{5.}] [20] In the Agent Lightning training loop (\texttt{agentlightning/trainer}), the gradient synchronization step uses all-reduce across data-parallel workers. If the Trainium2 cluster has a 2-level topology (NeuronLink within a node, EFA across nodes), design a hierarchical all-reduce that minimizes the total communication time. Express the time in terms of the message size $M$, the number of NeuronCores per node $N$, the number of nodes $P$, the NeuronLink bandwidth $\beta_1$, and the EFA bandwidth $\beta_2$. Compare with the ring all-reduce algorithm used by NCCL on a flat NVLink topology.
 
-\begin{tabular}{p{1.25in}p{3.25in}}
-$\displaystyle \eva_i$ & Element $i$ of vector $\va$, with indexing starting at 1 \\
-$\displaystyle \eva_{-i}$ & All elements of vector $\va$ except for element $i$ \\
-$\displaystyle \emA_{i,j}$ & Element $i, j$ of matrix $\mA$ \\
-$\displaystyle \mA_{i, :}$ & Row $i$ of matrix $\mA$ \\
-$\displaystyle \mA_{:, i}$ & Column $i$ of matrix $\mA$ \\
-$\displaystyle \etA_{i, j, k}$ & Element $(i, j, k)$ of a 3-D tensor $\tA$\\
-$\displaystyle \tA_{:, :, i}$ & 2-D slice of a 3-D tensor\\
-$\displaystyle \erva_i$ & Element $i$ of the random vector $\rva$ \\
-\end{tabular}
-\egroup
-\vspace{0.25cm}
+\item[\textbf{6.}] [$M22$] (Relates to Chapter~3.1, Exercise~6) Consider a kernel auto-tuner that searches for configurations on Trainium2 using the recurrence $\mathbf{X}_{n+1} = f(\mathbf{X}_n)$ where $\mathbf{X}$ is a vector of tiling parameters and $f$ is a function that evaluates the kernel's utilization and proposes a new configuration. Using the theory of ultimately periodic sequences from Chapter~3.1, prove that the auto-tuner must eventually cycle, and design an algorithm (analogous to Floyd's or Brent's cycle detection) that detects this degeneration using $O(1)$ additional memory.
 
+\item[\textbf{7.}] [40] Implement a complete, working NKI kernel for fused RMSNorm with BF16-to-FP8 quantization on Trainium2, and compare its throughput against the NKI Library's \texttt{nkilib.rmsnorm\_quant} kernel for hidden dimensions $H \in \{4096, 8192, 16384\}$. Discuss any performance gaps in terms of instruction scheduling efficiency (VLIW slot utilization) and memory access patterns (SBUF bank conflicts, if applicable).
 
-\centerline{\bf Calculus}
-\bgroup
-\def\arraystretch{1.5}
-\begin{tabular}{p{1.25in}p{3.25in}}
-% NOTE: the [2ex] on the next line adds extra height to that row of the table.
-% Without that command, the fraction on the first line is too tall and collides
-% with the fraction on the second line.
-$\displaystyle\frac{d y} {d x}$ & Derivative of $y$ with respect to $x$\\ [2ex]
-$\displaystyle \frac{\partial y} {\partial x} $ & Partial derivative of $y$ with respect to $x$ \\
-$\displaystyle \nabla_\vx y $ & Gradient of $y$ with respect to $\vx$ \\
-$\displaystyle \nabla_\mX y $ & Matrix derivatives of $y$ with respect to $\mX$ \\
-$\displaystyle \nabla_\tX y $ & Tensor containing derivatives of $y$ with respect to $\tX$ \\
-$\displaystyle \frac{\partial f}{\partial \vx} $ & Jacobian matrix $\mJ \in \R^{m\times n}$ of $f: \R^n \rightarrow \R^m$\\
-$\displaystyle \nabla_\vx^2 f(\vx)\text{ or }\mH( f)(\vx)$ & The Hessian matrix of $f$ at input point $\vx$\\
-$\displaystyle \int f(\vx) d\vx $ & Definite integral over the entire domain of $\vx$ \\
-$\displaystyle \int_\sS f(\vx) d\vx$ & Definite integral with respect to $\vx$ over the set $\sS$ \\
-\end{tabular}
-\egroup
-\vspace{0.25cm}
+\item[\textbf{8.}] [$M25$] The companion document \emph{Anthropic~WantToDoWhat} states that Anthropic is ``co-designing next-generation Trainium hardware'' with Annapurna Labs. Formalize this hardware-software co-design as an optimization problem: given a set of critical kernel shapes $\mathcal{K} = \{k_1, \ldots, k_n\}$ (GEMM dimensions, attention head configurations, etc.) and a set of hardware parameters $\mathcal{H} = \{h_1, \ldots, h_m\}$ (matrix engine width, SBUF size, number of compute engines, etc.), define an objective function that measures the aggregate throughput across all kernels and analyze its convexity properties.
 
-\centerline{\bf Probability and Information Theory}
-\bgroup
-\def\arraystretch{1.5}
-\begin{tabular}{p{1.25in}p{3.25in}}
-$\displaystyle P(\ra)$ & A probability distribution over a discrete variable\\
-$\displaystyle p(\ra)$ & A probability distribution over a continuous variable, or over
-a variable whose type has not been specified\\
-$\displaystyle \ra \sim P$ & Random variable $\ra$ has distribution $P$\\% so thing on left of \sim should always be a random variable, with name beginning with \r
-$\displaystyle  \E_{\rx\sim P} [ f(x) ]\text{ or } \E f(x)$ & Expectation of $f(x)$ with respect to $P(\rx)$ \\
-$\displaystyle \Var(f(x)) $ &  Variance of $f(x)$ under $P(\rx)$ \\
-$\displaystyle \Cov(f(x),g(x)) $ & Covariance of $f(x)$ and $g(x)$ under $P(\rx)$\\
-$\displaystyle H(\rx) $ & Shannon entropy of the random variable $\rx$\\
-$\displaystyle \KL ( P \Vert Q ) $ & Kullback-Leibler divergence of P and Q \\
-$\displaystyle \mathcal{N} ( \vx ; \vmu , \mSigma)$ & Gaussian distribution %
-over $\vx$ with mean $\vmu$ and covariance $\mSigma$ \\
-\end{tabular}
-\egroup
-\vspace{0.25cm}
+\end{enumerate}
 
-\centerline{\bf Functions}
-\bgroup
-\def\arraystretch{1.5}
-\begin{tabular}{p{1.25in}p{3.25in}}
-$\displaystyle f: \sA \rightarrow \sB$ & The function $f$ with domain $\sA$ and range $\sB$\\
-$\displaystyle f \circ g $ & Composition of the functions $f$ and $g$ \\
-  $\displaystyle f(\vx ; \vtheta) $ & A function of $\vx$ parametrized by $\vtheta$.
-  (Sometimes we write $f(\vx)$ and omit the argument $\vtheta$ to lighten notation) \\
-$\displaystyle \log x$ & Natural logarithm of $x$ \\
-$\displaystyle \sigma(x)$ & Logistic sigmoid, $\displaystyle \frac{1} {1 + \exp(-x)}$ \\
-$\displaystyle \zeta(x)$ & Softplus, $\log(1 + \exp(x))$ \\
-$\displaystyle || \vx ||_p $ & $\normlp$ norm of $\vx$ \\
-$\displaystyle || \vx || $ & $\normltwo$ norm of $\vx$ \\
-$\displaystyle x^+$ & Positive part of $x$, i.e., $\max(0,x)$\\
-$\displaystyle \1_\mathrm{condition}$ & is 1 if the condition is true, 0 otherwise\\
-\end{tabular}
-\egroup
-\vspace{0.25cm}
+% ============================================================
 
-
-
-\section{Final instructions}
-Do not change any aspects of the formatting parameters in the style files.
-In particular, do not modify the width or length of the rectangle the text
-should fit into, and do not change font sizes (except perhaps in the
-\textsc{References} section; see below). Please note that pages should be
-numbered.
-
-\section{Preparing PostScript or PDF files}
-
-Please prepare PostScript or PDF files with paper size ``US Letter'', and
-not, for example, ``A4''. The -t
-letter option on dvips will produce US Letter files.
-
-Consider directly generating PDF files using \verb+pdflatex+
-(especially if you are a MiKTeX user).
-PDF figures must be substituted for EPS figures, however.
-
-Otherwise, please generate your PostScript and PDF files with the following commands:
-\begin{verbatim}
-dvips mypaper.dvi -t letter -Ppdf -G0 -o mypaper.ps
-ps2pdf mypaper.ps mypaper.pdf
-\end{verbatim}
-
-\subsection{Margins in LaTeX}
-
-Most of the margin problems come from figures positioned by hand using
-\verb+\special+ or other commands. We suggest using the command
-\verb+\includegraphics+
-from the graphicx package. Always specify the figure width as a multiple of
-the line width as in the example below using .eps graphics
-\begin{verbatim}
-   \usepackage[dvips]{graphicx} ...
-   \includegraphics[width=0.8\linewidth]{myfile.eps}
-\end{verbatim}
-or % Apr 2009 addition
-\begin{verbatim}
-   \usepackage[pdftex]{graphicx} ...
-   \includegraphics[width=0.8\linewidth]{myfile.pdf}
-\end{verbatim}
-for .pdf graphics.
-See section~4.4 in the graphics bundle documentation (\url{http://www.ctan.org/tex-archive/macros/latex/required/graphics/grfguide.ps})
-
-A number of width problems arise when LaTeX cannot properly hyphenate a
-line. Please give LaTeX hyphenation hints using the \verb+\-+ command.
-
-\subsubsection*{Author Contributions}
-If you'd like to, you may include  a section for author contributions as is done
-in many journals. This is optional and at the discretion of the authors.
-
-\subsubsection*{Acknowledgments}
-Use unnumbered third level headings for the acknowledgments. All
-acknowledgments, including those to funding agencies, go at the end of the paper.
-
-
-\bibliography{iclr2026_conference}
-\bibliographystyle{iclr2026_conference}
-
-\appendix
 \section{Appendix}
 You may include other additional sections here.
 
