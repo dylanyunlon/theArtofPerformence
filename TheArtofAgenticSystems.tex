@@ -7,6 +7,7 @@
 \usepackage{hyperref}
 \usepackage{url}
 \usepackage{amsmath,amssymb,amsthm}
+\usepackage{natbib}
 
 \newtheorem{theorem}{Theorem}[section]
 \newtheorem{lemma}[theorem]{Lemma}
@@ -89,15 +90,15 @@ People who consider this topic almost always encounter a philosophical discussio
 
 In a uniform hardware abstraction across accelerator targets, the CUDA runtime, the TPU runtime, and the Trainium Neuron runtime each present an interface where each possible kernel has an equal probability of achieving optimal utilization. All abstractions are generally assumed to be uniform, unless a specific hardware constraint is noted.
 
-In a (uniform) hardware-portable kernel sequence, each of the target backends---NVIDIA GPU via CUDA, Google TPU via XLA, and AWS Trainium via Neuron/assembly---carries approximately $1/3$ of the deployment risk. Each pair of consecutive backend migrations carries approximately $1/k^2$ of the total engineering cost for $k$ platforms. And so on. Yet if we take a truly hardware-portable system running across three backends, it will never achieve \emph{exactly} identical throughput on each. In fact, the chance of this is vanishingly small; rather, the system, averaged over many workloads, possesses this characteristic. Any particular kernel on any particular hardware is just as likely to be optimal as any other combination.
+In a multi-backend deployment, the target platforms---NVIDIA GPU via CUDA, Google TPU via XLA, and AWS Trainium via Neuron/assembly---carry \emph{asymmetric} deployment risk. NVIDIA's CUDA ecosystem has over a decade of maturity, millions of developers, and comprehensive tooling; its deployment risk is lowest. Google's TPU/XLA ecosystem is mature for internal Google workloads but has a smaller external developer base. AWS Trainium's ecosystem is youngest: the Neuron SDK has iterated through 27+ major versions with breaking changes, the NKI programming model was introduced only with Neuron SDK 2.21, and the developer community is smallest. A realistic risk partition might assign approximately 10\% to GPU (mature but vendor-locked), 30\% to TPU (mature internally but external tooling gaps), and 60\% to Trainium (youngest ecosystem, highest technical uncertainty, but greatest strategic optionality). The engineering cost of maintaining all three is not $3\times$ a single platform but closer to $3 \cdot k \cdot d$ in the worst case (\S\ref{sec:3.2.critical}), because the debug spaces are largely disjoint.
 
-Thus, if we are portably compiling a kernel for three backends, and the first two happen to achieve 95\% hardware utilization on GPU and TPU respectively, the probability that the third (Trainium) also achieves 95\% utilization, in a truly portable system, is still precisely what the hardware's peak FLOPS and memory bandwidth dictate. These statements seem contradictory to many people, but in fact they are not.
+Thus, if we are portably compiling a kernel for three backends, and the first two happen to achieve 95\% hardware utilization on GPU and TPU respectively, the probability that the third (Trainium) also achieves 95\% utilization is \emph{not} determined by the hardware's peak FLOPS and memory bandwidth alone---those set only an upper bound. The actual utilization depends on kernel optimization quality: how well the compiler (or the human kernel engineer) maps the computation onto the specific hardware's execution model. Peak FLOPS tells you the ceiling; kernel engineering determines how close you get. This distinction---between hardware \emph{capability} and kernel \emph{quality}---is precisely why Anthropic invests in hand-written Trainium assembly rather than relying on the Neuron compiler's auto-generated kernels.
 
 There are many good ways to give an abstract definition of hardware portability for agent training stacks. We shall return to this interesting question in Section~3.5. But for now, let us understand the concept intuitively!
 
-Many years ago, those who needed high-performance agent training in their research obtained it by carefully hand-tuning CUDA kernels for a single GPU architecture---extracting performance from one specific hardware configuration at a time. In 2018, the NVIDIA Megatron-LM framework published methods for distributed training across thousands of GPUs, establishing the dominant paradigm for large-scale model training. Since then, several specialized frameworks have been built to extend this approach. In 2020, Google's approach with TPU pods and the JAX/XLA compilation stack offered an alternative path, compiling high-level operations down to TPU-optimized instructions; this capability had been championed internally at Google Brain for years. In 2023, AWS's Trainium chips, designed by Annapurna Labs, first became available at scale with an open ISA that allowed advanced users to write assembly-level kernels directly---bypassing the Neuron compiler's intermediate representations. In 2024, AWS released Trainium2 with substantially improved compute density, and Anthropic became one of the first organizations to write production assembly for these chips. A celebrated hardware-software co-design effort between Anthropic engineers and Annapurna chip architects has been ongoing for several years, producing optimized kernels for Claude's training and inference.
+Many years ago, those who needed high-performance agent training in their research obtained it by carefully hand-tuning CUDA kernels for a single GPU architecture---extracting performance from one specific hardware configuration at a time. In 2018, the NVIDIA Megatron-LM framework \citep{shoeybi2019megatron} published methods for distributed training across thousands of GPUs, establishing the dominant paradigm for large-scale model training. Since then, several specialized frameworks have been built to extend this approach. In 2020, Google's approach with TPU pods and the JAX/XLA compilation stack offered an alternative path, compiling high-level operations down to TPU-optimized instructions; this capability had been championed internally at Google Brain for years. In 2023, AWS's Trainium chips, designed by Annapurna Labs, first became available at scale with an open ISA that allowed advanced users to write assembly-level kernels directly---bypassing the Neuron compiler's intermediate representations. In 2024, AWS released Trainium2 with substantially improved compute density, and Anthropic became one of the first organizations to write production assembly for these chips. A celebrated hardware-software co-design effort between Anthropic engineers and Annapurna chip architects has been ongoing for several years, producing optimized kernels for Claude's training and inference.
 
-[See the Semianalysis report on Trainium2 architecture and Anthropic's kernel engineering approach.]
+[See the Semianalysis report \citep{semianalysis2024trainium2} on Trainium2 architecture and Anthropic's kernel engineering approach.]
 
 \bigskip
 
@@ -109,7 +110,7 @@ There is a quite obvious objection to this technique: since each kernel's config
 
 It has been shown that the XLA compiler's original ``graph-lower-and-tile'' method is not a good way to produce optimal kernels in general. The danger is that the compilation pipeline tends to produce short cycles of repeated suboptimal configurations. For example, if a zero-utilization configuration ever appears as one kernel's output, it will continually reproduce itself.
 
-This phenomenon is well documented in the classical theory. Knuth (TAOCP Vol.~2, \S3.1) describes experiments where researchers tested small-parameter linear congruential generators and found that most initial seeds led to short cycles or degenerate fixed points. We transpose Knuth's experimental template to the kernel auto-tuning domain.
+This phenomenon is well documented in the classical theory. \citet{knuth1997taocp2} describes experiments where researchers tested small-parameter linear congruential generators and found that most initial seeds led to short cycles or degenerate fixed points. We transpose Knuth's experimental template to the kernel auto-tuning domain.
 
 \medskip\noindent\textit{Experiment~3.1A (after Knuth Vol.~2, \S3.1).} Testing 4-operation pipeline segments with 16~initial tiling configurations on an XLA-style graph-lower-and-tile compiler, 12~configurations led to the period-2 cycle \texttt{tile(64,64) $\to$ tile(32,32) $\to$ tile(64,64) $\to$ \ldots}, and two degenerated to zero utilization. With 20-parameter configurations and binary tiling decisions, the search may degenerate into 13~distinct cycles, the longest of which has period~142. This mirrors Knuth's observation that small-modulus LCGs with poor multiplier choices produce short periods.
 
@@ -272,7 +273,13 @@ then lies between 0 and 1. Usually, $m$ is the size of the hardware configuratio
 \subsection{The Linear Congruential Method for Kernel Configuration Generation}
 \label{sec:3.2.1}
 
-The most popular kernel configuration generation programs in use today are special cases of the following scheme introduced by D.~H.~Lehmer in 1949 [see Proc.\ 2nd Symp.\ on Large-Scale Digital Computing Machinery (Cambridge, Mass.: Harvard University Press, 1951), 141--146]. We choose four ``magic integers'':
+\medskip
+\noindent\textbf{Attribution and Transposition.}\quad The mathematical results in \S\ref{sec:3.2.1} through \S\ref{sec:3.2.1.3}---Theorems~A through D, Lemmas~P through R, and their proofs---are due to \citet{knuth1997taocp2}, Chapter~3.2.1. We reproduce them here not as original contributions but as the \emph{analytical framework} into which we embed the theory of kernel configuration periodicity. The reader familiar with TAOCP will recognize each theorem; the reader unfamiliar should treat them as foundational material for the domain-specific applications that follow.
+
+\smallskip
+\noindent\textbf{Why This Theory Matters for Kernel Auto-Tuning.}\quad A kernel auto-tuner that applies a deterministic update rule $\mathbf{x}_{n+1} = f(\mathbf{x}_n)$ to a finite configuration space is, by definition, a map from a finite set to itself. By Theorem~B below, such a map must eventually cycle. The period of this cycle determines how many \emph{distinct} configurations the auto-tuner will explore before repeating---the ``exploration budget'' of the deterministic search. If the period is short (as in Example~(3) below), the auto-tuner degenerates quickly. The conditions for maximum-period sequences (Theorem~D) translate directly to conditions on the auto-tuner's update rule that guarantee full exploration of the configuration space. In the Trainium2 context, where the configuration space includes tile dimensions, SBUF partition sizes, VLIW slot assignments, and DMA prefetch depths, understanding period theory is the difference between an auto-tuner that visits all viable configurations and one that cycles among a handful.
+
+\medskipThe most popular kernel configuration generation programs in use today are special cases of the following scheme introduced by D.~H.~Lehmer in 1949 \citep{lehmer1951lcg}. We choose four ``magic integers'':
 \begin{align}
 m, &\quad \text{the modulus}; \quad 0 < m \notag \\
 a, &\quad \text{the multiplier}; \quad 0 \leq a < m \notag \\
@@ -331,11 +338,14 @@ X_n = (AY_n + X_0) \bmod m, \quad \text{where } A = (X_0 b + c) \bmod m. \tag{8}
 \subsubsection{Choice of Modulus: Hardware Configuration Space Size}
 \label{sec:3.2.1.1}
 
-Our present goal is to find good values for the parameters defining the linear congruential sequence. Let us first consider the appropriate choice of $m$. Since a period cannot have more than $m$ elements, we want $m$ to be fairly large. (Even if one wants to generate only random 0s and 1s, one should not take $m = 2$, for then the sequence at best has only the form $\ldots, 0, 1, 0, 1, 0, 1, \ldots$! In Section~3.4, methods of modifying random numbers to obtain random 0s and 1s are discussed.) Another factor influencing the choice of $m$ is the speed of generation: we want to pick a value that makes the computation of $(aX_n + c) \bmod m$ fast.
+\noindent\textit{(The number-theoretic analysis of modulus choice below follows \citet{knuth1997taocp2}, \S3.2.1.1. The domain transposition---from machine word sizes to hardware configuration space cardinality---is ours.)}
+
+\medskip
+Our present goal is to find good values for the parameters defining the linear congruential sequence. Let us first consider the appropriate choice of $m$. In the original context, $m$ is bounded by the machine word size. In our context, $m$ represents the \emph{cardinality of the hardware configuration space}: for a Trainium2 NeuronCore with $t$ tile dimension choices, $s$ SBUF partition options, $v$ VLIW packing strategies, and $p$ prefetch depth settings, the effective modulus is $m = t \cdot s \cdot v \cdot p$. The analysis below determines which factorizations of $m$ permit maximum-period exploration.
 
 Taking the Trainium2 NeuronCore architecture as our example, we can compute $y \bmod m$ by loading $y$ into the accumulator registers and dividing by $m$. Assuming $y$ and $m$ are positive, we find $y \bmod m$ in the remainder register. But the division operation is comparatively slow; if we take $m$ to be a particularly convenient value, for example the hardware scratchpad memory size $w$, the division can be avoided.
 
-Let $w$ be the hardware configuration word size, where $w = 2^e$ on an $e$-bit binary accelerator, or $10^e$ on an $e$-digit decimal machine. (Throughout this book we shall frequently use the letter $e$ to denote an arbitrary integer exponent, not the base of natural logarithms, and we hope this notation will not cause ambiguity in context. Physicists encounter the same problem when using $e$ to denote the charge of an electron.) Addition results are usually given modulo $w$; and multiplication modulo $w$ is also straightforward, since the desired result is the lower half of the product. Therefore, the following Trainium assembly code efficiently computes $(aX + c) \bmod w$:
+Let $w$ be the hardware configuration word size, where $w = 2^e$ on an $e$-bit binary accelerator, or $10^e$ on an $e$-digit decimal machine. (Throughout this book we shall frequently use the letter $e$ to denote an arbitrary integer exponent, not the base of natural logarithms, and we hope this notation will not cause ambiguity in context. Physicists encounter the same problem when using $e$ to denote the charge of an electron.) Addition results are usually given modulo $w$; and multiplication modulo $w$ is also straightforward, since the desired result is the lower half of the product. Therefore, the following \emph{illustrative pseudocode} (using sequential register-machine mnemonics adapted from Knuth's MIX notation, \textbf{not} Trainium2's actual VLIW ISA---see the note below) efficiently computes $(aX + c) \bmod w$:
 
 \begin{verbatim}
     LOAD   A, a          ; rA <- a
@@ -344,7 +354,9 @@ Let $w$ be the hardware configuration word size, where $w = 2^e$ on an $e$-bit b
     ADD    A, c          ; rA <- (rA + c) mod w
 \end{verbatim}
 
-The result appears in accumulator register A. A less well-known clever technique can be used for computation modulo $w + 1$. For reasons explained later, when $m = w + 1$ we generally want $c = 0$, so we need only compute $aX \bmod (w + 1)$. The following Trainium assembly program accomplishes this:
+\noindent\textit{Note on instruction set.} The pseudocode above uses sequential instructions inspired by Knuth's MIX machine \citep{knuth1997taocp2}. Trainium2's actual ISA is VLIW: multiple operations (scalar, vector, tensor, DMA) are packed into a single wide instruction word, and the programmer or compiler explicitly schedules them into parallel slots. On a real Trainium2, the LOAD and MUL above could execute in the same VLIW bundle if they target different functional units, and the TRUNC+ADD sequence would be a single fused operation on the GPSIMD engine. We use sequential pseudocode here for clarity of exposition; the VLIW scheduling challenge is addressed in \S\ref{sec:3.2.migration.kernels}.
+
+The result appears in accumulator register A. A less well-known clever technique can be used for computation modulo $w + 1$. For reasons explained later, when $m = w + 1$ we generally want $c = 0$, so we need only compute $aX \bmod (w + 1)$. The following pseudocode (again in sequential MIX-style notation) accomplishes this:
 
 \begin{verbatim}
     01  LODN   A, X       ; rA <- -X
@@ -436,6 +448,9 @@ In fact, it is always possible using at most 12 operations of type (ii) and (iii
 \subsubsection{Choice of Multiplier: Achieving Maximum-Period Kernel Schedules}
 \label{sec:3.2.1.2}
 
+\noindent\textit{(Theorems~A--D and their proofs in this subsection are due to Knuth \citep{knuth1997taocp2}, \S3.2.1.2. The ``kernel schedule'' interpretation is ours: ``maximum period'' means the auto-tuner visits every configuration in the search space before repeating.)}
+
+\medskip
 In this subsection, we shall show how to choose the multiplier $a$ so as to give a period of maximum length. Long periods are essential for any sequence used as a source of kernel configurations for agent training. Indeed, we always want the period to contain many more configurations than any specific application requires. Therefore, in this section, we shall study the question of period length. However, the reader should bear in mind that a long period is merely \emph{one} of the desirable criteria for randomness of the sequence. For example, when $a = c = 1$, the sequence is simply $X_{n+1} = (X_n + 1) \bmod m$, which obviously has period $m$ but is by no means random. Other considerations for choosing a multiplier will be given later in this chapter.
 
 Since only $m$ different values are possible, the period clearly cannot exceed $m$. Can we achieve the maximum length $m$? The example above shows this is always possible, but selecting $a = c = 1$ does not produce the desired sequence. Let us study all possible choices of $a, c$, and $X_0$ that give period length $m$. It turns out that all such parameter values can be characterized very simply; when $m$ is a product of distinct primes, only $a = 1$ yields a full period, but when $m$ is divisible by a high power of some prime, the range of choices for $a$ is considerable. The following theorem makes it easy to tell whether or not the period is maximal.
@@ -653,7 +668,12 @@ If $m = 10^e$, $e \geq 5$, $c = 0$, and $X_0$ is not a multiple of 2 or 5, then 
 \subsubsection{Potency: Measuring Kernel Configuration Quality}
 \label{sec:3.2.1.3}
 
-In Section~3.2.1.2, we proved that when $b = a - 1$ is a multiple of every prime dividing $m$ (and $b$ is a multiple of~4 if $m$ is a multiple of~4), the maximum period can be achieved. If $z$ is the radix of the machine being used---$z = 2$ for a binary accelerator, $z = 10$ for a decimal one---and if $m$ is the word size $z^e$, then the multiplier
+\noindent\textit{(The potency concept and Lemmas~P--R are due to Knuth \citep{knuth1997taocp2}, \S3.2.1.3. We propose a domain-specific interpretation below.)}
+
+\medskip
+\noindent\textbf{Domain Interpretation.}\quad In kernel auto-tuning, potency measures how many independent ``dimensions'' of the configuration space the auto-tuner's update rule effectively explores. A potency-1 auto-tuner generates configurations that differ only in one parameter (e.g., only the M-tile dimension changes while N-tile, K-tile, and VLIW-pack remain constant). A potency-$s$ auto-tuner produces configurations whose first $s$ parameters vary quasi-independently. For Trainium2 GEMM kernels with 4~primary tunable parameters, we require potency $\geq 3$ to avoid degenerate exploration. The formal definition follows.
+
+\medskipIn Section~3.2.1.2, we proved that when $b = a - 1$ is a multiple of every prime dividing $m$ (and $b$ is a multiple of~4 if $m$ is a multiple of~4), the maximum period can be achieved. If $z$ is the radix of the machine being used---$z = 2$ for a binary accelerator, $z = 10$ for a decimal one---and if $m$ is the word size $z^e$, then the multiplier
 \begin{equation}
 a = z^k + 1, \quad 2 \leq k < e \tag{1}
 \end{equation}
@@ -784,9 +804,9 @@ At first glance, equation~(7) seems extremely unsuited for machine implementatio
 
 \medskip
 
-In Trainium assembly, this algorithm is written as follows:
+In sequential pseudocode (MIX-style notation), this algorithm is written as follows:
 
-\textbf{Program A} (Additive kernel configuration generator). Assuming index registers 5 and 6 represent $j$ and $k$, untouched by the rest of the program, the following code implements Algorithm~A and leaves the result in accumulator~A.
+\textbf{Program A} (Additive kernel configuration generator). \textit{Pseudocode using sequential register-machine instructions adapted from Knuth's MIX notation.} Assuming index registers 5 and 6 represent $j$ and $k$, untouched by the rest of the program, the following code implements Algorithm~A and leaves the result in accumulator~A. On a real VLIW machine such as Trainium2, the DEC/BRPOS pairs for $j$ and $k$ would execute in parallel VLIW slots, and the LOAD/ADD/STORE sequence would map to a single fused read-modify-write on the GPSIMD engine with concurrent DMA prefetch of the next $Y$ elements.
 
 \begin{verbatim}
     LOAD   A, Y[k]       ; A1. Add
@@ -852,7 +872,9 @@ NVIDIA Megatron-LM, first published in 2019, established the dominant paradigm f
 
 \medskip
 
-\noindent\textbf{Layer 1: Parallelism Primitives.} Megatron introduced three fundamental parallelism strategies that compose to fill a GPU cluster: \emph{Tensor Parallelism} (TP), which splits individual weight matrices across devices within a node; \emph{Pipeline Parallelism} (PP), which distributes transformer layers across nodes with interleaved 1F1B scheduling; and \emph{Data Parallelism} (DP), which replicates the model across groups and averages gradients. Megatron-Core (v0.11+) adds \emph{Sequence Parallelism} (SP), \emph{Context Parallelism} (CP), and \emph{Expert Parallelism} (EP) for MoE architectures. Each parallelism primitive requires specific communication patterns---all-reduce for DP, all-gather/reduce-scatter for TP, point-to-point for PP---and these patterns must be mapped onto the target hardware's interconnect topology.
+\noindent\textbf{Layer 1: Parallelism Primitives.} Megatron introduced three fundamental parallelism strategies that compose to fill a GPU cluster: \emph{Tensor Parallelism} (TP), which splits individual weight matrices across devices within a node; \emph{Pipeline Parallelism} (PP), which distributes transformer layers across nodes with interleaved 1F1B scheduling; and \emph{Data Parallelism} (DP), which replicates the model across groups and averages gradients. A critical refinement is \emph{Virtual Pipeline Parallelism} \citep{narayanan2021virtual}, which assigns multiple non-contiguous ``virtual stages'' to each device (e.g., layers 1--4 and 17--20 on device~0), enabling an interleaved 1F1B schedule that reduces the pipeline bubble from $\frac{p-1}{p+m-1}$ to approximately $\frac{p-1}{p \cdot v + m - 1}$ (where $p$ is the number of pipeline stages, $v$ is the number of virtual stages per device, and $m$ is the number of microbatches). On Trainium2, virtual PP is not supported by the Neuron Megatron reference and must be hand-implemented via NxD's pipeline primitives---each virtual stage boundary requires an additional point-to-point communication over NeuronLink or EFA, and the interleaved schedule demands careful instruction-level orchestration of send/receive with compute.
+
+Megatron-Core (v0.11+) adds \emph{Sequence Parallelism} (SP, introduced earlier in Megatron-LM v3 circa 2022 \citep{korthikanti2023megatronsp}), \emph{Context Parallelism} (CP, a newer addition for long-context training), and \emph{Expert Parallelism} (EP) for MoE architectures. Each parallelism primitive requires specific communication patterns---all-reduce for DP, all-gather/reduce-scatter for TP, point-to-point for PP---and these patterns must be mapped onto the target hardware's interconnect topology.
 
 \medskip
 
@@ -954,6 +976,7 @@ On Trainium2, \emph{none of these exist}. The equivalent programming model uses 
 \item[NKI API:] A Python-like DSL (\texttt{nki.language.*}) for writing kernels that execute on Trainium's scalar, vector, and tensor engines. Operations include \texttt{nki.language.add}, \texttt{nki.language.multiply}, \texttt{nki.language.matmul} (mapped to the on-chip matrix engine), and memory operations for explicit DMA between HBM and on-chip SBUF/PSUM.
 \item[NKI Library:] Pre-optimized kernels for common operations: Attention (CTE and TKG variants), MLP, Output Projection, QKV, and RMSNorm-Quant. These are the Trainium2 equivalents of cuDNN/Transformer Engine fused kernels.
 \item[NKI ISA:] For maximum control, advanced users (such as Anthropic's engineers) can bypass NKI's Python-level API and write instructions directly against the Trainium2 ISA, which is openly documented. This is analogous to writing PTX on NVIDIA hardware, but with a critical difference: the Trainium2 ISA is a \emph{VLIW} (Very Long Instruction Word) architecture, where the programmer (or compiler) explicitly schedules independent operations into each instruction bundle, rather than relying on SIMT hardware to manage thread divergence and reconvergence.
+\item[GPSIMD Engine:] Trainium2's \emph{General Purpose SIMD} (GPSIMD) engine is the scalar/vector processing unit responsible for non-tensor operations: index computation, conditional branching, loop control, address generation, and arbitrary data-dependent control flow. While the matrix engine handles the heavy-compute GEMM/attention workloads, the GPSIMD engine handles everything the matrix engine cannot: computing softmax denominators, generating reduction indices, evaluating activation functions element-wise, and orchestrating the DMA engine's scatter-gather patterns. Anthropic's kernel engineers use GPSIMD for the ``glue'' logic that connects tensor operations---the scheduling overhead that, on NVIDIA hardware, would be handled by warp-level control flow and predicated execution. Efficient GPSIMD utilization is critical: in a fused attention kernel, up to 15--20\% of total cycles may be spent on GPSIMD operations (softmax scaling, mask application, causal masking logic), and poor GPSIMD scheduling can bottleneck an otherwise well-optimized tensor pipeline.
 \end{description}
 
 The migration of each critical kernel type proceeds as follows:
@@ -964,7 +987,7 @@ The migration of each critical kernel type proceeds as follows:
 
 \medskip
 
-\noindent\textbf{Attention:} FlashAttention on NVIDIA uses shared memory to tile Q, K, V matrices and compute softmax in a single fused kernel, avoiding materialization of the full attention matrix in HBM. On Trainium2, the NKI Library provides Attention CTE (Compile-Time Execution) and Attention TKG variants that achieve the same algorithmic optimization but map it onto Trainium's scratchpad architecture. Anthropic's engineers have written custom attention assembly that further optimizes these patterns for Claude's specific model dimensions.
+\noindent\textbf{Attention:} FlashAttention \citep{dao2022flashattention,dao2023flashattention2} on NVIDIA uses shared memory to tile Q, K, V matrices and compute softmax in a single fused kernel, avoiding materialization of the full attention matrix in HBM. On Trainium2, the NKI Library provides Attention CTE (Compile-Time Execution) and Attention TKG variants that achieve the same algorithmic optimization but map it onto Trainium's scratchpad architecture. Anthropic's engineers have written custom attention assembly that further optimizes these patterns for Claude's specific model dimensions.
 
 \medskip
 
@@ -995,6 +1018,55 @@ Megatron's activation recomputation, gradient accumulation, and distributed chec
 
 We now connect the migration analysis to the central theme of this volume: agentic RL systems that self-deploy, gather environment feedback, and self-evolve. The key insight is that an agentic system like Claude Code running autonomously must be capable of \emph{selecting its own hardware backend} based on availability, cost, and performance---and the kernel stack must support this dynamic selection.
 
+\begin{figure}[ht]
+\centering
+\small
+\begin{verbatim}
++================================================================+
+|                    OPERATOR RL (Governance)                     |
+|  +------------------+  +------------------+  +---------------+ |
+|  | SCAK (Layer 4)   |  | Policy Engine(3) |  | IATP (Layer 2)| |
+|  | Self-Correction  |  | Syscall Check    |  | Trust Boundary| |
+|  +--------+---------+  +--------+---------+  +-------+-------+ |
+|           |                     |                     |         |
+|           v                     v                     v         |
+|  +-------------------+  +------------------+  +--------------+ |
+|  | Primitives (L1)   |  | Control Plane    |  | Nexus        | |
+|  | action/obs/reward |  | Scheduler        |  | Multi-Agent  | |
+|  +-------------------+  +------------------+  +--------------+ |
++===========================|=====================================+
+                            |  Kernel Bridge (PR #478)
+                            v
++================================================================+
+|                 AGENT LIGHTNING (Training)                      |
+|  +----------+  +-----------+  +--------+  +-----------------+ |
+|  | Runner   |  | Tracer    |  | Store  |  | Daemon          | |
+|  | (rollout)|  | (capture) |  | (7 bk) |  | v0=HTTP/v1=Store| |
+|  +----+-----+  +-----+-----+  +---+----+  +--------+--------+ |
+|       |              |             |                 |          |
+|       v              v             v                 v          |
+|  +----------+  +----------------+  +---------------------------+|
+|  | Adapter  |  | trace_agg     |  | VERL Backend               ||
+|  | LangChain|  | transition/   |  | GRPO / PPO                 ||
+|  | CrewAI   |  | trajectory    |  | Distributed Training       ||
+|  +----------+  +----------------+  +---------------------------+|
++===========================|=====================================+
+                            |  Hardware Abstraction Boundary
+                            v
++================================================================+
+|              HARDWARE KERNEL LAYER (per-platform)              |
+|  +-------------------+ +-------------------+ +---------------+ |
+|  | NVIDIA GPU        | | Google TPU        | | AWS Trainium2 | |
+|  | CUDA/cuBLAS/NCCL  | | XLA/JAX           | | NKI/NxD/ISA   | |
+|  | Megatron-Core     | | Pathways          | | Hand-written  | |
+|  |  (mature)         | |  (internal)       | | assembly      | |
+|  +-------------------+ +-------------------+ +---------------+ |
++================================================================+
+\end{verbatim}
+\caption{System architecture: Operator RL (governance) $\to$ Agent Lightning (training) $\to$ Hardware Kernel Layer (per-platform). The kernel bridge (PR~\#478, commit \texttt{49bf9cd9}) connects governance syscalls to the training loop. The hardware abstraction boundary separates platform-agnostic orchestration from platform-specific kernel implementations. The three hardware columns represent the asymmetric deployment risk analyzed in \S\ref{sec:3.1}: mature (GPU), internal (TPU), and youngest (Trainium2).}
+\label{fig:system-arch}
+\end{figure}
+
 \subsection{The Operator RL Architecture on Multi-Platform Kernels}
 
 The Operator RL system (\texttt{operatorRL}) provides the governance layer for autonomous agents. Its kernel architecture (\texttt{src/agent\_os}) acts as an operating system for agents, enforcing policies, managing resources, and scheduling tasks.
@@ -1021,7 +1093,7 @@ When integrated with Agent Lightning's training infrastructure (\texttt{agentlig
 
 \item \textbf{Reward computation} (Agent Lightning \texttt{reward.py}): Trajectory rewards are computed, potentially using a separate model (reward model or verifier). This is a standard inference workload that benefits from the same kernel optimizations as the main model.
 
-\item \textbf{Policy update} (Agent Lightning \texttt{trainer}, with \texttt{verl} backend): The agent's policy parameters are updated using RL algorithms. This is a distributed training step that requires all the Megatron-equivalent parallelism primitives discussed in Section~\ref{sec:3.2.migration.parallelism}.
+\item \textbf{Policy update} (Agent Lightning \texttt{trainer}, with \texttt{verl} backend): The agent's policy parameters are updated using RL algorithms (GRPO \citep{shao2024deepseekmath} or PPO \citep{schulman2017ppo} via VERL). This is a distributed training step that requires all the Megatron-equivalent parallelism primitives discussed in Section~\ref{sec:3.2.migration.parallelism}.
 
 \item \textbf{Self-deployment} (Operator RL \texttt{control-plane}): The updated model is deployed back into the environment. The governance layer ensures safety constraints are maintained during autonomous operation.
 
@@ -1241,6 +1313,23 @@ The spectral test computes the minimum distance $\nu_d$ between adjacent hyperpl
 
 More importantly for agentic RL: the spectral test can be applied to the \emph{policy parameter trajectory} during training. If the gradient updates cause the policy parameters to trace a path that lies on a low-dimensional lattice in parameter space, the training has degenerated into a periodic orbit---the policy is oscillating between a small number of behaviors rather than converging. This is the high-dimensional analog of the cycle degeneration detected by Floyd's algorithm in Experiment~3.1A.
 
+\subsection{Credit Assignment in Multi-Turn Agentic RL}
+\label{sec:3.3.credit}
+
+The validation tests above assume that each training signal (reward, gradient, utilization metric) can be attributed to a specific cause. In single-step RL, this attribution is straightforward: the reward for action $a_t$ in state $s_t$ informs the policy gradient for that state-action pair. In multi-turn agentic RL---the setting of Agent Lightning's \texttt{runner} and \texttt{tracer} components---the agent executes a sequence of tool-use actions $(a_1, a_2, \ldots, a_T)$ over an episode of length $T$, and a single scalar reward $R$ is observed only at the end. The credit assignment problem is: \emph{which actions contributed positively to $R$, and which were wasted or harmful?}
+
+This problem is central to agentic RL and is discussed in Agent Lightning Issues~\#31, \#282, \#390, and \#392. Three credit assignment strategies are available, each with distinct hardware implications:
+
+\begin{description}
+\item[Trajectory-Level Credit.] The entire reward $R$ is attributed uniformly to all actions in the episode. The policy gradient for each action is $\nabla_\theta \log \pi_\theta(a_t | s_t) \cdot (R - b)$ where $b$ is a baseline. This is the simplest strategy and the one currently implemented in Agent Lightning's GRPO backend (via VERL). Its advantage is minimal memory overhead: only the scalar reward $R$ and the trajectory log-probabilities need to be stored. On Trainium2, the \texttt{trace\_aggregator} at trajectory level (\S\ref{sec:3.2.daemon}) suffices. Its disadvantage: high gradient variance, scaling as $O(T)$ with episode length, which slows convergence.
+
+\item[Transition-Level Credit.] A reward model assigns intermediate rewards $r_t$ at each step. The policy gradient uses per-step advantages $\hat{A}_t = r_t + \gamma V(s_{t+1}) - V(s_t)$ (GAE-style). This reduces variance but requires: (a)~a reward model that can evaluate partial trajectories, and (b)~storing $T$ intermediate reward values plus the value function estimates---increasing the memory footprint by a factor of $\sim 3T$ relative to trajectory-level. On Trainium2, this means the XLA runtime's memory planner must accommodate the additional tensors, and for long episodes ($T > 100$), OOM becomes a real risk (Issue~\#107, \#438).
+
+\item[Action-Level Credit.] Fine-grained credit assignment via token-level rewards (e.g., process reward models). Each \emph{token} in the agent's output receives a reward signal. This is the most informative but most expensive strategy: the memory footprint scales as $O(T \cdot L)$ where $L$ is the average response length in tokens. For the Agent Lightning + Operator RL system, action-level credit requires the \texttt{trace\_aggregator} to operate at transition level with per-token annotation---a mode not yet fully supported (see Issue~\#392 for the proposed taxonomy).
+\end{description}
+
+The choice of credit assignment strategy directly affects which validation tests from \S\ref{sec:3.3.1}--\S\ref{sec:3.3.4} are applicable. The serial test (\S\ref{sec:3.3.2}) requires transition-level data to compute consecutive action correlations. The poker test requires at minimum trajectory-level action sequences. The $\chi^2$ reward distribution test (\S\ref{sec:3.3.1}) is meaningful only with trajectory-level rewards unless intermediate rewards are available. Designing a validation suite thus requires committing to a credit assignment granularity first---a constraint that propagates all the way down to the hardware memory allocation decisions of \S\ref{sec:3.2.migration.memory}.
+
 % ============================================================
 \section{Exercises}
 \label{sec:3.2.exercises}
@@ -1252,24 +1341,74 @@ More importantly for agentic RL: the spectral test can be applied to the \emph{p
 
 \item[\textbf{2.}] [$M20$] Megatron's tensor parallelism performs $2$ all-reduce operations per transformer layer in the forward pass and $2$ in the backward pass. If the model has $L$ layers, the hidden dimension is $H$, and the sequence length is $S$, express the total communication volume (in bytes, assuming BF16) as a function of $L$, $H$, $S$, and the tensor parallelism degree $T$. Under what conditions does the computation-to-communication ratio favor Trainium2's NeuronLink (800 GB/s bidirectional) over NVIDIA's NVLink (900 GB/s on H100)?
 
-\item[\textbf{3.}] [25] The NKI Library provides optimized attention kernels in two variants: CTE (Compile-Time Execution) and TKG. Describe the algorithmic difference between these variants and explain why a single universal attention kernel cannot achieve peak utilization on Trainium2's VLIW architecture for all sequence lengths. (Hint: consider the relationship between the VLIW instruction bundle width and the number of independent operations available at different phases of the attention computation.)
+\item[\textbf{3.}] [$M25$] The NKI Library provides optimized attention kernels in two variants: CTE (Compile-Time Execution) and TKG. Describe the algorithmic difference between these variants and explain why a single universal attention kernel cannot achieve peak utilization on Trainium2's VLIW architecture for all sequence lengths. (Hint: consider the relationship between the VLIW instruction bundle width and the number of independent operations available at different phases of the attention computation.)
 
-\item[\textbf{4.}] [$M30$] Design a hardware abstraction layer for the Operator RL system (\texttt{operatorRL/src/agent\_os}) that dispatches collective communication operations to NCCL (GPU), XLA collectives (TPU), or NxD (Trainium2) based on a runtime hardware detection mechanism. Your design should support the ``hot migration'' scenario where an agentic rollout worker is dynamically reassigned from one accelerator type to another mid-episode. Analyze the state synchronization overhead in terms of the number of bytes that must be transferred.
+\item[\textbf{4.}] [$HM35$] Design a hardware abstraction layer for the Operator RL system (\texttt{operatorRL/src/agent\_os}) that dispatches collective communication operations to NCCL (GPU), XLA collectives (TPU), or NxD (Trainium2) based on a runtime hardware detection mechanism. Your design should support the ``hot migration'' scenario where an agentic rollout worker is dynamically reassigned from one accelerator type to another mid-episode. Analyze the state synchronization overhead in terms of the number of bytes that must be transferred.
 
-\item[\textbf{5.}] [20] In the Agent Lightning training loop (\texttt{agentlightning/trainer}), the gradient synchronization step uses all-reduce across data-parallel workers. If the Trainium2 cluster has a 2-level topology (NeuronLink within a node, EFA across nodes), design a hierarchical all-reduce that minimizes the total communication time. Express the time in terms of the message size $M$, the number of NeuronCores per node $N$, the number of nodes $P$, the NeuronLink bandwidth $\beta_1$, and the EFA bandwidth $\beta_2$. Compare with the ring all-reduce algorithm used by NCCL on a flat NVLink topology.
+\item[\textbf{5.}] [$M22$] In the Agent Lightning training loop (\texttt{agentlightning/trainer}), the gradient synchronization step uses all-reduce across data-parallel workers. If the Trainium2 cluster has a 2-level topology (NeuronLink within a node, EFA across nodes), design a hierarchical all-reduce that minimizes the total communication time. Express the time in terms of the message size $M$, the number of NeuronCores per node $N$, the number of nodes $P$, the NeuronLink bandwidth $\beta_1$, and the EFA bandwidth $\beta_2$. Compare with the ring all-reduce algorithm used by NCCL on a flat NVLink topology.
 
 \item[\textbf{6.}] [$M22$] (Relates to Chapter~3.1, Exercise~6) Consider a kernel auto-tuner that searches for configurations on Trainium2 using the recurrence $\mathbf{X}_{n+1} = f(\mathbf{X}_n)$ where $\mathbf{X}$ is a vector of tiling parameters and $f$ is a function that evaluates the kernel's utilization and proposes a new configuration. Using the theory of ultimately periodic sequences from Chapter~3.1, prove that the auto-tuner must eventually cycle, and design an algorithm (analogous to Floyd's or Brent's cycle detection) that detects this degeneration using $O(1)$ additional memory.
 
-\item[\textbf{7.}] [40] Implement a complete, working NKI kernel for fused RMSNorm with BF16-to-FP8 quantization on Trainium2, and compare its throughput against the NKI Library's \texttt{nkilib.rmsnorm\_quant} kernel for hidden dimensions $H \in \{4096, 8192, 16384\}$. Discuss any performance gaps in terms of instruction scheduling efficiency (VLIW slot utilization) and memory access patterns (SBUF bank conflicts, if applicable).
+\item[\textbf{7.}] [$HM45$] Implement a complete, working NKI kernel for fused RMSNorm with BF16-to-FP8 quantization on Trainium2, and compare its throughput against the NKI Library's \texttt{nkilib.rmsnorm\_quant} kernel for hidden dimensions $H \in \{4096, 8192, 16384\}$. Discuss any performance gaps in terms of instruction scheduling efficiency (VLIW slot utilization) and memory access patterns (SBUF bank conflicts, if applicable). \textit{(Note: this exercise requires Trainium2 hardware access and familiarity with NKI \citep{awsneuron2025nki}. Expect several weeks of engineering effort.)}
 
-\item[\textbf{8.}] [$M25$] The companion document \emph{Anthropic~WantToDoWhat} states that Anthropic is ``co-designing next-generation Trainium hardware'' with Annapurna Labs. Formalize this hardware-software co-design as an optimization problem: given a set of critical kernel shapes $\mathcal{K} = \{k_1, \ldots, k_n\}$ (GEMM dimensions, attention head configurations, etc.) and a set of hardware parameters $\mathcal{H} = \{h_1, \ldots, h_m\}$ (matrix engine width, SBUF size, number of compute engines, etc.), define an objective function that measures the aggregate throughput across all kernels and analyze its convexity properties.
+\item[\textbf{8.}] [$HM30$] The companion document \emph{Anthropic~WantToDoWhat} states that Anthropic is ``co-designing next-generation Trainium hardware'' with Annapurna Labs. Formalize this hardware-software co-design as an optimization problem: given a set of critical kernel shapes $\mathcal{K} = \{k_1, \ldots, k_n\}$ and hardware parameters $\mathcal{H} = \{h_1, \ldots, h_m\}$, define an objective function that measures aggregate throughput. \textit{Explain why the resulting optimization is non-convex} (discrete hardware parameters, non-monotone tile-size/pipeline interactions, integer constraints on engine counts). Propose a relaxation or heuristic approach.
+
+\item[\textbf{9.}] [$M30$] \textbf{(Credit Assignment)} Design a credit assignment algorithm for Agent Lightning that assigns rewards to individual tool-use steps in a multi-turn rollout of length $T$. Derive the variance of the advantage estimate $\hat{A}_t$ under: (a)~trajectory-level credit ($\hat{A}_t = R - b$ for all $t$), (b)~transition-level credit ($\hat{A}_t = r_t + \gamma V(s_{t+1}) - V(s_t)$), and (c)~action-level credit (per-token reward). Express each variance as a function of $T$ and the reward signal noise $\sigma^2_r$. Under what conditions does transition-level credit outweigh its additional memory cost on Trainium2? (See \S\ref{sec:3.3.credit}.)
+
+\item[\textbf{10.}] [$50$] \textbf{(Open Research Problem.)} Issue~\#490 reports exploration collapse: agents converge to fixed policies. Formalize this as cycle degeneration in policy parameter space (cf.\ \S\ref{sec:3.1}). Propose a detection mechanism based on the spectral test (\S\ref{sec:3.3.4}) applied to the policy gradient trajectory, and design an intervention that forces the policy off its periodic orbit without destroying learned behavior. Analyze the hardware cost on Trainium2.
 
 \end{enumerate}
 
 % ============================================================
 
-\section{Appendix}
-You may include other additional sections here.
+% ============================================================
+\appendix
+\section{Operator RL Module Reference}
+\label{app:operatorrl-modules}
+% ============================================================
 
+The Operator RL repository (\texttt{operatorRL}) organizes its kernel architecture into the following module hierarchy. Each module corresponds to one or more layers of the 4-layer agent governance stack described in \S\ref{sec:3.2.agenticrl}.
+
+\begin{description}
+\item[\texttt{modules/primitives}] \textbf{(Layer~1: Core Primitives.)} Fundamental operations for agent execution: action dispatch, observation parsing, reward signal routing. These are the lowest-level building blocks, analogous to TAOCP's MIX instruction set --- the atomic operations from which all higher-level agent behavior is composed.
+
+\item[\texttt{modules/iatp}] \textbf{(Layer~2: Inter-Agent Trust Protocol.)} Manages trust boundaries between cooperating agents. When agents share hardware resources (e.g., multiple agents training on the same Trainium2 node), IATP enforces isolation guarantees: one agent's policy update cannot corrupt another's gradient buffer. The \texttt{SIGTRUST} signal (\S\ref{sec:3.2.agenticrl}, Table~\ref{tab:signals}) is IATP's enforcement mechanism.
+
+\item[\texttt{modules/emk}] \textbf{(Episodic Memory Kernel.)} Manages episodic memory across multi-turn rollouts. In agentic RL, the agent must remember past actions within an episode (working memory) and across episodes (episodic memory). EMK provides a kernel-level API for storing and retrieving episodic context, backed by the VFS mount at \texttt{/agent/\{id\}/mem/episodic}.
+
+\item[\texttt{modules/scak}] \textbf{(Layer~4: Self-Correcting Agent Kernel.)} The highest layer: detects policy degradation, triggers self-correction, and manages the feedback loop between the agent's runtime behavior and its training updates. SCAK consumes the validation test results from \S\ref{sec:3.3} --- if the $\chi^2$ utilization test or the spectral test detects anomalies, SCAK can issue a retraining signal.
+
+\item[\texttt{modules/cmvk}] \textbf{(Cross-Model Verification Kernel.)} Ensures numerical consistency when the same model runs on different hardware backends. After migrating a kernel from CUDA to NKI (\S\ref{sec:3.2.migration.kernels}), CMVK runs a verification suite comparing output tensors within a specified tolerance ($\epsilon \leq 10^{-3}$ for BF16 operations).
+
+\item[\texttt{modules/nexus}] \textbf{(Multi-Agent Coordination.)} Orchestrates multiple agents operating concurrently. Nexus manages agent lifecycle (spawn, pause, resume, terminate), resource allocation across NeuronCores, and inter-agent message passing. Issue~\#92 in Agent Lightning asks about multi-agent support; Nexus is Operator RL's answer.
+
+\item[\texttt{modules/amb}] \textbf{(Agent Memory Buffer.)} A ring buffer for short-term agent state, used during rollout execution. AMB is the runtime complement to EMK's persistent episodic storage.
+
+\item[\texttt{modules/caas}] \textbf{(Compliance-as-a-Service.)} Governance module for regulatory compliance in self-deploying agents. CaaS logs all agent actions to an immutable audit trail and enforces domain-specific constraints (e.g., financial transaction limits, PII handling policies).
+
+\item[\texttt{modules/observability}] \textbf{(Observability.)} Metrics, traces, and logs for the kernel itself. Integrates with Agent Lightning's dashboard (\texttt{agentlightning/dashboard}) and the Flight Recorder.
+
+\item[\texttt{benchmarks/bench\_kernel.py}] Benchmarks for kernel-level operations. See Exercise~4 (\S\ref{sec:3.2.exercises}).
+
+\item[\texttt{benchmarks/bench\_policy.py}] Benchmarks for the policy engine's evaluation latency --- critical for ensuring governance overhead remains negligible during training.
+
+\item[\texttt{examples/self-evaluating}] A complete example of a self-evaluating agent that runs the validation tests from \S\ref{sec:3.3} on its own training metrics and triggers SCAK-mediated self-correction when anomalies are detected.
+\end{description}
+
+\section{Agent Lightning Component Reference}
+\label{app:agentlightning-components}
+
+\begin{description}
+\item[\texttt{agentlightning/store/}] Seven backend implementations (memory, SQLite, MongoDB, client-server, collection-based, threaded, base) for the LightningStore coordination layer. The multiple backends mirror the modulus choice discussion in \S\ref{sec:3.2.1.1}: just as different moduli $m$ suit different hardware word sizes, different store backends suit different deployment scales.
+
+\item[\texttt{agentlightning/tracer/}] Captures the agent's interaction trace during rollout. The tracer records state-action-reward-next\_state tuples at the transition level and assembles them into trajectories. This data feeds both the training loop (via \texttt{trace\_aggregator}) and the validation tests of \S\ref{sec:3.3}.
+
+\item[\texttt{agentlightning/adapter/}] Framework adapters (LangChain, CrewAI, etc.) that convert diverse agent framework outputs into the standardized trace format. The \texttt{TracerTraceToTriplet} adapter family handles the conversion from raw traces to (state, action, reward) triplets suitable for RL training.
+
+\item[\texttt{agentlightning/algorithm/}] RL algorithm implementations. As of early 2026, supports GRPO and PPO via the VERL backend. Each algorithm defines its own advantage estimation and gradient computation, which determines the hardware memory requirements during the policy update step (\S\ref{sec:3.2.migration.memory}).
+\end{description}
+
+\bibliographystyle{plainnat}
+\bibliography{references}
 
 \end{document}
