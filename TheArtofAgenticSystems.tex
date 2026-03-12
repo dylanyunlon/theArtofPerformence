@@ -196,96 +196,82 @@ In the following sections, we shall consider kernel optimization programs that a
 
 \bigskip
 
-\subsection*{Exercises}
+\subsection*{Exercises --- \S3.1}
+
+\noindent\emph{Each exercise below retains the mathematical structure of Knuth's original problems (TAOCP Vol.~2, \S3.1) but adds a mandatory domain interpretation component. The reader should solve the abstract problem first, then explicitly map the result to the agentic RL / hardware-portable kernel context.}
 
 \begin{enumerate}
 
-\item[\textbf{1.}] [20] Suppose you wish to obtain a hardware kernel configuration without using an auto-tuner. Which of the following methods is suitable?
+\item[\textbf{1.}] [20] Suppose you wish to obtain a Trainium2 GEMM tiling configuration without using the Neuron auto-tuner. Which of the following methods is suitable? For each method, explain whether it could yield a configuration achieving $> 80\%$ MatMul Engine utilization, and why.
 
 \begin{enumerate}
-\item[a)] Randomly open a hardware vendor's optimization guide (i.e., flip to an arbitrary page) and adopt the tiling parameters found on the first example of the selected page.
-\item[b)] Same as (a), but use the page number's last digits as tile dimensions.
-\item[c)] Roll a 20-sided die whose faces are labeled with parameter values $0,0,1,1,\ldots,9,9$; when the die stops, use the value on top. (It is suggested to roll on a hard surface covered with felt.)
-\item[d)] Expose a hardware performance counter to a running training workload for one minute (taking care to avoid thermal throttling), and adopt the last digits of the obtained counter value. Assume the counter displays in decimal and starts from zero.
-\item[e)] Look at your training dashboard; if the utilization indicator is between $6n\%$ and $6(n+1)\%$, select parameter value $n$.
-\item[f)] Ask a colleague to think of an optimal tile dimension, and adopt the dimension they suggest.
-\item[g)] Ask a competing team's engineer to think of an optimal tile dimension, and adopt the dimension they suggest.
-\item[h)] Suppose ten different tiling configurations are racing in a benchmark, and you know nothing about their characteristics. Assign digits $0$--$9$ to these configurations arbitrarily, and after the benchmark finishes, adopt the winner's digit.
+\item[a)] Open the NKI Programming Guide to an arbitrary page and adopt the tile dimensions from the first code example.
+\item[b)] Same as~(a), but use the page number modulo~512 as the M-tile dimension and modulo~128 as the K-tile dimension.
+\item[c)] Query the Trainium2 hardware performance counters (via \texttt{neuron-profile}) under a running training workload for one minute, and use the last three digits of the MME cycle count as tile parameters.
+\item[d)] Examine Agent Lightning's training dashboard; if NeuronCore utilization is between $6n\%$ and $6(n+1)\%$, select tile dimension $2^{n+4}$.
+\item[e)] Let ten candidate NKI kernel configurations race on a benchmark with the same input tensors. Adopt the winner. \emph{Interpret:} this is the strategy of the Neuron auto-tuner's tournament selection. What is its expected regret relative to the global optimum, as a function of the configuration space size $m$ and the number of candidates?
 \end{enumerate}
 
-\item[\textbf{2.}] [$M22$] In a sequence of one million kernel configuration parameters, what is the probability that each possible parameter value appears exactly 100,000 times?
+\item[\textbf{2.}] [$M22$] In a sequence of one million training iterations across $k = 10$ NeuronCores, each core should process approximately $10^5$ iterations under perfect load balance. What is the probability that \emph{every} core receives exactly $10^5$ iterations? Express the answer in terms of the multinomial coefficient, and compute a numerical approximation. \emph{Interpret:} relate this probability to the $\chi^2$ utilization test of \S\ref{sec:3.3.1} --- what threshold of deviation from perfect balance should trigger a load-balancing intervention?
 
-\item[\textbf{3.}] [10] Following the square-and-extract method, what configuration follows \texttt{[1,0,1,0,1,0,1,0,1,0]}?
+\item[\textbf{3.}] [10] Following the square-and-extract method applied to NKI tile parameters, what configuration follows \texttt{[128, 64, 256, 128]}? Assume the ``squaring'' operation is component-wise modular squaring with modulus 512.
 
-\item[\textbf{4.}] [20] (a) After step K11 of Algorithm~K has been executed, why can the value of $\mathbf{X}$ not be zero? If $\mathbf{X}$ were to be zero, what would go wrong with the algorithm? (b) Using Table~1, deduce what happens when Algorithm~K is repeatedly applied starting from the initial configuration $\mathbf{X} = \texttt{[3,8,3,0,9,5,1,6,5,6]}$.
+\item[\textbf{4.}] [20] (a)~After step K4 of Algorithm~D (Degenerate Auto-Tuner Detector, \S\ref{sec:3.1}), why can the configuration vector $\mathbf{X}$ not be the zero vector? If $\mathbf{X} = \mathbf{0}$, what happens to all subsequent auto-tuner outputs? \emph{Interpret:} on Trainium2, a zero tile-size configuration would cause a DMA transfer of size~0; explain why the NKI runtime's \texttt{nki.language.load} would raise a compile-time error rather than a runtime crash. (b)~Apply Algorithm~D starting from an actual Trainium2 configuration $\mathbf{X} = (128, 128, 256, 32)$ with the transition function $f(\mathbf{x}) = (\mathbf{x}^2 \bmod 512)_{\text{middle digits}}$. How many steps until the cycle is entered?
 
-\item[\textbf{5.}] [15] Given that it is known in advance that any sequence generated by Algorithm~K must eventually be periodic (even without the coincidence shown in Table~1), explain why under no circumstances can Algorithm~K be expected to provide infinitely many distinct optimal configurations.
+\item[\textbf{5.}] [15] Given that any auto-tuner with a deterministic transition function $f$ on a finite configuration space of cardinality $m$ must produce an ultimately periodic sequence (Exercise~6), explain why no such auto-tuner can provide infinitely many distinct kernel configurations. \emph{Interpret:} this is the theoretical foundation for why the Neuron compiler's auto-tuner can, and eventually \emph{will}, revisit previously explored configurations. What are the practical implications for long-running agent training jobs (e.g., $> 10^6$ steps)?
 
-\item[\textbf{6.}] [$M21$] Suppose we wish to generate a sequence of configuration vectors $\mathbf{X}_0, \mathbf{X}_1, \mathbf{X}_2, \ldots$ in the range $0 \leq \mathbf{X}_n < m$ (component-wise). Let $f(\mathbf{x})$ be any function such that if $0 \leq \mathbf{x} < m$ then $0 \leq f(\mathbf{x}) < m$. Consider a sequence formed by the rule $\mathbf{X}_{n+1} = f(\mathbf{X}_n)$. (Examples are the square-and-extract method and Algorithm~K.)
-
-\begin{enumerate}
-\item[a)] Show that this sequence is ultimately periodic in the following sense: there exist numbers $\lambda$ and $\mu$ such that the values $\mathbf{X}_0, \mathbf{X}_1, \ldots, \mathbf{X}_\mu, \ldots, \mathbf{X}_{\mu+\lambda-1}$ are distinct, but when $n \geq \mu$, $\mathbf{X}_{n+\lambda} = \mathbf{X}_n$. Find the maximum and minimum possible values of $\mu$ and $\lambda$.
-\item[b)] (R.~W.~Floyd) Show that there exists an $n > 0$ such that $\mathbf{X}_n = \mathbf{X}_{2n}$, and the smallest such $n$ is in the range $\mu \leq n < \mu + \lambda$. Moreover, the value $\mathbf{X}_\mu$ is unique in the following sense: if $\mathbf{X}_n = \mathbf{X}_m$ and $\mathbf{X}_r = \mathbf{X}_s$, then $\mathbf{X}_n = \mathbf{X}_r$.
-\item[c)] Using the idea of (b), design an algorithm to compute both $\mu$ and $\lambda$ for any given function $f$ and given $\mathbf{X}_0$, using only $O(\mu + \lambda)$ steps and a finite number of memory cells.
-\end{enumerate}
-
-\item[\textbf{7.}] [$M21$] (R.~P.~Brent, 1977) Let $\ell(n)$ be the largest power of 2 less than or equal to $n$; for example, $\ell(15) = 8$ and $\ell(\ell(n)) = \ell(n)$.
+\item[\textbf{6.}] [$M21$] Let $f\colon \{0, \ldots, m-1\}^d \to \{0, \ldots, m-1\}^d$ be a deterministic auto-tuner transition function on a $d$-dimensional kernel configuration space of size $m^d$.
 
 \begin{enumerate}
-\item[a)] Using the notation of Exercise~6, show that there exists an $n > 0$ such that $\mathbf{X}_n = \mathbf{X}_{\ell(n)-1}$. Find a formula expressing the smallest such $n$ in terms of $\mu$ and $\lambda$.
-\item[b)] Apply this result to design an algorithm that, used in conjunction with any kernel optimization program of the form $\mathbf{X}_{n+1} = f(\mathbf{X}_n)$, can prevent it from looping indefinitely. Your algorithm should compute the cycle length $\lambda$, and it should use only a small amount of storage---you cannot simply store all the computed sequence values!
+\item[a)] Show that the sequence $\mathbf{X}_0, f(\mathbf{X}_0), f^2(\mathbf{X}_0), \ldots$ is ultimately periodic: there exist $\lambda > 0$ and $\mu \geq 0$ such that $f^{n+\lambda}(\mathbf{X}_0) = f^n(\mathbf{X}_0)$ for all $n \geq \mu$, and $\mathbf{X}_0, \ldots, \mathbf{X}_{\mu+\lambda-1}$ are distinct. State the maximum and minimum values of $\mu$ and $\lambda$.
+\item[b)] (R.~W.~Floyd) Show that there exists $n > 0$ with $\mathbf{X}_n = \mathbf{X}_{2n}$, and design an algorithm using $O(1)$ additional memory to detect this. \emph{Interpret:} implement Floyd's cycle detection as a monitor for the \texttt{operatorRL/modules/scak} Self-Correcting Agent Kernel: when the SCAK detects that the auto-tuner has entered a cycle, it should emit a \texttt{SIGWARN} signal (Table~\ref{tab:signals}) and trigger exploration noise injection.
+\item[c)] Using~(b), design an algorithm to compute both $\mu$ and $\lambda$ for any $f$ and $\mathbf{X}_0$. \emph{Interpret:} $\mu$ is the ``warm-up phase'' before the auto-tuner converges to its limit cycle; $\lambda$ is the cycle length. For the Trainium2 GEMM auto-tuner with $d = 4$ parameters each of size $m = 16$ (tile choices: $32, 64, \ldots, 512$), bound $\mu + \lambda$ and compare to the expected number of training steps in a typical agent training run.
 \end{enumerate}
 
-\item[\textbf{8.}] [23] Make a complete test of the square-and-extract method using 2-parameter configurations.
+\item[\textbf{7.}] [$M21$] (R.~P.~Brent, 1977) Let $\ell(n)$ denote the largest power of~2 not exceeding $n$.
 
 \begin{enumerate}
-\item[a)] We can start from any of the 100 possible values $00, 01, \ldots, 99$; how many of these values eventually lead to the repeating cycle $00, 00, \ldots$? [Example: starting from 43, we obtain the sequence 43, 84, 05, 02, 00, 00, 00, \ldots]
-\item[b)] How many possible ultimate cycles exist? What is the longest cycle?
-\item[c)] Which starting value(s) maximize the number of distinct elements in the sequence before it repeats?
+\item[a)] Using the notation of Exercise~6, show that there exists $n > 0$ with $\mathbf{X}_n = \mathbf{X}_{\ell(n)-1}$. Express the smallest such $n$ in terms of $\mu$ and $\lambda$.
+\item[b)] Apply Brent's algorithm to prevent a kernel auto-tuner from looping indefinitely, using $O(1)$ memory. \emph{Interpret:} Brent's algorithm is more efficient than Floyd's for auto-tuner monitoring because it requires only one evaluation of $f$ per step (one kernel benchmark), whereas Floyd's requires two. On Trainium2, where each NKI kernel compilation takes $O$(seconds), this factor-of-two savings is practically significant. Implement Brent's cycle detection as a proposed extension to \texttt{operatorRL/modules/scak/}.
 \end{enumerate}
 
-\item[\textbf{9.}] [$M14$] Prove that the square-and-extract method for $2n$-parameter configurations in base $b$ has the following drawback: if the sequence ever includes any configuration whose highest $n$ significant parameters are zero, the subsequent configurations will become smaller and smaller, until zero is repeatedly produced.
-
-\item[\textbf{10.}] [$M16$] Under the assumptions of the preceding exercise, if the lowest $n$ significant parameters of $\mathbf{X}$ are zero, what can be said about the configurations following $\mathbf{X}$? What if the lowest $n+1$ significant parameters are zero?
-
-\item[\textbf{11.}] [$M26$] Consider kernel optimization sequences of the form described in Exercise~6. If we choose $f(\mathbf{x})$ and $\mathbf{X}_0$ at random---in other words, if we assume each of the $m^m$ possible functions $f(\mathbf{x})$ is equally likely, and each of the $m$ possible values of $\mathbf{X}_0$ is also equally likely---what is the probability that the sequence ultimately degenerates into a cycle of length $\lambda = 1$? (Note: the assumptions of this problem give a natural way of considering such ``random'' kernel optimization programs. One can think of a method like Algorithm~K as having some properties similar to the average programs considered here. From the answer to this problem, one can see the degree to which Table~1 is an extraordinary coincidence.)
-
-\item[\textbf{12.}] [$M31$] Under the assumptions of the preceding exercise, what is the average length of the ultimate cycle? What is the average length of the sequence before the cycle begins? (Using the notation of Exercise~6, we wish to determine the average values of $\lambda$ and $\mu + \lambda$.)
-
-\item[\textbf{13.}] [$M42$] If $f(\mathbf{x})$ is randomly chosen in the sense of Exercise~11, what is the average length of the longest cycle obtainable by varying the starting value $\mathbf{X}_0$? (Note: we have considered a similar problem in the case that $f(\mathbf{x})$ is a random permutation. See Exercise~1.3.3--23.)
-
-\item[\textbf{14.}] [$M38$] If $f(\mathbf{x})$ is randomly chosen in the sense of Exercise~11, what is the average number of distinct ultimate cycles obtainable by varying the starting value? [Cf.\ Exercise~8(b).]
-
-\item[\textbf{15.}] [$M15$] If $f(\mathbf{x})$ is randomly chosen in the sense of Exercise~11, what is the probability that no cycle of length~1 exists, regardless of how $\mathbf{X}_0$ is chosen?
-
-\item[\textbf{16.}] [15] A sequence generated as in Exercise~6, after generating at most $m$ values, must begin to repeat. Suppose we extend the method so that $\mathbf{X}_{n+1}$ depends on both $\mathbf{X}_n$ and $\mathbf{X}_{n-1}$; formally, let $f(\mathbf{x}, \mathbf{y})$ be a function such that if $0 \leq x, y < m$ then $0 \leq f(x, y) < m$. Choose $\mathbf{X}_0$ and $\mathbf{X}_1$ arbitrarily, then let
-\[
-\mathbf{X}_{n+1} = f(\mathbf{X}_n, \mathbf{X}_{n-1}), \quad n > 0.
-\]
-What is the maximum possible period of a sequence so constructed?
-
-\item[\textbf{17.}] [10] Generalize the preceding exercise so that $\mathbf{X}_{n+1}$ depends on the preceding $k$ values of the sequence.
-
-\item[\textbf{18.}] [$M20$] Devise a method analogous to Exercise~7 for finding cycles in the more general form of kernel optimization program discussed in Exercise~17.
-
-\item[\textbf{19.}] [$M48$] In the more general case that $\mathbf{X}_{n+1}$ depends on the preceding $k$ values of the sequence, and each of the $m^{m^k}$ functions $f(x_1, \ldots, x_k)$ is considered equally likely, solve Exercises~11 through~15 for this case. (Note that Exercise~2.3.4.2--23 analyzes the number of functions that produce maximum-period sequences.)
-
-\item[\textbf{20.}] [30] Find all non-negative $\mathbf{X} < 10^{10}$ that ultimately lead to the self-reproducing configuration of Table~1 via Algorithm~K.
-
-\item[\textbf{21.}] [42] Prove or disprove: the mapping $\mathbf{X} \to f(\mathbf{X})$ defined by Algorithm~K has exactly five cycles, of lengths 3178, 1606, 1024, 943, and~1.
-
-\item[\textbf{22.}] [21] (H.~Rolletschek) Is it a good idea to generate kernel configurations by using the sequence $f(0), f(1), f(2), \ldots$ instead of $f(\mathbf{X}_0), f(f(\mathbf{X}_0)), \ldots$, where $f$ is a hardware-aware transformation function?
-
-\item[\textbf{23.}] [$M26$] (D.~Foata and A.~Fuchs, 1970) Show that each of the $m^m$ functions $f(\mathbf{x})$ considered in Exercise~6 can be represented as a sequence $(x_0, x_1, \ldots, x_{m-1})$ with the following properties:
+\item[\textbf{8.}] [$HM23$] Consider a simplified Trainium2 auto-tuner with 2-dimensional configurations $(t_M, t_K)$ where each $t_i \in \{0, 1, \ldots, 9\}$, giving $m^d = 100$ possible configurations. Apply the square-and-extract transition function.
 
 \begin{enumerate}
-\item[i)] $(x_0, x_1, \ldots, x_{m-1})$ is a permutation of $(f(0), f(1), \ldots, f(m-1))$.
-\item[ii)] $(f(0), \ldots, f(m-1))$ can be uniquely reconstructed from $(x_0, x_1, \ldots, x_{m-1})$.
-\item[iii)] The elements appearing in cycles of $f$ are precisely $x_0, x_1, \ldots, x_{k-1}$, where $k$ is the largest subscript such that these $k$ elements are all distinct.
-\item[iv)] $x_j > x_0, x_1, \ldots, x_{j-1}$ implies $x_{j-1} = f(x_j)$, unless $x_j$ is the smallest element in a cycle of $f$.
-\item[v)] $(f(0), f(1), \ldots, f(m-1))$ is a permutation of $(0, 1, \ldots, m-1)$ if and only if via the ``unusual correspondence'' of Section~1.3.3, $(x_0, x_1, \ldots, x_{m-1})$ is the inverse of that permutation.
-\item[vi)] $x_0 = x_j$ if and only if, via the construction of Exercise~2.3.4.4--18, $f(x)$ is the parent of $x$, and $(x_0, \ldots, x_{m-1})$ represents a directed tree.
+\item[a)] Starting from all 100 configurations, how many lead to the degenerate fixed point $(0,0)$? (This represents a ``dead'' auto-tuner that produces only zero-size tiles.)
+\item[b)] How many distinct limit cycles exist? What is the longest?
+\item[c)] Which starting configuration(s) maximize the number of distinct configurations visited before cycling? \emph{Interpret:} this maximum ``pre-period'' length bounds the number of genuinely new kernel configurations the auto-tuner will ever produce. If this number is small relative to the training run length, the auto-tuner provides no exploration benefit after the pre-period.
 \end{enumerate}
+
+\item[\textbf{9.}] [$M14$] Prove that the square-and-extract method degenerates when the upper half of the configuration vector is zero: subsequent configurations shrink monotonically to the zero vector. \emph{Interpret:} on Trainium2, this corresponds to an auto-tuner that has ``lost'' its large tile dimensions and is stuck exploring only small tiles. The SCAK module should detect this via the $\chi^2$ test on the tile-size distribution (\S\ref{sec:3.3.1}): an excess of small tile values yields a large $V$ statistic.
+
+\item[\textbf{10.}] [$M16$] Under the same assumptions, if the \emph{lower} half of the configuration vector is zero, analyze the subsequent behavior. \emph{Interpret:} zero lower-order tile dimensions on Trainium2 cause SBUF underutilization (the scratchpad is allocated but only partially filled). This is a subtler failure mode than Exercise~9's complete degeneration, detectable via the spectral test of \S\ref{sec:3.3.4} rather than the $\chi^2$ test.
+
+\item[\textbf{11.}] [$M26$] If $f$ and $\mathbf{X}_0$ are chosen uniformly at random from a configuration space of size $m$, what is the probability that the auto-tuner degenerates to a fixed point ($\lambda = 1$)? \emph{Interpret:} the answer ($\approx 1 - e^{-1} \approx 0.632$ for large $m$) implies that most ``random'' auto-tuners are degenerate. This motivates the careful design of transition functions with guaranteed long periods --- the subject of \S\ref{sec:3.2}.
+
+\item[\textbf{12.}] [$M31$] Under the assumptions of Exercise~11, compute the expected cycle length $E[\lambda]$ and the expected total length $E[\mu + \lambda]$. \emph{Interpret:} for the Trainium2 GEMM auto-tuner with $m = 2^{16}$ configurations, compute numerical estimates. Compare to the expected number of distinct configurations needed for the coupon-collector bound of Theorem~\ref{thm:exploration-budget}.
+
+\item[\textbf{13.}] [$M42$] For a randomly chosen $f$, what is the expected length of the \emph{longest} cycle achievable by varying $\mathbf{X}_0$? \emph{Interpret:} this represents the best-case auto-tuner exploration if one could choose the optimal starting configuration. The answer ($\approx \sqrt{\pi m / 2}$ for the longest cycle) suggests that even optimal initialization yields only $O(\sqrt{m})$ distinct configurations, not the $m$ one might hope for.
+
+\item[\textbf{14.}] [$M38$] What is the expected number of distinct limit cycles for a randomly chosen $f$? \emph{Interpret:} each distinct cycle represents a qualitatively different ``mode'' of auto-tuner behavior. If the number of cycles is small, the auto-tuner has few attractors and the choice of $\mathbf{X}_0$ strongly determines long-term behavior --- a form of sensitivity to initial conditions that the SCAK module's restart strategy must account for.
+
+\item[\textbf{15.}] [$M15$] What is the probability that no fixed point exists for any starting value? \emph{Interpret:} if this probability is high, the auto-tuner is guaranteed to cycle (never settling on a single configuration), which for agentic RL means the kernel performance will oscillate perpetually --- detectable via the run test of \S\ref{sec:3.3.2}.
+
+\item[\textbf{16.}] [15] Extend the auto-tuner so that $\mathbf{X}_{n+1} = f(\mathbf{X}_n, \mathbf{X}_{n-1})$ depends on the two most recent configurations. What is the maximum achievable period? \emph{Interpret:} this corresponds to an auto-tuner that remembers its previous configuration when choosing the next one --- a form of momentum in configuration space. Agent Lightning's \texttt{store} module (which persists trajectory history) enables exactly this kind of history-dependent auto-tuning.
+
+\item[\textbf{17.}] [10] Generalize Exercise~16 so that $\mathbf{X}_{n+1}$ depends on the preceding $k$ configurations. State the maximum period. \emph{Interpret:} in the agentic RL context, $k$ is the ``context window'' of the auto-tuner. The Trainium2 auto-tuner's effective $k$ is determined by how many past kernel benchmarks the NKI compiler caches.
+
+\item[\textbf{18.}] [$M20$] Devise a cycle detection method for the $k$-history auto-tuner of Exercise~17. \emph{Interpret:} implement this as an extension to \texttt{operatorRL/modules/scak/} that monitors the last $k$ configurations and triggers \texttt{SIGWARN} upon cycle detection.
+
+\item[\textbf{19.}] [$M48$] For the $k$-history auto-tuner, solve the analogs of Exercises~11--15 when each of the $m^{m^k}$ possible transition functions is equally likely. \emph{Interpret:} for fixed $m$ and increasing $k$, characterize the trade-off between cycle length (exploration) and computational cost (each evaluation of $f$ requires $k$ past configurations to be loaded, costing $O(k)$ SBUF reads on Trainium2).
+
+\item[\textbf{20.}] [$HM30$] \textbf{(Agent Lightning Integration.)} Examine the \texttt{agentlightning/algorithm/verl/interface.py} file, which converts trajectory data to VERL's \texttt{DataProto} format. (a)~The conversion involves packing variable-length rollout sequences into fixed-size tensors. On Trainium2, the XLA compiler requires static shapes. Prove that the minimum padding overhead for $G$ rollouts of lengths $\ell_1, \ldots, \ell_G$ is $G \cdot \max_i \ell_i - \sum_i \ell_i$, and show this overhead is minimized when all rollouts have equal length. (b)~Propose a rollout scheduling strategy that reduces padding waste by grouping rollouts of similar length. Analyze its effect on the $\chi^2$ utilization test of \S\ref{sec:3.3.1}.
+
+\item[\textbf{21.}] [$HM42$] Prove or disprove: for the NKI GEMM auto-tuner with 4 tunable parameters (M-tile $\in \{64, 128, 256, 512\}$, N-tile $\in \{64, 128, 256, 512\}$, K-tile $\in \{32, 64, 128, 256\}$, VLIW-bundle-width $\in \{2, 4, 8\}$), the number of ``performance-equivalent classes'' (configurations yielding identical MME utilization) under the equivalence relation $\sim_K$ of \S\ref{sec:3.2.hw} is strictly less than the total number of configurations. \emph{Hint:} consider the symmetry $(M, N, K) \mapsto (N, M, K)$ for square matrices.
+
+\item[\textbf{22.}] [21] Is it better to explore kernel configurations sequentially ($f(0), f(1), f(2), \ldots$) rather than iteratively ($f(\mathbf{X}_0), f(f(\mathbf{X}_0)), \ldots$)? \emph{Interpret:} the sequential approach corresponds to grid search (standard in cuDNN auto-tuning); the iterative approach corresponds to Bayesian optimization with a deterministic acquisition function. Analyze the expected number of configurations needed to find the optimal tiling, under the assumption that good configurations are clustered in a connected region of the configuration space.
+
+\item[\textbf{23.}] [$M26$] (D.~Foata and A.~Fuchs) Show that each function $f\colon \{0, \ldots, m-1\} \to \{0, \ldots, m-1\}$ can be encoded as a \emph{parking function} representation $(x_0, \ldots, x_{m-1})$ with the properties described by Knuth (TAOCP Vol.~2, \S3.1, Ex.~23). \emph{Interpret:} the parking function structure of auto-tuner transition functions determines the ``basin of attraction'' structure --- which starting configurations lead to which limit cycles. For the \texttt{operatorRL/modules/scak/} restart strategy, knowing the basin structure enables choosing restart configurations that enter new limit cycles rather than returning to the same one.
 
 \end{enumerate}
 
@@ -320,7 +306,28 @@ then lies between 0 and 1. Usually, $m$ is the size of the hardware configuratio
 \smallskip
 \noindent\textbf{Where the Analogy Breaks --- and Where It Holds.}\quad The reader should keep firmly in mind the structural disanalogy between LCG sequences and kernel configuration search. An LCG's parameters $(m, a, c, X_0)$ are \emph{chosen once} and produce a \emph{deterministic, repeatable} sequence. A kernel auto-tuner's search is \emph{iterative with stochastic feedback}: each candidate configuration $\KernelConfig_n$ is profiled on real hardware, producing a noisy utilization measurement $U_n + \epsilon_n$, and the next candidate $\KernelConfig_{n+1}$ depends on this measurement. The correct analogy is therefore not ``LCG sequence $\leftrightarrow$ kernel configuration sequence'' but rather ``\emph{LCG cycle theory} $\leftrightarrow$ \emph{kernel auto-tuner cycle analysis}.'' Specifically: (a)~The \emph{period theorems} (B, D) apply because the auto-tuner's deterministic component---the update rule $f$ stripped of stochastic feedback---still maps a finite set to itself and must cycle; what the feedback does is select \emph{which} cycle the system enters. (b)~The \emph{potency concept} (\S\ref{sec:3.2.1.3}) applies because it measures how many dimensions of the search space the deterministic component explores, regardless of whether feedback perturbs the trajectory. (c)~The analogy does \emph{not} extend to the statistical properties of the output sequence: an LCG's output is pseudo-random by construction, while a kernel auto-tuner's output is deliberately non-random (it converges toward a hardware-specific optimum). The validation tests of \S\ref{sec:3.3} address this distinction explicitly.
 
-\medskipThe most popular kernel configuration generation programs in use today are special cases of the following scheme introduced by D.~H.~Lehmer in 1949 \citep{lehmer1951lcg}. We choose four ``magic integers'':
+\medskip
+
+\begin{table}[h]
+\centering
+\caption{Variable Correspondence: TAOCP notation mapped to our domain. Every equation in \S\ref{sec:3.2.1}--\S\ref{sec:3.2.1.3} uses the left-column variables; the reader should interpret them through the right column.}
+\label{tab:variable-correspondence}
+\begin{tabular}{@{}lllp{5cm}@{}}
+\toprule
+\textbf{TAOCP} & \textbf{Our Domain} & \textbf{Range} & \textbf{Interpretation} \\
+\midrule
+$X_n$ & $\KernelConfig_n$ & $\mathbb{Z}_m^d$ & Configuration vector at auto-tuner step $n$ \\
+$m$ & $|\mathcal{C}|$ & Platform-dependent & Configuration space cardinality per dimension \\
+$a$ & $\alpha_f$ & Learned or heuristic & Transition function parameter (``multiplier'') \\
+$c$ & $\epsilon_{\mathrm{explore}}$ & Hyperparameter & Exploration noise / perturbation offset \\
+$\lambda$ & $T_{\mathrm{cycle}}$ & Should maximize & Auto-tuner convergence cycle length \\
+$\mu$ & $T_{\mathrm{warmup}}$ & Should minimize & Pre-period steps before cycle entry \\
+Potency & $\kappa$ & $\geq 5$ desired & Configuration diversity order (\S\ref{sec:3.2.1.3}) \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+The most popular kernel configuration generation programs in use today are special cases of the following scheme introduced by D.~H.~Lehmer in 1949 \citep{lehmer1951lcg}. We choose four ``magic integers'':
 \begin{align}
 m, &\quad \text{the modulus}; \quad 0 < m \notag \\
 a, &\quad \text{the multiplier}; \quad 0 \leq a < m \notag \\
@@ -1149,6 +1156,28 @@ Anthropic's approach is to change $m$ itself. When you write Trainium2 assembly,
 
 This is why the companion document \emph{Anthropic~WantToDoWhat} states that comparing CCCL/NVBench benchmarking methodology with Anthropic's VLIW performance challenge is ``technically strained''---they share a philosophical lineage but inhabit different hardware universes.
 
+\begin{table}[h]
+\centering
+\caption{CCCL primitives and their Trainium2 migration status. Each CCCL primitive that Megatron-Core depends on (directly or via cuBLAS/NCCL) must be replaced when migrating to Trainium2. Migration difficulty reflects the architectural gap between CUDA's SM-based SIMT model and Trainium2's VLIW+NeuronCore model.}
+\label{tab:cccl-migration}
+\begin{tabular}{@{}llll@{}}
+\toprule
+\textbf{CCCL Primitive} & \textbf{NVIDIA Function} & \textbf{Trainium2 Equivalent} & \textbf{Difficulty} \\
+\midrule
+\texttt{cub::BlockReduce} & Warp-level reduction & \texttt{nki.language.reduce} & Medium \\
+\texttt{cub::DeviceRadixSort} & GPU-wide sort & Custom NKI kernel & Hard \\
+\texttt{cub::DeviceTopK} & Top-K selection & Custom NKI kernel & Hard \\
+\texttt{thrust::sort} & Parallel sort & \texttt{jax.lax.sort} via XLA & Easy* \\
+\texttt{cuda::atomic\_ref} & Lock-free atomics & N/A (no shared memory) & Arch.~mismatch \\
+\texttt{cuda::stream} & Execution stream & XLA compilation graph & Different model \\
+\texttt{cuda::memcpy\_async} & Async HBM$\to$SMEM & NKI DMA engine & Medium \\
+\texttt{cub::DeviceScan} & Prefix sum & NKI \texttt{cumsum} + manual tiling & Medium \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\noindent *Easy only if XLA-generated performance is acceptable; for latency-critical paths (e.g., MoE routing), a hand-written NKI kernel is needed. The \texttt{cuda::atomic\_ref} row is the most instructive: Trainium2's NeuronCores have no equivalent of CUDA's shared memory with atomic operations, because Trainium2's programming model uses explicit DMA transfers between private scratchpads (SBUF/PSUM) rather than shared address spaces. This architectural mismatch means that CCCL algorithms relying on atomic operations (lock-free queues, concurrent hash maps) have \emph{no direct migration path}---they must be redesigned around Trainium2's message-passing DMA model.
+
 % ============================================================
 \section{The Migration Map: Megatron Primitives to Trainium2}
 \label{sec:3.2.migration}
@@ -1369,6 +1398,8 @@ For this loop to function on Trainium2 specifically, each step requires the kern
 \texttt{SIGINT}    & 3 & Graceful interrupt             & Yes & Restart \\
 \texttt{SIGKILL}   & 4 & Immediate termination          & \textbf{No}  & New agent \\
 \texttt{SIGTERM}   & 5 & Request shutdown               & Yes & Cleanup \\
+\texttt{SIGWARN}   & 6 & Quality degradation alert      & Yes & Retrain \\
+\texttt{SIGEXPLORE}& 7 & Exploration collapse detected   & Yes & Noise inject \\
 \texttt{SIGPOLICY} & 8 & Policy violation (Invariant~2) & \textbf{No}  & None \\
 \texttt{SIGTRUST}  & 9 & Trust violation (IATP Layer~2) & \textbf{No}  & None \\
 \bottomrule
@@ -1410,6 +1441,39 @@ The formal connection between the governance layer (Operator~RL) and the trainin
 \noindent The bridge ensures that the governance invariants (\S\ref{sec:3.2.agenticrl}) hold throughout the self-evolving training loop, even as the underlying computation migrates across hardware backends. On Trainium2, the governance checks add negligible latency (they execute in Python on the CPU host), while the kernel migration costs are entirely in the VERL training step where NKI assembly and NxD communication primitives replace their CUDA equivalents.
 
 \subsection{Why Megatron's Techniques Must Be Migrated, Not Abandoned}
+
+\subsection{Multi-Agent Training on Heterogeneous Hardware}
+\label{sec:3.2.multiagent}
+
+Issue~\#92 in Agent Lightning asks: ``Does agent-lightning support multi-agent systems?'' The answer involves two distinct coordination layers: Operator~RL's Nexus module (\texttt{modules/nexus/}, 210K) for agent lifecycle orchestration, and Agent Lightning's rollout infrastructure for parallel multi-agent execution. When combined with heterogeneous hardware, multi-agent training introduces a coordination problem that is structurally analogous to the composite modulus decomposition of \S\ref{sec:3.2.1.2}.
+
+\medskip
+\noindent\textbf{The Nexus Trust Exchange.}\quad The Nexus module (\texttt{operatorRL/modules/nexus/}) is far more than a lifecycle coordinator---it is a \emph{decentralized trust exchange} for AI agents, described in its source as ``the Visa Network for AI Agents.'' Its six core components, now verified against the source code, are:
+
+\begin{description}
+\item[\texttt{registry.py}: Agent Registration and Discovery.] The \texttt{AgentRegistry} class manages agent manifests---each agent registers a DID (Decentralized Identifier, format \texttt{did:nexus:*}), capabilities, and privacy policy. Registration produces a trust score computed by the reputation engine. The \texttt{verify\_peer()} method is the core viral mechanism: before any IATP handshake, each agent verifies its peer on Nexus; unverified peers receive an \texttt{IATPUnverifiedPeerException} directing them to register. This forces network adoption. Agent discovery (\texttt{discover\_agents()}) filters by capabilities, minimum trust score, and privacy policy---directly relevant to multi-agent RL where each agent specializes in different sub-tasks.
+
+\item[\texttt{reputation.py}: Reputation Scoring and Trust Tiers.] The \texttt{ReputationEngine} assigns each agent a score from 0--1000 across five tiers: \texttt{UNTRUSTED} (0--299), \texttt{PROBATIONARY} (300--499), \texttt{STANDARD} (500--699), \texttt{TRUSTED} (700--899), \texttt{VERIFIED\_PARTNER} (900--1000). The score combines a base component (verification level), behavioral modifiers (task success rate, dispute history), and capability modifiers. The \texttt{slash\_reputation()} method applies penalties for misbehavior (dispute losses, policy violations). For agentic RL, trust scores determine which agents can share hardware partitions: only agents with $\geq 700$ (TRUSTED tier) can be co-located on the same Trainium2 node without IATP isolation overhead.
+
+\item[\texttt{escrow.py}: Conditional Trust Escrow.] When two agents negotiate a task, credits (the exchange's internal currency) are placed in escrow via \texttt{EscrowManager}. The escrow releases credits to the provider only upon \texttt{ProofOfOutcome}---a cryptographic attestation that the task was completed according to the contract. If the outcome is disputed, the escrow freezes and the Arbiter resolves. For RL training, this maps to the reward assignment problem: the ``credits'' are the reward signal, and the ``proof of outcome'' is the trajectory trace validated by \S\ref{sec:3.3}'s statistical tests.
+
+\item[\texttt{arbiter.py}: Dispute Resolution.] The \texttt{Arbiter} is a specialized ``Reward Agent''---a read-only agent that resolves disputes by replaying Flight Recorder logs against the Control Plane. When agents disagree on task outcomes, the Arbiter examines both parties' logs, identifies discrepancies, and issues a \texttt{DisputeResolution} with a confidence score. The losing party's reputation is slashed. This is the multi-agent analog of the $\chi^2$ test (\S\ref{sec:3.3.1}): the Arbiter's log replay is a deterministic validation of claimed outcomes against observed behavior, and a low confidence score in the resolution (analogous to a $\chi^2$ $p$-value in the ambiguous range) leads to a ``split'' decision.
+
+\item[\texttt{dmz.py}: Demilitarized Zone for Untrusted Interaction.] The \texttt{DMZProtocol} provides secure data handoff between agents that do not fully trust each other. A \texttt{DataHandlingPolicy} specifies retention limits (\texttt{max\_retention\_seconds}), permissions (\texttt{allow\_training}, \texttt{allow\_forwarding}, \texttt{allow\_persistence}), and audit requirements. This is critical for agentic RL: when agents share trajectory data for multi-agent training, the DMZ policy ensures that training data cannot be retained beyond the current epoch or forwarded to unauthorized agents---enforcing the ``ephemeral'' privacy policy that prevents data poisoning attacks across trust boundaries.
+\end{description}
+
+\noindent The Nexus architecture is structurally significant for our chapter because it formalizes the \emph{trust graph} over which multi-agent RL operates. In single-agent RL, the reward signal is trusted by assumption. In multi-agent agentic RL, each agent's reported observations and rewards may be adversarial. Nexus's reputation + escrow + arbiter pipeline provides the mechanism by which the training loop can assign trust-weighted rewards---agents with higher reputation scores contribute more credible training signal.
+
+\medskip
+\noindent\textbf{The Mute Agent Architecture.}\quad A particularly instructive multi-agent pattern is the ``Face/Hands'' architecture implemented in \texttt{operatorRL/modules/mute-agent/}. This module decomposes a single agentic task into two cooperating agents: a \emph{Reasoning Agent} (the ``Face'') that plans and decides, and an \emph{Execution Agent} (the ``Hands'') that carries out actions in the environment. The handshake protocol (\texttt{handshake\_protocol.py}) ensures the Execution Agent never acts without the Reasoning Agent's explicit approval---a governance mechanism that adds zero compute overhead to the training loop but provides strong safety guarantees. The Mute Agent's listener architecture (\texttt{listener/adapters/}) monitors the state of all other Operator~RL modules via adapters for the CaaS compliance layer, the control plane, the IATP trust protocol, and the SCAK self-correcting kernel. This makes the Mute Agent the ``nervous system'' of the agent OS, capable of detecting anomalies across the entire governance stack.
+
+\medskip
+\noindent\textbf{Hardware Partitioning.}\quad On a Trainium2 node with 16 NeuronCores, Nexus can partition the hardware in several ways: (a)~each agent gets 2~NeuronCores (8~agents in parallel, each with limited tensor parallelism), (b)~a single ``main'' agent gets 8~NeuronCores for tensor-parallel rollout while 8~``critic'' agents each get 1~NeuronCore for reward evaluation, or (c)~dynamic partitioning where Nexus reallocates NeuronCores based on agent priority (determined by the policy engine's semantic classification). On NVIDIA H100 with MIG (Multi-Instance GPU), the partitioning granularity is 7 slices; on Trainium2, NeuronCore partitioning is more flexible (any power-of-2 grouping from 1 to 16 cores). This asymmetry in partitioning granularity means that a multi-agent configuration optimized for Trainium2 may not transfer to H100 without adjustment---a concrete instance of the ``configuration space independence'' discussed in \S\ref{sec:3.2.critical}.
+
+\medskip
+\noindent\textbf{Composite Modulus Analogy.}\quad Just as the period of an LCG with composite modulus $m = p_1^{e_1} \cdots p_r^{e_r}$ decomposes via Lemma~Q into the LCM of the prime-power periods, a multi-agent training run's ``convergence period'' decomposes into the convergence periods of its constituent agents. If agent~$i$ operating on hardware partition~$i$ converges with period $\lambda_i$, the overall system's behavior repeats with period $\mathrm{lcm}(\lambda_1, \ldots, \lambda_n)$. This decomposition is \emph{approximate}---unlike Lemma~Q's exact CRT decomposition, agent-level convergence periods interact through shared environment state and reward signals. The approximation is tightest when agents operate on independent sub-tasks (cf.\ Issue~\#109, the Chinese Werewolf game, where each agent has an independent role), and loosest when agents share a single reward signal (cooperative tasks).
+
+
 
 One might ask: why not simply use Trainium2's native Neuron SDK tools (\texttt{neuronx-distributed}, \texttt{neuronx-nemo-megatron}) and avoid the migration complexity? The answer lies in the performance gap between compiler-generated and hand-optimized kernels, which is precisely the theme of Chapter~3.1's discussion of ``apparently optimal'' versus truly optimal kernel configurations.
 
@@ -1556,6 +1620,19 @@ $\nu$ & $p=1\%$ & $p=5\%$ & $p=25\%$ & $p=50\%$ & $p=75\%$ & $p=95\%$ & $p=99\%$
 
 \noindent For a Trainium2 cluster with $k=64$ NeuronCores ($\nu=63$), the 95th percentile of $\chi^2$ is approximately $82.5$. If $V > 82.5$, the load imbalance is statistically significant at the 5\% level and warrants investigation of the NxD parallelism configuration.
 
+\medskip
+\noindent\textbf{B. The Kolmogorov--Smirnov Test for Reward Convergence.}\quad Where the $\chi^2$ test partitions observed values into discrete bins, the Kolmogorov--Smirnov (KS) test operates directly on the empirical cumulative distribution function (CDF) and is therefore more sensitive to distributional shifts in continuous-valued quantities such as reward signals.
+
+Given two consecutive training epochs $i$ and $i+1$, let $F_i(r)$ and $F_{i+1}(r)$ denote the empirical CDFs of rollout rewards. The two-sample KS statistic is:
+\[
+D_{n_1, n_2} = \sup_r \bigl| F_i(r) - F_{i+1}(r) \bigr|
+\]
+where $n_1, n_2$ are the number of rollouts in each epoch. The null hypothesis is that both epochs' reward distributions are drawn from the same underlying distribution---i.e., the policy has not meaningfully changed. If $D_{n_1, n_2}$ exceeds the critical value $c(\alpha) \sqrt{(n_1 + n_2)/(n_1 n_2)}$, the policy has undergone a statistically significant shift at confidence level $\alpha$.
+
+In the agentic RL context, the KS test serves three diagnostic purposes: (1)~\emph{convergence detection}: when $D$ drops below a threshold for several consecutive epochs, training has converged (or stalled---the $\chi^2$ reward test distinguishes these); (2)~\emph{catastrophic forgetting detection}: a sudden spike in $D$ after a period of small values indicates the policy has ``forgotten'' previous competencies; (3)~\emph{reward model staleness}: if the environment changes but the reward model does not, the KS test between the reward model's output distribution and the true-success distribution (when ground truth is available) quantifies the staleness.
+
+For Agent Lightning, the KS test is computed by the \texttt{observability} module's metrics collector, using reward data persisted in the \texttt{store} backends. On Trainium2, the test itself is a CPU-side computation (sorting $O(n \log n)$ rewards and computing the supremum) and adds no load to the NeuronCores.
+
 \subsection{Empirical Tests for Operational Health}
 \label{sec:3.3.2}
 
@@ -1585,6 +1662,17 @@ If $s_t^{(i)}$ and $s_{t'}^{(j)}$ are similar states but from different points i
 \end{theorem}
 
 \noindent The practical consequence for Agent Lightning: the \texttt{trace\_aggregator} must group transitions by rollout ID before passing them to the VERL training backend. On Trainium2, this grouping interacts with the XLA memory planner's static shape requirement---variable-length rollouts within a batch must be padded to the maximum length, wasting \SBUF{} capacity proportional to the length variance $\mathrm{Var}(T)$ across the group.
+
+\medskip
+\noindent\textbf{The \texttt{trace\_aggregator} as Serial Test Enabler.}\quad The \texttt{trace\_aggregator} (PR~\#134, commit \texttt{4235731a}) is the critical infrastructure component that makes the serial test, poker test, and run test computationally feasible within the training loop. Its two aggregation modes determine which tests can be applied:
+
+\begin{description}
+\item[Transition-level aggregation:] Each state-action-reward-next\_state tuple $(s_t, a_t, r_t, s_{t+1})$ is emitted independently to the store. The serial test requires examining consecutive pairs $(a_t, a_{t+1})$, which are available only if the store preserves the temporal ordering \emph{within} each rollout. The \texttt{trace\_aggregator} at transition level annotates each tuple with its rollout ID and step index, enabling the serial test to reconstruct the action sequence $a_1, a_2, \ldots, a_T$ from the stored tuples. Without this annotation, transitions from different rollouts would be interleaved in the store, destroying the temporal structure that the serial test depends on. This is the data-engineering analog of Theorem~\ref{thm:temporal-correlation}: just as interleaving transitions in the training batch introduces gradient bias, interleaving transitions in the \emph{store} introduces serial test bias.
+
+\item[Trajectory-level aggregation:] The entire episode $(s_1, a_1, r_1, \ldots, s_T, a_T, r_T)$ is emitted as a single record. The run test operates directly on the sequence of trajectory rewards $R_1, R_2, \ldots$ (each trajectory's total reward), and the poker test operates on action sequences extracted from trajectories. Trajectory-level aggregation preserves all temporal structure by construction, but at higher memory cost: each trajectory record includes the full action sequence rather than individual tuples. On Trainium2, where the XLA memory planner pre-allocates tensor shapes, trajectory-level storage requires padding all trajectories to the maximum episode length---the same padding waste analyzed in Exercise~20 of \S\ref{sec:3.1}.
+\end{description}
+
+\noindent The operational recommendation is to use trajectory-level aggregation during the initial training phase (when episode lengths are short and exploration is high, making the poker test and serial test most informative) and transition-level aggregation during fine-tuning (when episodes are long and credit assignment granularity matters more than temporal correlation analysis). The \texttt{AgentModeDaemon} (\S\ref{sec:3.2.daemon}) supports runtime switching between aggregation modes via its \texttt{trace\_aggregator} parameter, enabling this phase-dependent strategy without restarting the training loop.
 
 \subsection{The Spectral Test for Kernel Schedule Analysis}
 \label{sec:3.3.4}
@@ -1718,7 +1806,7 @@ The Operator RL repository (\texttt{operatorRL}) organizes its kernel architectu
 
 \item[\texttt{modules/cmvk}] \textbf{(Cross-Model Verification Kernel.)} Ensures numerical consistency when the same model runs on different hardware backends. After migrating a kernel from CUDA to NKI (\S\ref{sec:3.2.migration.kernels}), CMVK runs a verification suite comparing output tensors within a specified tolerance ($\epsilon \leq 10^{-3}$ for BF16 operations).
 
-\item[\texttt{modules/nexus}] \textbf{(Multi-Agent Coordination.)} Orchestrates multiple agents operating concurrently. Nexus manages agent lifecycle (spawn, pause, resume, terminate), resource allocation across NeuronCores, and inter-agent message passing. Issue~\#92 in Agent Lightning asks about multi-agent support; Nexus is Operator RL's answer.
+\item[\texttt{modules/nexus}] \textbf{(Nexus Trust Exchange --- ``The Visa Network for AI Agents.'') } A decentralized trust exchange with six components: \texttt{AgentRegistry} (DID-based agent registration and capability discovery), \texttt{ReputationEngine} (0--1000 trust scoring with 5 tiers and slashing), \texttt{EscrowManager} (conditional credit escrow with ProofOfOutcome), \texttt{Arbiter} (dispute resolution via Flight Recorder log replay), \texttt{DMZProtocol} (secure data handoff with retention/training/forwarding policies), and \texttt{NexusClient} (SDK). See \S\ref{sec:3.2.multiagent} for detailed analysis of each component's role in multi-agent agentic RL.
 
 \item[\texttt{modules/amb}] \textbf{(Agent Memory Buffer.)} A ring buffer for short-term agent state, used during rollout execution. AMB is the runtime complement to EMK's persistent episodic storage.
 
@@ -1731,6 +1819,28 @@ The Operator RL repository (\texttt{operatorRL}) organizes its kernel architectu
 \item[\texttt{benchmarks/bench\_policy.py}] Benchmarks for the policy engine's evaluation latency --- critical for ensuring governance overhead remains negligible during training.
 
 \item[\texttt{examples/self-evaluating}] A complete example of a self-evaluating agent that runs the validation tests from \S\ref{sec:3.3} on its own training metrics and triggers SCAK-mediated self-correction when anomalies are detected.
+
+\item[\texttt{examples/agent-lightning-training}] Demonstrates the complete self-evolving training loop: an agent governed by Operator~RL generates rollouts, Agent Lightning trains the policy via GRPO, and the updated model is redeployed under governance constraints. Runnable on a single machine targeting GPU or Trainium2 backends.
+
+\item[\texttt{src/agent\_os/prompt\_injection.py}] Prompt injection detection for adversarial agentic RL. During rollout, adversarial inputs may attempt to manipulate agent behavior. The $\chi^2$ action diversity test (\S\ref{sec:3.3.2}) can detect injection attacks: an injected prompt that forces repetitive behavior produces a statistically significant deviation from the expected action distribution.
+
+\item[\texttt{src/agent\_os/sandbox.py}] Sandboxed execution environments for untrusted agent actions. On multi-platform hardware, sandboxing requires platform-specific isolation: CUDA MPS on GPU, XLA device assignment on TPU, NeuronCore partition on Trainium2. The sandbox is the enforcement mechanism for Invariant~4 (Crash Isolation).
+
+\item[\texttt{src/agent\_os/supervisor.py}] Erlang-style supervision tree for multi-agent systems. When a child agent crashes (hardware fault, policy violation, or rollout failure), the supervisor's restart strategy determines whether to restart that agent alone (one-for-one), restart all siblings (one-for-all), or escalate. The restart strategy directly affects the gap test (\S\ref{sec:3.3.2}): one-for-all restarts produce clustered failures detectable as non-geometric gap distributions.
+
+\item[\texttt{src/agent\_os/semantic\_policy.py}] Semantic policy engine using NLP for policy evaluation. Unlike static rule-based policies, semantic policies express natural-language constraints (e.g., ``do not access customer PII during training rollouts'') where ``PII'' is semantically understood, not pattern-matched. The semantic engine runs on the GPSIMD scalar unit on Trainium2, overlapping with tensor computation on the MME.
+
+\item[\texttt{src/agent\_os/stateless.py}] Stateless execution mode where the agent operates without persistent server-side state, relying entirely on the context window and policy rules. This mode enables transparent cross-platform migration: a stateless agent can be moved from a GPU worker to a Trainium2 worker mid-episode without state serialization overhead.
+
+\item[\texttt{src/agent\_os/memory\_guard.py}] Enforces hard limits on agent memory consumption. On Trainium2, where SBUF capacity constrains the effective context window, MemoryGuard triggers truncation when the agent's accumulated KV-cache exceeds the SBUF allocation---analogous to reducing the modulus $m$ to fit within the hardware's word size (\S\ref{sec:3.2.1.1}).
+
+\item[\texttt{modules/mcp-kernel-server}] MCP (Model Context Protocol) server exposing Operator~RL governance capabilities. This enables Claude Code and other MCP-compatible agents to invoke the policy engine before executing potentially dangerous actions---the mechanism by which a fully autonomous Claude Code instance can self-govern during the agentic RL training loop.
+
+\item[\texttt{modules/mute-agent}] The ``Face/Hands'' architecture (\S\ref{sec:3.2.multiagent}): a Reasoning Agent plans, an Execution Agent acts, connected by a handshake protocol. The Mute Agent's knowledge graph (\texttt{multidimensional\_graph.py}) maintains a multi-dimensional world model updated from rollout experiences, and its listener architecture (\texttt{listener/adapters/}) monitors all other Operator~RL modules, making it the ``nervous system'' of the agent OS.
+
+\item[\texttt{templates/policies/}] 115K of policy templates covering common governance scenarios: HIPAA compliance, SOC2 auditing, financial trading constraints, PII protection, and multi-agent coordination rules. These templates are ``known good configurations''---analogous to the recommended multiplier values in the tables of \S\ref{sec:3.2.1.2}.
+
+\item[\texttt{notebooks/}] Six Jupyter notebooks demonstrating core features: \texttt{01-hello-agent-os}, \texttt{02-policy-engine}, \texttt{03-time-travel-debug}, \texttt{04-cross-model-verification}, \texttt{05-multi-agent}, \texttt{06-compliance}. The time-travel debugging notebook uses lifecycle snapshots (\texttt{lifecycle.py}) to replay agent behavior from any point---critical for debugging ``degenerate configurations'' detected by \S\ref{sec:3.3}'s statistical tests.
 \end{description}
 
 \section{Agent Lightning Component Reference}
@@ -1743,7 +1853,38 @@ The Operator RL repository (\texttt{operatorRL}) organizes its kernel architectu
 
 \item[\texttt{agentlightning/adapter/}] Framework adapters (LangChain, CrewAI, etc.) that convert diverse agent framework outputs into the standardized trace format. The \texttt{TracerTraceToTriplet} adapter family handles the conversion from raw traces to (state, action, reward) triplets suitable for RL training.
 
-\item[\texttt{agentlightning/algorithm/}] RL algorithm implementations. As of early 2026, supports GRPO and PPO via the VERL backend. Each algorithm defines its own advantage estimation and gradient computation, which determines the hardware memory requirements during the policy update step (\S\ref{sec:3.2.migration.memory}).
+\item[\texttt{agentlightning/algorithm/}] RL algorithm implementations organized as a plugin architecture. Each algorithm is a subclass of \texttt{BaseAlgorithm} registered via the \texttt{@algorithm} decorator (\texttt{algorithm/decorator.py}), enabling runtime algorithm selection without code changes---analogous to selecting different multiplier $a$ values while keeping the modulus fixed. As of early 2026, three algorithm families are supported:
+
+\begin{description}
+\item[\textbf{GRPO}] (Group Relative Policy Optimization, via VERL): generates $G$ responses per prompt, computes reward for each, and derives advantages from group statistics without a separate critic network. Memory-efficient on Trainium2 because eliminating the critic frees one NeuronCore's worth of SBUF/PSUM capacity.
+\item[\textbf{PPO}] (Proximal Policy Optimization, via VERL): requires a learned value function (critic) alongside the policy. On Trainium2, the critic model's memory footprint must be accommodated in the XLA memory plan alongside the policy, doubling the minimum NeuronCore allocation.
+\item[\textbf{APO}] (Automatic Prompt Optimization, \texttt{algorithm/apo/}): a fundamentally different paradigm that uses \emph{text gradients}---natural-language descriptions of how a prompt should change---to iteratively refine agent instructions. APO requires no hardware-specific numerical computation; its ``.poml'' prompt templates (\texttt{algorithm/apo/prompts/}) serve as the ``multiplier $a$'' in the LCG analogy, determining how the current prompt configuration transforms into the next. A poorly designed template leads to premature prompt convergence, just as a poorly chosen multiplier leads to short-period LCGs.
+\end{description}
+The VERL interface (\texttt{algorithm/verl/interface.py}) bridges Agent Lightning's trajectory format to VERL's \texttt{DataProto}, handling the conversion from (prompt, response, reward) triplets to packed tensor batches for gradient computation. This conversion is where the hardware-specific training backend (PyTorch DDP on CUDA, NxD on Trainium) is first invoked.
+
+\item[\texttt{agentlightning/adapter/}] Framework adapters that convert diverse agent framework outputs into Agent Lightning's canonical \texttt{Span} and \texttt{Trace} types. Adapters exist for LangChain, CrewAI, Vercel~AI, and OpenAI Agents SDK, among others. The \texttt{TracerTraceToTriplet} adapter family (\texttt{adapter/triplet.py}) handles the final conversion from raw traces to (state, action, reward) triplets suitable for RL training---the fundamental data unit analogous to the $(X_n, X_{n+1})$ pairs in LCG analysis (\S\ref{sec:3.2.1}). Issues~\#308, \#311, \#425, and~\#432 document adapter bugs that arise from subtle differences in how frameworks represent tool calls, streaming responses, and multi-turn context. These bugs are the ``increment $c$'' of our LCG analogy---runtime overhead that perturbs the idealized training signal.
+
+\item[\texttt{agentlightning/litagent/}] A lightweight built-in agent framework. The \texttt{@litagent} decorator (\texttt{litagent/decorator.py}) transforms any Python callable into a trainable agent, automatically tracing inputs, outputs, and intermediate tool calls for RL training. Unlike adapters for external frameworks, LitAgent is designed specifically for RL training efficiency: it minimizes serialization overhead by capturing trajectories directly in the format expected by the \texttt{trace\_aggregator}. For rapid prototyping of new agentic RL experiments on a single Trainium2 node (or CPU), LitAgent eliminates the framework integration complexity that adapters must handle.
+
+\item[\texttt{agentlightning/store/}] Seven interchangeable backend implementations for the LightningStore trajectory persistence layer: (1)~in-memory (for debugging and unit tests), (2)~SQLite (single-machine persistence), (3)~MongoDB (distributed, horizontally scalable), (4)~client-server (decoupled storage with REST API), (5)~collection-based (structured retrieval by training iteration), (6)~threaded (concurrent access from multiple rollout workers), and (7)~base (abstract interface). The collection abstraction groups trajectories by training epoch, enabling replay and off-policy training---where stored trajectories from earlier policies are reused for gradient computation. The existence of multiple backends mirrors the modulus choice discussion in \S\ref{sec:3.2.1.1}: just as different moduli $m$ suit different hardware word sizes, different store backends suit different deployment scales. Issues~\#395 (lifecycle), \#397 (startup failures), and~\#436 (cleanup) document store reliability challenges; each represents a failure mode in the ``increment $c$'' of the training recurrence.
+
+\item[\texttt{agentlightning/tracer/}] Captures the full agent interaction trace during rollout. The tracer records every LLM call, tool invocation, and environment observation as structured \texttt{Span} objects with token IDs, logprobs, and timing metadata. This trace is the ``observation'' in the MDP formulation---without faithful tracing, the RL training signal is corrupted. The \texttt{trace\_aggregator} (PR~\#134, commit \texttt{4235731a}) supports both transition-level and trajectory-level aggregation; the former treating each step independently (enabling the serial test of \S\ref{sec:3.3.2}), the latter preserving temporal structure (required for trajectory-level credit assignment in \S\ref{sec:3.3.credit}). Issue~\#326 documents a bug where incorrect \texttt{token\_ids} in traces caused training divergence---illustrating why tracer fidelity is a correctness requirement, not merely a convenience. Tracer backends include AgentOps, OpenTelemetry, Weights \& Biases Weave, and a dummy backend for testing.
+
+\item[\texttt{agentlightning/emitter/}] The write-side interface to the training data pipeline. Emitters package rollout results, rewards, and metrics into structured events consumed by the training loop. The reward emitter (\texttt{emitter/reward.py}) accepts scalar or structured rewards at configurable granularity---per-token, per-action, or per-episode---and associates them with the corresponding tracer spans. The \texttt{FlightRecorderEmitter} (\S\ref{sec:3.2.bridge}) adapts Operator~RL's audit log to the store's span format.
+
+\item[\texttt{agentlightning/execution/}] Manages agent task execution lifecycle: scheduling, timeout, retry, and error handling. The shared-memory transport (\texttt{execution/shared\_memory.py}) implements zero-copy trajectory exchange between rollout workers and the training process, avoiding serialization overhead for large rollout batches. On Trainium2, execution timeouts must account for XLA compilation overhead---the first invocation of a new graph shape may take 10--100$\times$ longer than subsequent invocations.
+
+\item[\texttt{agentlightning/llm\_proxy.py}] The inference abstraction layer (60K lines). Routes inference requests to the appropriate backend (vLLM, SGLang, OpenAI API, Azure, or local models---see Issue~\#470) and handles batching, caching, and error recovery. Every inference call during rollout is intercepted, capturing token logprobs and completion metadata required for policy gradient computation. Issue~\#262 notes streaming responses are not yet fully supported. On Trainium2, the proxy must manage XLA graph compilation caching: if a new sequence length triggers recompilation, the proxy queues requests until compilation completes, adding latency that the gap test of \S\ref{sec:3.3.2} can detect as inter-failure interval anomalies.
+
+\item[\texttt{agentlightning/instrumentation/}] OpenTelemetry-compatible observability. Pluggable backends include AgentOps (Issues~\#47, \#49, \#56 document authentication and streaming failures), Weights \& Biases Weave, LiteLLM proxy monitoring, and vLLM metrics export. Every rollout, reward computation, and training step emits structured spans that feed Operator~RL's observability module and the \S\ref{sec:3.3} statistical tests.
+
+\item[\texttt{contrib/adapter/agentos.py}] The Agent-OS adapter (PR~\#478, commit \texttt{49bf9cd9}: ``Kernel-Level Safety for RL Training'') integrates Operator~RL's governance layer with Agent Lightning's training pipeline. The \texttt{contrib/algorithm/env\_verl/} module provides environment-interactive training where the RL loop includes real environment execution---the defining characteristic of \emph{agentic} RL as opposed to standard offline RL.
+
+\item[\texttt{contrib/recipes/}] Production-tested training recipes for specific agentic tasks: AlfWorld (text-based household tasks), ScienceWorld (scientific reasoning), WebShop (web-based shopping), and search\_r1 (search-augmented reasoning). Each recipe specifies the algorithm (GRPO/PPO/APO), hyperparameters, and hardware requirements. AlfWorld's text-only environment is CPU-bounded during rollout but GPU-bounded during training; WebShop requires headless browser rendering infrastructure that introduces I/O latency invisible to the kernel auto-tuner. These recipes are the most concrete demonstrations of the full agentic RL loop: environment interaction $\to$ trajectory capture $\to$ reward computation $\to$ policy update.
+
+\item[\texttt{examples/claude\_code/}] Demonstrates the ``agentic RL'' vision end-to-end: Claude Code generates code solutions in a sandboxed environment (\texttt{operatorRL/src/agent\_os/sandbox.py}), Agent Lightning captures the interaction traces, and the policy is updated via GRPO training. This is the concrete implementation of the self-deploying, self-feedback, self-evolving loop described in \S\ref{sec:3.2.agenticrl}---running on Megatron/Trainium2 with Claude Code fully autonomous.
+
+\item[\texttt{examples/tinker/}] A minimal RL training loop for rapid prototyping, runnable on a single GPU or CPU. This is the ``small modulus'' equivalent (\S\ref{sec:3.2.1.1})---testing the system with minimal infrastructure before scaling to distributed Trainium2 training.
 \end{description}
 
 \bibliographystyle{plainnat}
