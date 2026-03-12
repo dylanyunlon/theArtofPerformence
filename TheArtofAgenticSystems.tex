@@ -8,6 +8,10 @@
 \usepackage{url}
 \usepackage{amsmath,amssymb,amsthm}
 \usepackage{natbib}
+\usepackage{booktabs}
+\usepackage{tikz}
+\usetikzlibrary{arrows.meta,positioning,fit,calc}
+\usepackage{graphicx}
 
 \newtheorem{theorem}{Theorem}[section]
 \newtheorem{lemma}[theorem]{Lemma}
@@ -378,7 +382,38 @@ Accumulator A now contains the value $(aX) \bmod (w + 1)$. Of course, this value
 
 To prove that program~(2) indeed determines $(aX) \bmod (w + 1)$, note that at line~04 we subtract the lower half from the upper half of the product, without overflow; and if $aX = qw + r$, where $0 \leq r < w$, then after line~04 we have the quantity $r - q$ in register A. Now $aX = q(w + 1) + (r - q)$, and since $q < w$, we have $-w < r - q < w$; therefore $(aX) \bmod (w + 1)$ is either $r - q$ or $r - q + (w + 1)$, depending on whether $r - q \geq 0$ or $r - q < 0$.
 
-A similar technique can be used to obtain the product of two numbers modulo $(w - 1)$; see Exercise~8. In the following sections, some knowledge about the prime factors of $m$ is required in order to choose the multiplier $a$ properly. Table~1 lists the complete prime factorization of $w \pm 1$ for nearly every known accelerator configuration word size; if needed, the methods of Section~4.5.4 can be used to extend this table.
+A similar technique can be used to obtain the product of two numbers modulo $(w - 1)$; see Exercise~8. In the following sections, some knowledge about the prime factors of $m$ is required in order to choose the multiplier $a$ properly. Table~\ref{tab:factorizations} lists the complete prime factorization of $w \pm 1$ for accelerator word sizes relevant to agentic RL hardware; if needed, the methods of Section~4.5.4 can be used to extend this table.
+
+\begin{table}[ht]
+\caption{Factorizations of $w \pm 1$ for hardware configuration word sizes (Table 3.2.1.1-1). For each accelerator's primary data path width $e$ (where $w=2^e$), the factorization of $w-1$ and $w+1$ determines which multiplier choices yield maximum-period sequences.}
+\label{tab:factorizations}
+\begin{center}
+\begin{tabular}{@{}clll@{}}
+\toprule
+$e$ & Platform Context & $w-1$ factorization & $w+1$ factorization \\
+\midrule
+16 & BF16 exponent range & $3 \cdot 5 \cdot 17 \cdot 257$ & $17 \cdot 3855 + 2$ \\
+   & (Trainium2 matrix engine) & $= 65535$ & $= 65537$ (Fermat prime) \\
+\addlinespace
+31 & Trainium2 NeuronCore v2 & $= 2147483647$ & $= 2^{31}+1$ \\
+   & (signed 32-bit data path) & (Mersenne prime $M_{31}$) & $= 3 \cdot 715827883$ \\
+\addlinespace
+32 & CUDA \texttt{unsigned int} & $= 2^{32}-1$ & $= 2^{32}+1$ \\
+   & (H100 register file) & $= 3 \cdot 5 \cdot 17 \cdot 257 \cdot 65537$ & $= 641 \cdot 6700417$ \\
+\addlinespace
+48 & SBUF partition address & $= 2^{48}-1$ & $= 2^{48}+1$ \\
+   & (Trainium2 scratchpad) & $= 3^2 \cdot 5 \cdot 7 \cdot 13 \cdot 17$ & $= 97 \cdot 257 \cdot 673$ \\
+   & & $\quad \cdot\; 97 \cdot 241 \cdot 257 \cdot 673$ & $\quad \cdot\; 65537 \cdot \text{(composite)}$ \\
+\addlinespace
+64 & Full DMA address space & $= 2^{64}-1$ & $= 2^{64}+1$ \\
+   & (HBM addressing) & $= 3 \cdot 5 \cdot 17 \cdot 257 \cdot 641$ & $= 274177 \cdot 67280421310721$ \\
+   & & $\quad \cdot\; 65537 \cdot 6700417$ & \\
+\bottomrule
+\end{tabular}
+\end{center}
+\medskip
+\noindent\textit{Domain interpretation.} In kernel auto-tuning, $w$ represents the cardinality of a single configuration parameter's range. For example, if tile dimension $M$ can take values in $\{1, 2, \ldots, 2^{16}\}$, the auto-tuner's iteration over $M$ is governed by the factorization of $2^{16} - 1 = 3 \cdot 5 \cdot 17 \cdot 257$. The fact that $2^{31}-1$ is a Mersenne prime is particularly useful: when the configuration space has cardinality $m = 2^{31}-1$, a purely multiplicative generator ($c=0$) with a primitive root $a$ achieves the maximum period $m-1 = 2^{31}-2$---only 1 less than the total space.
+\end{table}
 
 The reader is quite likely to ask why we should bother considering $m = w \pm 1$ when $m = w$ is clearly more convenient. The reason is that when $m = w$, the low-order digits of $X_n$ are much less random than the high-order digits. If $d$ is a factor of $m$ and $Y_n = X_n \bmod d$, we can easily show that
 \begin{equation}
@@ -388,7 +423,7 @@ Y_{n+1} = (aY_n + c) \bmod d \tag{4}
 
 To illustrate the significance of equation~(4), suppose we have a binary accelerator. If $m = w = 2^e$, then the low four bits of $X_n$ are $Y_n = X_n \bmod 2^4$. The point of equation~(4) is that $X_n$'s low four bits form a congruential sequence whose period is 16 or less. Similarly, the low five bits are periodic with period at most 32, and $X_n$'s least significant bit either is constant or strictly alternates between 0 and 1.
 
-When $m = w \pm 1$, this problem does not arise. In this case the low-order bit characteristics are just as random as the high-order bits. For example, suppose $w = 2^{35}$ and $m = 2^{35} - 1$, and we consider the sequence modulo $31, 71, 127$, or $122921$ (see Table~1); then these subsequences are not very random. But the low-order bits (representing the sequence modulo 2) are satisfactorily random.
+When $m = w \pm 1$, this problem does not arise. In this case the low-order bit characteristics are just as random as the high-order bits. For example, suppose $w = 2^{35}$ and $m = 2^{35} - 1$, and we consider the sequence modulo $31, 71, 127$, or $122921$ (see Table~\ref{tab:factorizations}); then these subsequences are not very random. But the low-order bits (representing the sequence modulo 2) are satisfactorily random.
 
 Another alternative is to let $m$ be the largest prime less than $w$; using the techniques of Section~4.5.4, this prime can be found, and tables of sufficiently large primes are given there.
 
@@ -410,7 +445,7 @@ Our discussion so far has been based on ``signed magnitude'' hardware like the T
 
 \item[\textbf{6.}] [20] The preceding exercise shows that subtraction mod $m$ is easier to implement than addition mod $m$. Discuss sequences generated by the rule $X_{n+1} = (aX_n - c) \bmod m$. Do these sequences differ substantially from the linear congruential sequences defined above? Are they more suitable for efficient computation on an accelerator?
 
-\item[\textbf{7.}] [$M24$] What patterns can you see in Table~1?
+\item[\textbf{7.}] [$M24$] What patterns can you see in Table~\ref{tab:factorizations}?
 
 \item[\textbf{8.}] [20] Write a Trainium assembly program, analogous to program~(2), that computes $(aX) \bmod (w - 1)$. In the input and output of your program, the values 0 and $w - 1$ should be considered equivalent.
 
