@@ -999,892 +999,459 @@ To summarize in one sentence: DeepSeek is the best prisoner in NVIDIA's jail; An
 % Uniform Kernel Configurations) to the concrete problem of migrating
 % the Megatron training stack from NVIDIA to Trainium2.
 % ============================================================
-\section{The Linear Congruence of Hardware Ecosystems}
-\label{sec:3.2.hw}
-% ============================================================
-
-In Chapter~3.1, we established that an agentic RL system---one that self-deploys, gathers environment feedback, and self-evolves its own training loop---requires assembly-level kernel optimization to achieve viable throughput on any accelerator. We described the general framework: an agent autonomously running on a cluster of heterogeneous accelerators, generating rollout trajectories, computing gradient updates, and continuously retraining itself, all orchestrated by the Operator RL method (see \texttt{operatorRL/src/agent\_os}) with training algorithms from Agent Lightning (\texttt{agentlightning/trainer}, \texttt{agentlightning/runner}).
-
-We now turn to a more specific and practically urgent question: \emph{how does one migrate the dominant GPU-native distributed training framework---NVIDIA Megatron-LM---to a non-NVIDIA accelerator, specifically AWS Trainium2, while preserving or exceeding the original performance?}
-
-This question is not academic. Anthropic's engineering team has demonstrated that production-scale AI training and inference can be executed on Trainium2 via hand-written assembly kernels, bypassing the Neuron compiler's intermediate representations entirely. The strategic motivation, as analyzed in the companion document \emph{Anthropic~WantToDoWhat}, is vendor independence: maintaining optimized kernel stacks across GPU, TPU, and Trainium simultaneously, so that no single hardware supplier holds monopoly leverage.
-
-The analogy to Chapter~3.1's discussion of random number generation is precise. Just as a linear congruential generator $X_{n+1} = (aX_n + c) \bmod m$ appears to produce random sequences but is entirely determined by its parameters, so too does a ``hardware-portable'' training framework \emph{appear} to abstract away hardware differences but is entirely determined by the quality of its lowest-level kernel implementations. The parameters $m$, $a$, $c$ of the congruential generator correspond to the hardware ISA, the kernel optimization strategy, and the compiler/runtime overhead respectively. Change $m$---change the hardware---and the entire sequence changes character, even if the abstract formula remains identical.
-
-To justify the section title formally: we define a congruence relation $\sim_{\!K}$ on the set of hardware ecosystems, where two ecosystems $\HardwareSpace_1, \HardwareSpace_2$ are congruent modulo a kernel set $K$ (written $\HardwareSpace_1 \sim_{\!K} \HardwareSpace_2$) if and only if every kernel $k \in K$ achieves the same asymptotic utilization fraction $U_k$ on both platforms to within measurement tolerance $\epsilon$:
-\[
-\HardwareSpace_1 \sim_{\!K} \HardwareSpace_2 \iff \forall k \in K: \; |U_k(\HardwareSpace_1) - U_k(\HardwareSpace_2)| < \epsilon.
-\]
-This is an equivalence relation (reflexive, symmetric, transitive). The equivalence classes partition the space of hardware platforms: all platforms that can run the same kernels at the same utilization are ``congruent.'' Anthropic's thesis is that the class $[\text{NVIDIA GPU}]_K$ currently contains only NVIDIA GPUs, because the kernel set $K$ (Megatron's CUDA kernels) is written in CUDA. By rewriting $K$ in hardware-agnostic NKI, Anthropic seeks to expand the equivalence class to include Trainium2---to make GPU and Trainium2 congruent modulo the critical kernel set. The ``linear'' qualifier reflects the key constraint: the migration effort scales \emph{linearly} with $|K|$ (the number of kernels to rewrite), not with $|K|^2$ (kernel interactions), because the kernels are composed sequentially in the training pipeline and interact only through well-defined tensor interfaces.
-
-Figure~\ref{fig:system-arch} shows the complete system architecture spanning both repositories.
-
-\begin{figure}[ht]
-\centering
-\begin{tikzpicture}[
-  layer/.style={draw, rounded corners, minimum width=12cm, minimum height=1.1cm, font=\small},
-  module/.style={draw, rounded corners, minimum width=3.4cm, minimum height=0.7cm, font=\footnotesize},
-  hw/.style={draw, fill=gray!15, rounded corners, minimum width=12cm, minimum height=0.9cm, font=\small},
-  arrow/.style={-{Stealth[length=3pt]}, thick},
-  brace/.style={decorate, decoration={brace, amplitude=6pt}},
-  label/.style={font=\footnotesize\itshape}
-]
-% Hardware layer
-\node[hw] (hw) at (0, 0) {Hardware: \ \ NVIDIA GPU (CUDA/NCCL) \ \ $|$ \ \ Google TPU (XLA) \ \ $|$ \ \ AWS Trainium2 (NKI/VLIW)};
-
-% Kernel layer (operatorRL)
-\node[layer, fill=blue!8] (L1) at (0, 1.5) {};
-\node[module, fill=blue!15] at (-3.8, 1.5) {\texttt{primitives}};
-\node[module, fill=blue!15] at (0, 1.5) {\texttt{iatp} (trust)};
-\node[module, fill=blue!15] at (3.8, 1.5) {\texttt{cmvk} (verify)};
-\node[anchor=west, font=\scriptsize\bfseries] at (-6.2, 1.5) {L1--L2};
-
-% Policy layer (operatorRL)
-\node[layer, fill=blue!8] (L3) at (0, 3.0) {};
-\node[module, fill=blue!20] at (-3.8, 3.0) {\texttt{emk} (memory)};
-\node[module, fill=blue!20] at (0, 3.0) {\texttt{policy engine}};
-\node[module, fill=blue!20] at (3.8, 3.0) {\texttt{nexus} (multi-agent)};
-\node[anchor=west, font=\scriptsize\bfseries] at (-6.2, 3.0) {L3};
-
-% SCAK layer (operatorRL)
-\node[layer, fill=blue!8] (L4) at (0, 4.5) {};
-\node[module, fill=blue!25] at (-2.5, 4.5) {\texttt{scak} (self-correct)};
-\node[module, fill=blue!25] at (2.5, 4.5) {\texttt{observability}};
-\node[anchor=west, font=\scriptsize\bfseries] at (-6.2, 4.5) {L4};
-
-% Agent Lightning layer
-\node[layer, fill=orange!8] (agl) at (0, 6.0) {};
-\node[module, fill=orange!15] at (-4.2, 6.0) {\texttt{runner}};
-\node[module, fill=orange!15] at (-1.4, 6.0) {\texttt{store}};
-\node[module, fill=orange!15] at (1.4, 6.0) {\texttt{trainer/verl}};
-\node[module, fill=orange!15] at (4.2, 6.0) {\texttt{tracer}};
-
-% Daemon/Algorithm layer
-\node[layer, fill=orange!8] (algo) at (0, 7.5) {};
-\node[module, fill=orange!20] at (-3.0, 7.5) {\texttt{daemon} (v0/v1)};
-\node[module, fill=orange!20] at (0.5, 7.5) {\texttt{algorithm} (GRPO/PPO)};
-\node[module, fill=orange!20] at (3.8, 7.5) {\texttt{adapter}};
-
-% Agent
-\node[draw, fill=green!10, rounded corners, minimum width=12cm, minimum height=0.9cm, font=\small] (agent) at (0, 9.0) {Agent (Claude Code / LangChain / CrewAI / custom) $\xrightarrow{\text{rollout}}$ Environment $\xrightarrow{R}$ Reward};
-
-% Braces for repos
-\draw[brace] (6.5, 0.8) -- node[right=4pt, label] {Operator RL} (6.5, 5.2);
-\draw[brace] (6.5, 5.4) -- node[right=4pt, label] {Agent Lightning} (6.5, 8.2);
-
-% Arrows
-\draw[arrow] (hw.north) -- (L1.south);
-\draw[arrow] (L1.north) -- (L3.south);
-\draw[arrow] (L3.north) -- (L4.south);
-\draw[arrow, dashed] (L4.north) -- node[right, font=\scriptsize] {integration bridge} (agl.south);
-\draw[arrow] (agl.north) -- (algo.south);
-\draw[arrow] (algo.north) -- (agent.south);
-
-% Validation feedback loop
-\draw[arrow, red!60!black, dashed] (agent.east) -- ++(1.5, 0) |- node[pos=0.25, right, font=\scriptsize, red!60!black] {§3.3 validation} (L4.east);
-
-\end{tikzpicture}
-\caption{System architecture of the Operator RL + Agent Lightning stack. Operator RL (blue) provides 4-layer kernel governance from hardware primitives (L1--L2) through policy engine (L3) to self-correcting agent kernel (L4). Agent Lightning (orange) provides the RL training pipeline: daemon orchestration, algorithm backends (GRPO/PPO via VERL), trajectory storage, and framework adapters. The dashed integration bridge is implemented in \texttt{operatorRL/src/agent\_os/integrations/agent\_lightning/}. The red feedback loop represents the \S\ref{sec:3.3} validation tests feeding anomaly signals back to SCAK for self-correction.}
-\label{fig:system-arch}
-\end{figure}
-
-\subsection{The Megatron Ecosystem: A Primer}
-\label{sec:3.2.megatron}
-
-NVIDIA Megatron-LM, first published in 2019, established the dominant paradigm for distributed large-model training on GPU clusters. Its core contributions form a layered stack:
-
-\medskip
-
-\noindent\textbf{Layer 1: Parallelism Primitives.} Megatron introduced three fundamental parallelism strategies that compose to fill a GPU cluster: \emph{Tensor Parallelism} (TP), which splits individual weight matrices across devices within a node; \emph{Pipeline Parallelism} (PP), which distributes transformer layers across nodes with interleaved 1F1B scheduling; and \emph{Data Parallelism} (DP), which replicates the model across groups and averages gradients. A critical refinement is \emph{Virtual Pipeline Parallelism} \citep{narayanan2021virtual}, which assigns multiple non-contiguous ``virtual stages'' to each device (e.g., layers 1--4 and 17--20 on device~0), enabling an interleaved 1F1B schedule that reduces the pipeline bubble from $\frac{p-1}{p+m-1}$ to approximately $\frac{p-1}{p \cdot v + m - 1}$ (where $p$ is the number of pipeline stages, $v$ is the number of virtual stages per device, and $m$ is the number of microbatches). On Trainium2, virtual PP is not supported by the Neuron Megatron reference and must be hand-implemented via NxD's pipeline primitives---each virtual stage boundary requires an additional point-to-point communication over NeuronLink or EFA, and the interleaved schedule demands careful instruction-level orchestration of send/receive with compute.
-
-Megatron-Core (v0.11+) adds \emph{Sequence Parallelism} (SP, introduced earlier in Megatron-LM v3 circa 2022 \citep{korthikanti2023megatronsp}), \emph{Context Parallelism} (CP, a newer addition for long-context training), and \emph{Expert Parallelism} (EP) for MoE architectures. Each parallelism primitive requires specific communication patterns---all-reduce for DP, all-gather/reduce-scatter for TP, point-to-point for PP---and these patterns must be mapped onto the target hardware's interconnect topology.
-
-\medskip
-
-\noindent\textbf{Layer 2: Fused Kernels.} Performance-critical operations---fused attention (FlashAttention variants), fused MLP layers, fused layer normalization with quantization---are implemented as hand-optimized CUDA kernels, often using NVIDIA's cuBLAS, cuDNN, and Transformer Engine libraries. These kernels exploit NVIDIA-specific hardware features: Tensor Cores for mixed-precision GEMM, shared memory for data reuse, warp-level primitives for fast reductions, and the FP8 data path on Hopper/Blackwell architectures.
-
-\medskip
-
-\noindent\textbf{Layer 3: Communication Overlap.} Megatron's highest-performing configurations overlap computation with communication: TP communication with GEMM execution (\texttt{--tp-comm-overlap}), DP gradient reduction with backward computation (\texttt{--overlap-grad-reduce}), and parameter gathering with forward computation (\texttt{--overlap-param-gather}). These overlaps are orchestrated through CUDA streams and events---fundamentally NVIDIA-specific scheduling primitives.
-
-\medskip
-
-\noindent\textbf{Layer 4: Memory Management.} Distributed checkpointing, activation recomputation, CPU offloading, and gradient accumulation are implemented with assumptions about GPU memory hierarchy (HBM $\to$ L2 $\to$ shared memory $\to$ registers) and CUDA's unified memory model.
-
-\bigskip
-
-The critical observation is that \emph{none of these layers are hardware-portable by default}. Layers~2 and~3 are written in CUDA and depend on NVIDIA-specific hardware features. Layers~1 and~4 use NCCL for communication and CUDA APIs for memory management. Migrating Megatron to Trainium2 therefore requires rewriting or replacing every layer.
 
 % ============================================================
-\section{CCCL and the DIA Project: Position in the NVIDIA Fortress}
-\label{sec:3.2.cccl}
+% §3.3  STATISTICAL TESTS (VALIDATION TESTS FOR AGENTIC TRAINING QUALITY)
+% ============================================================
+% Maps to TAOCP Vol.2 §3.3 (Statistical Tests, pp.35-103)
+% Structure: 3.3.1, 3.3.2, *3.3.3, 3.3.4 — exact TAOCP numbering
 % ============================================================
 
-Before analyzing the migration path \emph{away} from NVIDIA, we must understand what NVIDIA is building to keep developers \emph{inside} its ecosystem. The CUDA Core Compute Libraries (CCCL) \citep{nvidia2024cccl} and the associated DIA project board (\texttt{github.com/orgs/NVIDIA/projects/6}) are central to this strategy.
-
-\subsection{What CCCL Is}
-
-CCCL unifies three foundational CUDA C++ libraries into a single repository:
-
-\begin{description}
-\item[Thrust] -- A parallel algorithms library modeled on the C++ Standard Library, providing \texttt{thrust::sort}, \texttt{thrust::reduce}, \texttt{thrust::transform}, and similar high-level operations that dispatch to optimized GPU implementations.
-\item[CUB] -- A library of cooperative GPU primitives at the block and warp level: \texttt{cub::BlockReduce}, \texttt{cub::WarpScan}, \texttt{cub::DeviceRadixSort}. These are the building blocks from which higher-level algorithms are constructed.
-\item[libcudacxx] -- A CUDA-compatible implementation of the C++ Standard Library, including \texttt{cuda::std::atomic}, \texttt{cuda::std::tuple}, and memory order primitives that work across host and device code.
-\end{description}
-
-The CCCL~3.2 release (as of early 2026; the \texttt{cuda-cccl} Python package reached v0.5.1 in February 2026) introduced modern C++ runtime abstractions (\texttt{cuda::stream}, \texttt{cuda::event}, \texttt{cuda::arch\_traits}), memory resource APIs (\texttt{cuda::buffer}), and new speed-of-light algorithms including \texttt{cub::DeviceTopK}. The unification consolidated APIs from the \texttt{thrust::} and \texttt{cub::} namespaces into \texttt{cuda::} and \texttt{cuda::std::}. Note: the original 2023 unification of Thrust, CUB, and libcudacxx into a single repository should not be confused with a ``CCCL~3.0'' major version---CCCL's major version increments coincide with new CUDA Toolkit major versions, and as of March 2026, CUDA Toolkit~12.x remains current.
-
-CCCL's stated mission is to be ``the Standard C++ Library for CUDA C++''---providing general-purpose, speed-of-light tools so that CUDA developers can focus on their domain problems. Related projects tracked on the DIA project board include NVBench (benchmarking), cuCollections (GPU hash tables), and stdexec (C++26 senders).
-
-\subsection{Where CCCL Sits in the NVIDIA Stack}
-
-The NVIDIA AI training stack can be visualized as a hierarchy. At the bottom lies the hardware (GPU silicon, NVLink/NVSwitch interconnect). Above it, the CUDA driver and runtime. Then CCCL, providing the fundamental parallel primitives. Above CCCL sit the domain-specific libraries: cuBLAS (GEMM), cuDNN (neural network primitives), Transformer Engine (FP8 transformer layers), NCCL (collective communication). Above these sits Megatron-Core, which composes these libraries into distributed training patterns. And at the top sit user-facing frameworks like NeMo and the NeMo Agent Toolkit.
-
-CCCL is thus the \emph{foundation layer}---the equivalent of \texttt{libc} in the Unix world. It does not directly perform matrix multiplication or attention computation, but it provides the parallel reduction, scan, sort, and atomic operations that every higher-level library depends upon. The DIA project board tracks the ongoing development of this foundation.
-
-\subsection{What CCCL Means for the Anthropic Migration}
-
-From the perspective of migrating to Trainium2, CCCL is \emph{precisely what you cannot use}. CCCL is CUDA-only. Its entire purpose is to make CUDA programming more pleasant---it makes the walls of the NVIDIA fortress more comfortable, but they remain fortress walls.
-
-The analogy from Chapter~3.1 is instructive. Recall DeepSeek's approach of writing PTX (NVIDIA's assembly language) to squeeze maximum performance from NVIDIA GPUs. Using CCCL's NVBench to measure performance, using CUB's block-level primitives to structure kernels---these are activities that occur \emph{entirely within} the NVIDIA ecosystem. They are analogous to optimizing the parameters $a$ and $c$ of a linear congruential generator while keeping the modulus $m$ fixed. You may achieve excellent sequences, but you are still bound to that specific modulus.
-
-Anthropic's approach is to change $m$ itself. When you write Trainium2 assembly, you are operating with a different ISA, a different memory hierarchy (no shared memory in the CUDA sense, no warps, no warp-level primitives), a different execution model (VLIW rather than SIMT). The concepts that CCCL abstracts---warp divergence, bank conflicts, occupancy---simply do not exist on Trainium2. Conversely, Trainium2 has its own concerns: VLIW instruction packing, scratchpad memory management via NKI (Neuron Kernel Interface), and the GPSIMD engine's instruction scheduling.
-
-\begin{quote}
-\emph{The shared territory between CCCL and Trainium2 kernel programming consists only of the most fundamental optimization principles: instruction-level parallelism, memory latency hiding, and pipeline utilization. The specific mechanisms for achieving these goals are entirely different.}
-\end{quote}
-
-This is why the companion document \emph{Anthropic~WantToDoWhat} states that comparing CCCL/NVBench benchmarking methodology with Anthropic's VLIW performance challenge is ``technically strained''---they share a philosophical lineage but inhabit different hardware universes.
-
-\begin{table}[h]
-\centering
-\caption{CCCL primitives and their Trainium2 migration status. Each CCCL primitive that Megatron-Core depends on (directly or via cuBLAS/NCCL) must be replaced when migrating to Trainium2. Migration difficulty reflects the architectural gap between CUDA's SM-based SIMT model and Trainium2's VLIW+NeuronCore model.}
-\label{tab:cccl-migration}
-\begin{tabular}{@{}llll@{}}
-\toprule
-\textbf{CCCL Primitive} & \textbf{NVIDIA Function} & \textbf{Trainium2 Equivalent} & \textbf{Difficulty} \\
-\midrule
-\texttt{cub::BlockReduce} & Warp-level reduction & \texttt{nki.language.reduce} & Medium \\
-\texttt{cub::DeviceRadixSort} & GPU-wide sort & Custom NKI kernel & Hard \\
-\texttt{cub::DeviceTopK} & Top-K selection & Custom NKI kernel & Hard \\
-\texttt{thrust::sort} & Parallel sort & \texttt{jax.lax.sort} via XLA & Easy* \\
-\texttt{cuda::atomic\_ref} & Lock-free atomics & N/A (no shared memory) & Arch.~mismatch \\
-\texttt{cuda::stream} & Execution stream & XLA compilation graph & Different model \\
-\texttt{cuda::memcpy\_async} & Async HBM$\to$SMEM & NKI DMA engine & Medium \\
-\texttt{cub::DeviceScan} & Prefix sum & NKI \texttt{cumsum} + manual tiling & Medium \\
-\bottomrule
-\end{tabular}
-\end{table}
-
-\noindent *Easy only if XLA-generated performance is acceptable; for latency-critical paths (e.g., MoE routing), a hand-written NKI kernel is needed. The \texttt{cuda::atomic\_ref} row is the most instructive: Trainium2's NeuronCores have no equivalent of CUDA's shared memory with atomic operations, because Trainium2's programming model uses explicit DMA transfers between private scratchpads (SBUF/PSUM) rather than shared address spaces. This architectural mismatch means that CCCL algorithms relying on atomic operations (lock-free queues, concurrent hash maps) have \emph{no direct migration path}---they must be redesigned around Trainium2's message-passing DMA model.
-
-% ============================================================
-\section{The Migration Map: Megatron Primitives to Trainium2}
-\label{sec:3.2.migration}
-% ============================================================
-
-We now construct the concrete migration map for each Megatron layer, identifying which NVIDIA-specific components must be replaced and what their Trainium2/Neuron equivalents are (or must be hand-written as).
-
-\subsection{Layer 1: Parallelism $\to$ NxD (Neuron Distributed)}
-\label{sec:3.2.migration.parallelism}
-
-Megatron's parallelism primitives (TP, PP, DP, SP, CP, EP) communicate via NCCL, which implements collective operations optimized for NVLink and InfiniBand. On Trainium2, the equivalent is \texttt{neuronx-distributed} (NxD), which implements the same logical operations---all-reduce, all-gather, reduce-scatter---but mapped onto Trainium2's NeuronLink interconnect and EFA (Elastic Fabric Adapter) networking.
-
-The AWS Neuron team has published a reference adaptation of Megatron-LM for Trainium (\texttt{aws-neuron/aws-neuron-reference-for-megatron-lm}), though this has been deprecated in favor of NxD and the NeMo-Megatron reference (\texttt{aws-neuron/neuronx-nemo-megatron}). The key adaptations are:
-
-\begin{description}
-\item[Device replacement:] CUDA device references are replaced with PyTorch/XLA devices.
-\item[Communication backend:] NCCL is replaced with the PyTorch/XLA distributed backend, which bridges PyTorch's distributed APIs to XLA communication semantics over NeuronLink.
-\item[Data loading:] CUDA-specific data loading is replaced with \texttt{MpDeviceLoader}, which overlaps tracing, compilation, and data batch loading.
-\item[Optimizers:] CUDA fused optimizers (which use custom CUDA kernels internally) are replaced with generic PyTorch alternatives or Neuron-optimized variants.
-\end{description}
-
-\noindent\textbf{Critical limitation:} The Neuron Megatron reference only supports tensor parallelism (degree~8) and data parallelism (up to degree~64). Pipeline parallelism, sequence parallelism, context parallelism, and expert parallelism---all critical for training at Anthropic's scale---require custom implementation. This is precisely the kind of work Anthropic's kernel engineers perform: implementing parallelism strategies at the assembly level where the Neuron compiler's automatic partitioning falls short.
-
-For the Operator RL system (\texttt{operatorRL/src}), this means the agent governance kernel must be aware of which parallelism backend is active. The \texttt{agent\_os} module's policy enforcement and the \texttt{control-plane} scheduler must make hardware-aware decisions about how to partition agent rollout workers across NeuronCores versus GPU SMs.
-
-\subsection{Layer 2: Fused Kernels $\to$ NKI Assembly}
-\label{sec:3.2.migration.kernels}
-
-This is the deepest and most technically demanding layer of the migration. Megatron's performance depends on fused CUDA kernels---FlashAttention, fused GEMMs with bias and activation, fused layer normalization with quantization. On NVIDIA hardware, these are implemented using:
-
-\begin{itemize}
-\item Tensor Core instructions (\texttt{mma.sync}, \texttt{wgmma} on Hopper)
-\item Shared memory for operand staging and accumulation
-\item Warp-level primitives (\texttt{\_\_shfl\_sync}, \texttt{\_\_ballot\_sync})
-\item Register-level optimizations (register tiling, software pipelining)
-\end{itemize}
-
-On Trainium2, \emph{none of these exist}. The equivalent programming model uses the Neuron Kernel Interface (NKI), which as of Neuron SDK 2.27 provides:
-
-\begin{description}
-\item[NKI API:] A Python-like DSL (\texttt{nki.language.*}) for writing kernels that execute on Trainium's scalar, vector, and tensor engines. Operations include \texttt{nki.language.add}, \texttt{nki.language.multiply}, \texttt{nki.language.matmul} (mapped to the on-chip matrix engine), and memory operations for explicit DMA between HBM and on-chip SBUF/PSUM.
-\item[NKI Library:] Pre-optimized kernels for common operations: Attention (CTE and TKG variants), MLP, Output Projection, QKV, and RMSNorm-Quant. These are the Trainium2 equivalents of cuDNN/Transformer Engine fused kernels.
-\item[NKI ISA:] For maximum control, advanced users (such as Anthropic's engineers) can bypass NKI's Python-level API and write instructions directly against the Trainium2 ISA, which is openly documented. This is analogous to writing PTX on NVIDIA hardware, but with a critical difference: the Trainium2 ISA is a \emph{VLIW} (Very Long Instruction Word) architecture, where the programmer (or compiler) explicitly schedules independent operations into each instruction bundle, rather than relying on SIMT hardware to manage thread divergence and reconvergence.
-\item[GPSIMD Engine:] Trainium2's \emph{General Purpose SIMD} (GPSIMD) engine is the scalar/vector processing unit responsible for non-tensor operations: index computation, conditional branching, loop control, address generation, and arbitrary data-dependent control flow. While the matrix engine handles the heavy-compute GEMM/attention workloads, the GPSIMD engine handles everything the matrix engine cannot: computing softmax denominators, generating reduction indices, evaluating activation functions element-wise, and orchestrating the DMA engine's scatter-gather patterns. Anthropic's kernel engineers use GPSIMD for the ``glue'' logic that connects tensor operations---the scheduling overhead that, on NVIDIA hardware, would be handled by warp-level control flow and predicated execution. Efficient GPSIMD utilization is critical: in a fused attention kernel, up to 15--20\% of total cycles may be spent on GPSIMD operations (softmax scaling, mask application, causal masking logic), and poor GPSIMD scheduling can bottleneck an otherwise well-optimized tensor pipeline.
-\end{description}
-
-The migration of each critical kernel type proceeds as follows:
-
-\medskip
-
-\noindent\textbf{GEMM (Matrix Multiply):} On NVIDIA, this is cuBLAS dispatching to Tensor Core \texttt{mma} instructions. On Trainium2, the on-chip matrix multiply engine (MatMul Engine) performs the equivalent operation, but tiling, data layout, and accumulation are managed through explicit \textbf{SBUF} (State Buffer: the on-chip scratchpad memory for staging input operands, analogous to CUDA shared memory) and \textbf{PSUM} (Partial Sum: the accumulator scratchpad for output operands, where intermediate matrix multiply results are accumulated before being written back to HBM) orchestration rather than shared memory and Tensor Core abstractions.
-
-\medskip
-
-\noindent\textbf{Attention:} FlashAttention \citep{dao2022flashattention,dao2023flashattention2} on NVIDIA uses shared memory to tile Q, K, V matrices and compute softmax in a single fused kernel, avoiding materialization of the full attention matrix in HBM. On Trainium2, the NKI Library provides Attention CTE (Compile-Time Execution) and Attention TKG variants that achieve the same algorithmic optimization but map it onto Trainium's scratchpad architecture. Anthropic's engineers have written custom attention assembly that further optimizes these patterns for Claude's specific model dimensions.
-
-\medskip
-
-\noindent\textbf{Communication Primitives (AllReduce, AllGather):} On NVIDIA, NCCL uses GPU-initiated communication via NVLink and InfiniBand RDMA. On Trainium2, collective communication uses the NeuronLink interconnect with DMA engines that can operate independently of the compute engines. This architectural difference enables a different style of compute-communication overlap: rather than using CUDA streams to interleave kernel launches with NCCL calls, Trainium2 can use its DMA engines to perform data transfers \emph{concurrently with} tensor engine computation at the hardware level.
-
-\subsection{Layer 3: Communication Overlap $\to$ DMA Engine Orchestration}
-\label{sec:3.2.migration.overlap}
-
-Megatron's communication overlap patterns (\texttt{--tp-comm-overlap}, \texttt{--overlap-grad-reduce}) rely on CUDA streams and events to schedule independent work concurrently. On Trainium2, the equivalent capability comes from the chip's DMA engines, which can perform HBM-to-HBM and NeuronLink transfers independently of the compute pipeline.
-
-For Agent Lightning's training loop (\texttt{agentlightning/trainer}), this means the \texttt{verl}-based training orchestration must be adapted to exploit Trainium2's DMA-based overlap rather than stream-based overlap. The reward computation (\texttt{agentlightning/reward.py}) and trajectory storage (\texttt{agentlightning/store}) can remain hardware-agnostic, but the gradient synchronization in the training inner loop requires platform-specific code paths.
-
-\subsection{Layer 4: Memory Management $\to$ Neuron Runtime}
-\label{sec:3.2.migration.memory}
-
-Megatron's activation recomputation, gradient accumulation, and distributed checkpointing assume CUDA's memory model. On Trainium2, the Neuron Runtime manages HBM allocation and NeuronCore-local memory. The key differences are:
-
-\begin{description}
-\item[No unified memory:] Trainium2 does not support CUDA-style unified memory or managed memory. All data movement between host and device must be explicit.
-\item[Serialized checkpointing:] Neuron's checkpointing uses serialized tensor save/load with staggered writes to alleviate memory pressure---a different approach from Megatron's distributed checkpoint writer.
-\item[Compilation overhead:] The XLA compilation model means that the first execution of a new graph incurs compilation cost. Neuron's ahead-of-time parallel compilation mitigates this, but it represents a fundamentally different execution model from CUDA's eager kernel launch.
-\end{description}
-
-\medskip
-\noindent\textbf{OOM Failures in Multi-Turn Agentic Training.}\quad The memory management differences above are not merely architectural curiosities; they produce concrete failure modes that Agent Lightning users encounter in production. Issues~\#107, \#284, \#352, and~\#438 all report OOM crashes during multi-turn agent training. The root cause analysis reveals three distinct failure patterns, each with a different hardware-specific manifestation:
-
-\begin{description}
-\item[(i) Trajectory accumulation overflow.] In multi-turn agentic RL, rollout episodes of length $T$ accumulate $T$ state-action-reward tuples in memory before the policy update step. On CUDA, PyTorch's caching allocator dynamically grows and shrinks device memory as needed; tensors are freed when their Python references are released. On Trainium2, the XLA runtime's memory planner pre-allocates the \emph{maximum} graph size at compilation time. When episode length $T$ varies (as it does in agentic settings---the agent may use 3 tool calls or 30), the planner must allocate for $\max(T)$, wasting $(\max(T) - \mathbb{E}[T]) \cdot B_{\mathrm{state}}$ bytes of HBM on average, where $B_{\mathrm{state}}$ is the per-step state tensor size. Issue~\#438's memory leak is traceable to this mechanism: each new $\max(T)$ triggers a recompilation with a larger allocation, but the old allocation is not freed until \texttt{torch\_xla.core.xla\_model.mark\_step()} is called.
-
-\item[(ii) KV-cache fragmentation.] During rollout, the agent's inference engine maintains a key-value cache for the transformer's attention layers. On CUDA, vLLM's PagedAttention manages KV-cache as virtual memory pages, enabling efficient sharing and deduplication across concurrent sequences. On Trainium2, the Neuron SDK's inference engine pre-allocates contiguous KV-cache buffers per sequence. For multi-turn agents with variable-length context (system prompt + conversation history + tool outputs), the contiguous allocation requirement means that a single long episode can fragment the entire NeuronCore's HBM, preventing new sequences from starting even when total free memory is sufficient. Issue~\#347's ``thinking mode'' exacerbates this: chain-of-thought tokens inflate the KV-cache by $2\text{--}10\times$ without contributing to task reward, and on Trainium2 they directly reduce the maximum concurrent batch size.
-
-\item[(iii) Gradient buffer persistence.] After the policy update step, gradient tensors should be freed. On CUDA, \texttt{optimizer.zero\_grad()} releases gradient memory immediately. On Trainium2, gradient tensors persist in the XLA computational graph until the next \texttt{mark\_step()} barrier. If the training loop performs multiple micro-steps before calling \texttt{mark\_step()} (as is common in gradient accumulation with large effective batch sizes), the accumulated gradient buffers can exceed NeuronCore HBM capacity. The fix is to insert explicit \texttt{mark\_step()} calls between accumulation steps---but each such call triggers a synchronization barrier that stalls the VLIW pipeline, trading memory pressure for latency.
-\end{description}
-
-\noindent The gap test from \S\ref{sec:3.3.2} is directly applicable here: if OOM failures cluster (short inter-failure gaps), the cause is likely systematic (pattern~(i) or~(iii)); if failures are uniformly distributed, the cause is more likely stochastic (pattern~(ii) with variable episode lengths). Agent Lightning's commit \texttt{19c72db6} handles the symptom (empty tensors from failed rollouts) but not the root cause. A comprehensive fix requires platform-specific memory management in the training loop, routed through the hardware abstraction layer proposed in Exercise~4.
-
-% ============================================================
-\section{The Agentic RL Integration: Self-Deploying Systems on Heterogeneous Hardware}
-\label{sec:3.2.agenticrl}
-% ============================================================
-
-We now connect the migration analysis to the central theme of this volume: agentic RL systems that self-deploy, gather environment feedback, and self-evolve. The key insight is that an agentic system like Claude Code running autonomously must be capable of \emph{selecting its own hardware backend} based on availability, cost, and performance---and the kernel stack must support this dynamic selection.
-
-\begin{figure}[ht]
-\centering
-\small
-\begin{verbatim}
-+================================================================+
-|                    OPERATOR RL (Governance)                     |
-|  +------------------+  +------------------+  +---------------+ |
-|  | SCAK (Layer 4)   |  | Policy Engine(3) |  | IATP (Layer 2)| |
-|  | Self-Correction  |  | Syscall Check    |  | Trust Boundary| |
-|  +--------+---------+  +--------+---------+  +-------+-------+ |
-|           |                     |                     |         |
-|           v                     v                     v         |
-|  +-------------------+  +------------------+  +--------------+ |
-|  | Primitives (L1)   |  | Control Plane    |  | Nexus        | |
-|  | action/obs/reward |  | Scheduler        |  | Multi-Agent  | |
-|  +-------------------+  +------------------+  +--------------+ |
-+===========================|=====================================+
-                            |  Kernel Bridge (PR #478)
-                            v
-+================================================================+
-|                 AGENT LIGHTNING (Training)                      |
-|  +----------+  +-----------+  +--------+  +-----------------+ |
-|  | Runner   |  | Tracer    |  | Store  |  | Daemon          | |
-|  | (rollout)|  | (capture) |  | (7 bk) |  | v0=HTTP/v1=Store| |
-|  +----+-----+  +-----+-----+  +---+----+  +--------+--------+ |
-|       |              |             |                 |          |
-|       v              v             v                 v          |
-|  +----------+  +----------------+  +---------------------------+|
-|  | Adapter  |  | trace_agg     |  | VERL Backend               ||
-|  | LangChain|  | transition/   |  | GRPO / PPO                 ||
-|  | CrewAI   |  | trajectory    |  | Distributed Training       ||
-|  +----------+  +----------------+  +---------------------------+|
-+===========================|=====================================+
-                            |  Hardware Abstraction Boundary
-                            v
-+================================================================+
-|              HARDWARE KERNEL LAYER (per-platform)              |
-|  +-------------------+ +-------------------+ +---------------+ |
-|  | NVIDIA GPU        | | Google TPU        | | AWS Trainium2 | |
-|  | CUDA/cuBLAS/NCCL  | | XLA/JAX           | | NKI/NxD/ISA   | |
-|  | Megatron-Core     | | Pathways          | | Hand-written  | |
-|  |  (mature)         | |  (internal)       | | assembly      | |
-|  +-------------------+ +-------------------+ +---------------+ |
-+================================================================+
-\end{verbatim}
-\caption{System architecture: Operator RL (governance) $\to$ Agent Lightning (training) $\to$ Hardware Kernel Layer (per-platform). The kernel bridge (PR~\#478, commit \texttt{49bf9cd9}) connects governance syscalls to the training loop. The hardware abstraction boundary separates platform-agnostic orchestration from platform-specific kernel implementations. The three hardware columns represent the asymmetric deployment risk analyzed in \S\ref{sec:3.1}: mature (GPU), internal (TPU), and youngest (Trainium2).}
-\label{fig:system-arch-ascii}
-\end{figure}
-
-\subsection{The Operator RL Architecture on Multi-Platform Kernels}
-
-The Operator RL system (\texttt{operatorRL}) provides the governance layer for autonomous agents. Its kernel architecture (\texttt{src/agent\_os}) acts as an operating system for agents, enforcing policies, managing resources, and scheduling tasks.
-
-\medskip
-\noindent\textbf{The Four Kernel Invariants.} The Agent~OS stateless kernel (see \texttt{operatorRL/docs/kernel-internals.md}) enforces four invariants that distinguish it from library-based agent frameworks such as LangChain or CrewAI:
-
-\begin{description}
-\item[\textsc{Invariant~1: No Bypass.}] All agent I/O passes through kernel-space syscalls (\texttt{SYS\_EXEC}, \texttt{SYS\_WRITE}, etc.). No agent action reaches the environment without first transiting the policy engine. In the terminology of \S\ref{sec:3.2.migration.kernels}, this is the governance equivalent of requiring every tensor operation to pass through the NKI runtime rather than directly accessing HBM.
-
-\item[\textsc{Invariant~2: Fail Closed.}] Unknown or unrecognized actions are denied by default. The kernel emits \texttt{SIGKILL} (non-maskable) on any policy violation. This is analogous to a VLIW instruction bundle where an unscheduled operation slot is filled with a NOP rather than left undefined---fail-safe by construction.
-
-\item[\textsc{Invariant~3: Audit Everything.}] The Flight Recorder logs every execution decision, every signal dispatch, and every policy check result. For multi-platform agentic RL, this audit trail is the only reliable mechanism for post-hoc debugging across the Cartesian product of hardware backends (\S\ref{sec:3.2.critical}).
-
-\item[\textsc{Invariant~4: Crash Isolation.}] A user-space agent crash (e.g., a rollout worker segfault on Trainium2 due to a DMA misconfiguration) does not crash the kernel. The governance layer remains operational and can restart the agent on an alternative backend.
-\end{description}
-
-\noindent These invariants hold regardless of which hardware backend executes the agent's computational workload. The kernel itself is hardware-agnostic; the hardware-specific code lives entirely in the training loop (Agent Lightning) and the kernel migration layers (\S\ref{sec:3.2.migration}).
-
-When integrated with Agent Lightning's training infrastructure (\texttt{agentlightning}), the combined system forms a self-evolving training loop:
-
-\begin{enumerate}
-\item \textbf{Agent rollout} (Agent Lightning \texttt{runner}): The agent executes in a live environment, generating trajectories. The rollout engine must run on \emph{whatever hardware is available}---GPU, TPU, or Trainium2---and the kernel stack must provide equivalent throughput on each.
-
-\item \textbf{Reward computation} (Agent Lightning \texttt{reward.py} + Operator RL \texttt{integrations/agent\_lightning/reward.py}): Trajectory rewards combine a task-completion signal $R_{\mathrm{base}}$ with governance penalties from the \textsc{PolicyReward} class. The integration bridge's reward formula is:
-\[
-R_{\mathrm{final}} = \begin{cases}
-R_{\mathrm{base}} + \displaystyle\sum_{v \in \mathcal{V}} \phi(v) + b_{\mathrm{clean}} \cdot \mathbf{1}[\mathcal{V} = \emptyset] & \text{(additive mode)} \\[6pt]
-R_{\mathrm{base}} \cdot \alpha & \text{(multiplicative mode, any } v \in \mathcal{V}\text{)}
-\end{cases}
-\]
-where $\phi(v)$ maps violation severity to penalties (critical: $-100$, high: $-50$, medium: $-10$, low: $-1$), $b_{\mathrm{clean}} = 5$ is a compliance bonus, and $\alpha = 0.5$ is the multiplicative discount factor. The reward is clamped to $[R_{\min}, R_{\max}]$ (default $[-100, 100]$). This is \emph{not} a standard inference workload---it interleaves kernel policy evaluation with scalar reward computation, and on Trainium2, the policy evaluation step (which invokes the governance kernel's rule engine) runs on the GPSIMD engine while the GEMM-heavy forward pass occupies the matrix engine, enabling overlap.
-
-\item \textbf{Policy update} (Agent Lightning \texttt{trainer}, with \texttt{verl} backend): The agent's policy parameters are updated using RL algorithms (GRPO \citep{shao2024deepseekmath} or PPO \citep{schulman2017ppo} via VERL). This is a distributed training step that requires all the Megatron-equivalent parallelism primitives discussed in Section~\ref{sec:3.2.migration.parallelism}.
-
-\item \textbf{Self-deployment} (Operator RL \texttt{control-plane}): The updated model is deployed back into the environment. The governance layer ensures safety constraints are maintained during autonomous operation.
-
-\item \textbf{Iteration}: The loop repeats, with the agent continuously improving through interaction with its environment.
-\end{enumerate}
-
-For this loop to function on Trainium2 specifically, each step requires the kernel migrations described in Section~\ref{sec:3.2.migration}. The critical path is Step~3 (policy update), where the full distributed training stack---parallelism, fused kernels, communication overlap, memory management---must operate at near-peak hardware utilization.
-
-\medskip
-\noindent\textbf{The Integration Bridge: Four Adapter Components.} The directory \texttt{operatorRL/src/agent\_os/integrations/agent\_lightning/} contains the concrete bridge between the governance kernel and the RL training loop. Four Python modules implement the bridge; each maps a governance concept to an Agent Lightning abstraction.
-
-\begin{description}
-\item[\texttt{runner.py}: \textsc{GovernedRunner}.] Wraps Agent Lightning's \texttt{Runner} interface with kernel policy enforcement. The key mechanism is the \texttt{step()} coroutine: before every agent action reaches the environment, the kernel's \texttt{execute\_async()} interposes a policy check. If a violation is detected, the runner records a \texttt{PolicyViolation} object annotated with severity (\texttt{critical}, \texttt{high}, \texttt{medium}, \texttt{low}) and type (\texttt{BLOCKED}, \texttt{MODIFIED}, \texttt{WARNED}, \texttt{SIGNAL\_SENT}). The rollout result is wrapped in a \texttt{GovernedRollout} dataclass that carries both the task output and the violation metadata. Critically, \texttt{GovernedRunner} follows Agent Lightning's runner lifecycle: \texttt{init()} $\to$ \texttt{init\_worker(worker\_id, store)} $\to$ \texttt{step()} / \texttt{iter()} $\to$ \texttt{teardown\_worker()} $\to$ \texttt{teardown()}. This lifecycle alignment is what makes the governance layer transparent to the VERL backend---the trainer sees a standard runner that happens to produce richer metadata.
-
-\item[\texttt{reward.py}: \textsc{PolicyReward}.] Converts governance violations into RL training signals. The reward computation is $R_{\mathrm{final}} = R_{\mathrm{base}} + \sum_{v \in \mathcal{V}} \phi(v) + \mathbf{1}[\mathcal{V} = \emptyset] \cdot b_{\mathrm{clean}}$, where $R_{\mathrm{base}}$ is the task reward, $\phi(v)$ maps violation severity to a penalty (default: critical $= -100$, high $= -50$, medium $= -10$, low $= -1$), and $b_{\mathrm{clean}} = 5$ is a bonus for zero-violation execution. An alternative multiplicative mode sets $R_{\mathrm{final}} = R_{\mathrm{base}} \cdot \alpha$ (default $\alpha = 0.5$) on any violation. The \texttt{CompositeReward} class further supports multi-dimensional rewards with configurable weights---addressing the multi-objective tension identified in Issue~\#490.
-
-\item[\texttt{emitter.py}: \textsc{FlightRecorderEmitter}.] Adapts the kernel's Flight Recorder audit log to Agent Lightning's \texttt{LightningStore} span format. Each Flight Recorder entry (policy check, signal dispatch, tool call) is converted to a \texttt{LightningSpan} with structured attributes (e.g., \texttt{agent\_os.policy\_violated}, \texttt{agent\_os.signal\_type}). The emitter supports both batch export (\texttt{emit\_to\_store()}) and async streaming. For the validation tests of \S\ref{sec:3.3}, the \texttt{get\_violation\_summary()} method provides the per-policy violation rates needed by the $\chi^2$ test on governance compliance distribution.
-
-\item[\texttt{environment.py}: \textsc{GovernedEnvironment}.] A Gym-compatible environment wrapper that converts kernel governance into standard RL signals: $(\mathit{state}, \mathit{reward}, \mathit{terminated}, \mathit{truncated}, \mathit{info})$. The environment terminates the episode on critical violations (configurable via \texttt{terminate\_on\_critical}), applies per-step efficiency penalties (default $-0.1$), and tracks compliance metrics across episodes. On Trainium2, the environment's \texttt{step()} function is the outermost loop of the training pipeline---its per-call overhead (kernel policy check + Flight Recorder write + violation penalty computation) must be negligible compared to the agent's forward pass latency, which is dominated by the NKI attention kernel execution time analyzed in \S\ref{sec:3.2.migration.kernels}.
-\end{description}
-
-\noindent The combined effect: Agent Lightning trains agents that are simultaneously optimized for task performance \emph{and} governance compliance, because the RL reward signal encodes both. Table~\ref{tab:governance-training} (from the integration README) quantifies this: agents trained with \textsc{GovernedRunner} achieve 0.0\% policy violations while maintaining higher task accuracy (79.2\% vs 76.4\%) than ungoverned baselines---the governance signal acts as an implicit regularizer that prevents reward hacking via policy-violating shortcuts.
-
-\medskip
-\noindent\textbf{Signal Dispatch Table.} The Agent~OS kernel communicates with agents through a POSIX-inspired signal mechanism (see \texttt{operatorRL/packages/control-plane/src/\allowbreak agent\_control\_plane/signals.py}). Table~\ref{tab:signals} defines the signal set.
-
-\begin{table}[h]
-\centering
-\caption{Agent~OS kernel signals. Non-maskable signals enforce governance invariants and cannot be intercepted by user-space agent code.}
-\label{tab:signals}
-\begin{tabular}{@{}lclcc@{}}
-\toprule
-\textbf{Signal} & \textbf{Value} & \textbf{Description} & \textbf{Maskable} & \textbf{Recovery} \\
-\midrule
-\texttt{SIGSTOP}   & 1 & Pause agent execution         & Yes & \texttt{SIGCONT} \\
-\texttt{SIGCONT}   & 2 & Resume agent execution         & Yes & --- \\
-\texttt{SIGINT}    & 3 & Graceful interrupt             & Yes & Restart \\
-\texttt{SIGKILL}   & 4 & Immediate termination          & \textbf{No}  & New agent \\
-\texttt{SIGTERM}   & 5 & Request shutdown               & Yes & Cleanup \\
-\texttt{SIGWARN}   & 6 & Quality degradation alert      & Yes & Retrain \\
-\texttt{SIGEXPLORE}& 7 & Exploration collapse detected   & Yes & Noise inject \\
-\texttt{SIGPOLICY} & 8 & Policy violation (Invariant~2) & \textbf{No}  & None \\
-\texttt{SIGTRUST}  & 9 & Trust violation (IATP Layer~2) & \textbf{No}  & None \\
-\bottomrule
-\end{tabular}
-\end{table}
-
-\noindent The non-maskable signals (\texttt{SIGKILL}, \texttt{SIGPOLICY}, \texttt{SIGTRUST}) are the enforcement arm of the kernel invariants. When the policy engine detects a violation---whether a blocked action, a blocked pattern match in parameters, or an inter-agent trust boundary breach---the kernel emits the appropriate signal, logs the event to the Flight Recorder, and terminates the agent. In a multi-platform training loop, this mechanism applies identically regardless of whether the agent's rollout was executing on GPU, TPU, or Trainium2: the signal dispatch operates at the governance layer, above the hardware abstraction boundary.
-
-\subsection{The Agent Lightning Daemon: Two Execution Modes}
-\label{sec:3.2.daemon}
-
-The \texttt{AgentModeDaemon} class (see \texttt{agentlightning/verl/daemon.py}, PR~\#407, commit \texttt{1d199b21}) is the bridge between Agent Lightning's agent rollout infrastructure and the VERL-based distributed training backend. It operates in two modes, selectable at initialization via the \texttt{mode} parameter:
-
-\begin{description}
-\item[\texttt{mode="v0"} (Server Mode):] The daemon runs a Flask-based HTTP server (\texttt{AgentLightningServer}) on a fixed port. Agent rollout workers communicate with the training loop via REST endpoints. An LLM proxy server runs on a separate port, intercepting model inference requests and routing them to backend vLLM/SGLang instances. This mode is suitable for single-node or small-cluster deployments where network topology is simple.
-
-\item[\texttt{mode="v1"} (Store Mode):] The daemon bypasses the HTTP server entirely and communicates through a \texttt{LightningStore} backend (with 7~implementations: memory, SQLite, MongoDB, client-server, collection-based, threaded, and base). An internal asyncio event loop runs on a daemon thread for asynchronous store operations. The \texttt{LLMProxy} and \texttt{TraceToTripletBase} adapter handle trace-to-training-data conversion. This mode is designed for large-scale distributed deployments where the store provides coordination across many training and rollout workers.
-\end{description}
-
-\noindent The daemon's \texttt{trace\_aggregator} parameter (added in PR~\#134, commit \texttt{4235731a}) controls whether rollout data is aggregated at the \emph{transition} level (individual state-action-reward tuples) or the \emph{trajectory} level (complete multi-turn episodes). This distinction is critical for agentic RL: transition-level aggregation enables per-step credit assignment but loses episode-level context; trajectory-level aggregation preserves the full decision trace but requires more memory and complicates gradient computation. The choice directly affects how the training loop interacts with the hardware memory hierarchy described in \S\ref{sec:3.2.migration.memory}---on Trainium2, trajectory-level aggregation may exceed the XLA runtime's memory planner capacity for long episodes, triggering the OOM failures documented in Issue~\#107.
-
-For the hardware migration, the daemon itself is hardware-agnostic (pure Python orchestration). The hardware-specific code paths lie in the \texttt{verl} training backend that the daemon feeds data into, and in the LLM proxy's routing to platform-specific inference servers. This separation of concerns---governance (Operator~RL kernel) $\to$ orchestration (daemon) $\to$ computation (VERL on GPU/TPU/Trainium2)---is the architectural spine of the entire system.
-
-\subsection{The OperatorRL--Agent Lightning Integration Bridge}
-\label{sec:3.2.bridge}
-
-The formal connection between the governance layer (Operator~RL) and the training loop (Agent Lightning) was established in PR~\#478 (commit \texttt{49bf9cd9}, ``Agent-OS Integration: Kernel-Level Safety for RL Training'').  The bridge operates as follows:
-
-\begin{enumerate}
-\item \textbf{Syscall Interception.} Before each rollout step, the Agent Lightning \texttt{runner} issues a kernel syscall through the Agent~OS stateless kernel (\texttt{operatorRL/src/agent\_os/stateless.py}). The syscall contains the proposed action, its parameters, and the current \texttt{ExecutionContext} (agent ID, active policies, history).
-
-\item \textbf{Policy Enforcement.} The kernel's policy engine evaluates the request against all active policies---checking blocked actions, blocked patterns (via regex over serialized parameters), and any custom constraints (e.g., the ``banking'' policy: block transfers exceeding a threshold). If any check fails, the kernel emits \texttt{SIGKILL} and the rollout step is aborted.
-
-\item \textbf{Context Propagation.} On success, the kernel returns an updated \texttt{ExecutionContext} with the action appended to the history. This context is passed back to the daemon, which incorporates it into the trace data fed to VERL for gradient computation. The trace\_aggregator determines whether this context propagates at transition or trajectory granularity.
-
-\item \textbf{VFS State.} The agent's episodic memory, working memory, and policy state are exposed through the Agent~OS Virtual File System (VFS) at mount points \texttt{/agent/\{id\}/mem/\{working,episodic,semantic\}} and \texttt{/agent/\{id\}/policy/}. The VFS is backed by pluggable storage (in-memory for testing, Redis for distributed production, DynamoDB for serverless)---mirroring the LightningStore's multiple backend strategy.
-\end{enumerate}
-
-\noindent The bridge ensures that the governance invariants (\S\ref{sec:3.2.agenticrl}) hold throughout the self-evolving training loop, even as the underlying computation migrates across hardware backends. On Trainium2, the governance checks add negligible latency (they execute in Python on the CPU host), while the kernel migration costs are entirely in the VERL training step where NKI assembly and NxD communication primitives replace their CUDA equivalents.
-
-\subsection{Why Megatron's Techniques Must Be Migrated, Not Abandoned}
-
-\subsection{Multi-Agent Training on Heterogeneous Hardware}
-\label{sec:3.2.multiagent}
-
-Issue~\#92 in Agent Lightning asks: ``Does agent-lightning support multi-agent systems?'' The answer involves two distinct coordination layers: Operator~RL's Nexus module (\texttt{modules/nexus/}, 210K) for agent lifecycle orchestration, and Agent Lightning's rollout infrastructure for parallel multi-agent execution. When combined with heterogeneous hardware, multi-agent training introduces a coordination problem that is structurally analogous to the composite modulus decomposition of \S\ref{sec:3.2.1.2}.
-
-\medskip
-\noindent\textbf{The Nexus Trust Exchange.}\quad The Nexus module (\texttt{operatorRL/modules/nexus/}) is far more than a lifecycle coordinator---it is a \emph{decentralized trust exchange} for AI agents, described in its source as ``the Visa Network for AI Agents.'' Its six core components, now verified against the source code, are:
-
-\begin{description}
-\item[\texttt{registry.py}: Agent Registration and Discovery.] The \texttt{AgentRegistry} class manages agent manifests---each agent registers a DID (Decentralized Identifier, format \texttt{did:nexus:*}), capabilities, and privacy policy. Registration produces a trust score computed by the reputation engine. The \texttt{verify\_peer()} method is the core viral mechanism: before any IATP handshake, each agent verifies its peer on Nexus; unverified peers receive an \texttt{IATPUnverifiedPeerException} directing them to register. This forces network adoption. Agent discovery (\texttt{discover\_agents()}) filters by capabilities, minimum trust score, and privacy policy---directly relevant to multi-agent RL where each agent specializes in different sub-tasks.
-
-\item[\texttt{reputation.py}: Reputation Scoring and Trust Tiers.] The \texttt{ReputationEngine} assigns each agent a score from 0--1000 across five tiers: \texttt{UNTRUSTED} (0--299), \texttt{PROBATIONARY} (300--499), \texttt{STANDARD} (500--699), \texttt{TRUSTED} (700--899), \texttt{VERIFIED\_PARTNER} (900--1000). The score combines a base component (verification level), behavioral modifiers (task success rate, dispute history), and capability modifiers. The \texttt{slash\_reputation()} method applies penalties for misbehavior (dispute losses, policy violations). For agentic RL, trust scores determine which agents can share hardware partitions: only agents with $\geq 700$ (TRUSTED tier) can be co-located on the same Trainium2 node without IATP isolation overhead.
-
-\item[\texttt{escrow.py}: Conditional Trust Escrow.] When two agents negotiate a task, credits (the exchange's internal currency) are placed in escrow via \texttt{EscrowManager}. The escrow releases credits to the provider only upon \texttt{ProofOfOutcome}---a cryptographic attestation that the task was completed according to the contract. If the outcome is disputed, the escrow freezes and the Arbiter resolves. For RL training, this maps to the reward assignment problem: the ``credits'' are the reward signal, and the ``proof of outcome'' is the trajectory trace validated by \S\ref{sec:3.3}'s statistical tests.
-
-\item[\texttt{arbiter.py}: Dispute Resolution.] The \texttt{Arbiter} is a specialized ``Reward Agent''---a read-only agent that resolves disputes by replaying Flight Recorder logs against the Control Plane. When agents disagree on task outcomes, the Arbiter examines both parties' logs, identifies discrepancies, and issues a \texttt{DisputeResolution} with a confidence score. The losing party's reputation is slashed. This is the multi-agent analog of the $\chi^2$ test (\S\ref{sec:3.3.1}): the Arbiter's log replay is a deterministic validation of claimed outcomes against observed behavior, and a low confidence score in the resolution (analogous to a $\chi^2$ $p$-value in the ambiguous range) leads to a ``split'' decision.
-
-\item[\texttt{dmz.py}: Demilitarized Zone for Untrusted Interaction.] The \texttt{DMZProtocol} provides secure data handoff between agents that do not fully trust each other. A \texttt{DataHandlingPolicy} specifies retention limits (\texttt{max\_retention\_seconds}), permissions (\texttt{allow\_training}, \texttt{allow\_forwarding}, \texttt{allow\_persistence}), and audit requirements. This is critical for agentic RL: when agents share trajectory data for multi-agent training, the DMZ policy ensures that training data cannot be retained beyond the current epoch or forwarded to unauthorized agents---enforcing the ``ephemeral'' privacy policy that prevents data poisoning attacks across trust boundaries.
-\end{description}
-
-\noindent The Nexus architecture is structurally significant for our chapter because it formalizes the \emph{trust graph} over which multi-agent RL operates. In single-agent RL, the reward signal is trusted by assumption. In multi-agent agentic RL, each agent's reported observations and rewards may be adversarial. Nexus's reputation + escrow + arbiter pipeline provides the mechanism by which the training loop can assign trust-weighted rewards---agents with higher reputation scores contribute more credible training signal.
-
-\medskip
-\noindent\textbf{The Mute Agent Architecture.}\quad A particularly instructive multi-agent pattern is the ``Face/Hands'' architecture implemented in \texttt{operatorRL/modules/mute-agent/}. This module decomposes a single agentic task into two cooperating agents: a \emph{Reasoning Agent} (the ``Face'') that plans and decides, and an \emph{Execution Agent} (the ``Hands'') that carries out actions in the environment. The handshake protocol (\texttt{handshake\_protocol.py}) ensures the Execution Agent never acts without the Reasoning Agent's explicit approval---a governance mechanism that adds zero compute overhead to the training loop but provides strong safety guarantees. The Mute Agent's listener architecture (\texttt{listener/adapters/}) monitors the state of all other Operator~RL modules via adapters for the CaaS compliance layer, the control plane, the IATP trust protocol, and the SCAK self-correcting kernel. This makes the Mute Agent the ``nervous system'' of the agent OS, capable of detecting anomalies across the entire governance stack.
-
-\medskip
-\noindent\textbf{Hardware Partitioning.}\quad On a Trainium2 node with 16 NeuronCores, Nexus can partition the hardware in several ways: (a)~each agent gets 2~NeuronCores (8~agents in parallel, each with limited tensor parallelism), (b)~a single ``main'' agent gets 8~NeuronCores for tensor-parallel rollout while 8~``critic'' agents each get 1~NeuronCore for reward evaluation, or (c)~dynamic partitioning where Nexus reallocates NeuronCores based on agent priority (determined by the policy engine's semantic classification). On NVIDIA H100 with MIG (Multi-Instance GPU), the partitioning granularity is 7 slices; on Trainium2, NeuronCore partitioning is more flexible (any power-of-2 grouping from 1 to 16 cores). This asymmetry in partitioning granularity means that a multi-agent configuration optimized for Trainium2 may not transfer to H100 without adjustment---a concrete instance of the ``configuration space independence'' discussed in \S\ref{sec:3.2.critical}.
-
-\medskip
-\noindent\textbf{Composite Modulus Analogy.}\quad Just as the period of an LCG with composite modulus $m = p_1^{e_1} \cdots p_r^{e_r}$ decomposes via Lemma~Q into the LCM of the prime-power periods, a multi-agent training run's ``convergence period'' decomposes into the convergence periods of its constituent agents. If agent~$i$ operating on hardware partition~$i$ converges with period $\lambda_i$, the overall system's behavior repeats with period $\mathrm{lcm}(\lambda_1, \ldots, \lambda_n)$. This decomposition is \emph{approximate}---unlike Lemma~Q's exact CRT decomposition, agent-level convergence periods interact through shared environment state and reward signals. The approximation is tightest when agents operate on independent sub-tasks (cf.\ Issue~\#109, the Chinese Werewolf game, where each agent has an independent role), and loosest when agents share a single reward signal (cooperative tasks).
-
-
-
-One might ask: why not simply use Trainium2's native Neuron SDK tools (\texttt{neuronx-distributed}, \texttt{neuronx-nemo-megatron}) and avoid the migration complexity? The answer lies in the performance gap between compiler-generated and hand-optimized kernels, which is precisely the theme of Chapter~3.1's discussion of ``apparently optimal'' versus truly optimal kernel configurations.
-
-The Neuron compiler's XLA-based optimization pipeline produces kernels that are ``apparently optimal''---they appear to utilize the hardware efficiently based on the compiler's cost model. But just as Algorithm~K in Chapter~3.1 appeared to produce an inexhaustible supply of convincingly optimal configurations yet immediately converged to a fixed point, compiler-generated kernels often leave significant performance on the table.
-
-Anthropic's engineers have demonstrated that hand-written Trainium2 assembly can substantially outperform compiler-generated code for the specific kernels that dominate training and inference time (GEMM, attention, collective communication). This is the same insight that led DeepSeek to write PTX for NVIDIA GPUs---but applied to a different hardware target.
-
-The moral, echoing Chapter~3.1: \emph{optimal hardware kernel configurations are not produced by randomly chosen methods; certain theory should be used.}
-
-% ============================================================
-\section{Critical Analysis: Engineering Cost and Degenerate Cases}
-\label{sec:3.2.critical}
-% ============================================================
-
-\subsection{The Cartesian Product of Debug Spaces}
-
-Maintaining optimized kernel stacks across three platforms (GPU/TPU/Trainium) simultaneously is extraordinarily expensive. If each platform has $k$ critical kernels and each kernel has $d$ potential failure modes, the total debug space is $O(k + d)$ in the best case (failures are platform-independent and additive, so debugging one platform transfers to others) and $O(3 \cdot k \cdot d)$ in the worst case (each platform--kernel--failure-mode triple is unique, forming a Cartesian product). In practice, the worst case is closer to reality: a bank conflict on GPU, a tiling inefficiency on TPU, and a VLIW scheduling stall on Trainium are completely different bugs requiring different debugging tools and expertise.
-
-This is the ``Cartesian product'' cost described in \emph{Anthropic~WantToDoWhat}. The justification for bearing this cost is strategic: vendor independence is worth the engineering investment because it provides negotiating leverage and protects against supply chain disruptions.
-
-\subsection{Degenerate Configurations in Cross-Platform Auto-Tuning}
-
-Consider an auto-tuner that searches for optimal kernel configurations across platforms. On each platform, the search space has a different structure: GPU configurations involve tile sizes, thread block dimensions, and shared memory allocation; TPU configurations involve XLA layout assignments and fusion decisions; Trainium configurations involve VLIW instruction packing and scratchpad allocation.
-
-A configuration that achieves 95\% utilization on GPU and TPU provides \emph{no information} about what will achieve 95\% on Trainium---the hardware architectures are sufficiently different that the configuration spaces are essentially independent. This is analogous to Exercise~6 of Chapter~3.1: the function $f(\mathbf{x})$ that maps one configuration to the next is different on each platform, so the cycle structure (period, pre-period length) is also different.
-
-\subsection{The Dependency Cascade: Version Compatibility as a Modular Arithmetic Problem}
-
-The Cartesian product applies not only to debug spaces but also to software version compatibility. Agent Lightning's dependency chain is:
-\[
-\texttt{Agent Lightning} \to \texttt{VERL} \to \texttt{vLLM} \to \texttt{PyTorch} \to \texttt{Hardware SDK}
-\]
-On CUDA, the chain terminates at the CUDA Toolkit. On Trainium2, it extends further:
-\[
-\texttt{PyTorch} \to \texttt{PyTorch/XLA} \to \texttt{Neuron SDK} \to \texttt{Neuron Compiler} \to \texttt{NKI Runtime}
-\]
-Each additional layer multiplies the version compatibility surface. The VERL~0.6/vLLM~0.11 compatibility split (PR~\#394, commit \texttt{5f62ecb6}) demonstrates the cascade: a single upstream version bump in vLLM forced Agent Lightning to maintain two code paths, one for vLLM~0.10.2 and one for vLLM~0.11.0. Issue~\#437's LoRA import error (\texttt{vllm.lora.models} renamed between vLLM versions) is another instance.
-
-In number-theoretic terms, version compatibility is a simultaneous congruence problem. Let $v_i$ be the version of component $i$. The system is compatible if and only if:
-\[
-v_i \equiv v_i^{*} \pmod{M_i} \quad \text{for all } i \in \{1, \ldots, n\}
-\]
-where $v_i^{*}$ is the required version and $M_i$ is the compatibility modulus (the range of versions that work together). By the Chinese Remainder Theorem, a solution exists if and only if the moduli are pairwise coprime---which, in software terms, means the compatibility ranges of different components are independent. When they are \emph{not} independent (as when vLLM's API changes simultaneously affect both the LoRA path and the async inference path), the compatibility problem becomes over-constrained. Agent Lightning's \texttt{verl<0.7.0} pin (commit \texttt{7690d1e8}) is a brute-force solution: reduce $M_i$ to 1 by pinning to a specific version. The cost is that new features in VERL~0.7+ are inaccessible.
-
-\subsection{Where CCCL's DIA Board Fits---And Does Not Fit}
-
-The CCCL project board (DIA) tracks NVIDIA's efforts to build a ``Standard Library for CUDA C++.'' Within the NVIDIA ecosystem, this is enormously valuable: CCCL provides the vetted, high-performance building blocks (parallel sort, reduce, scan, atomics) that every CUDA developer needs. Projects like NVBench (benchmarking) and cuCollections (GPU data structures) extend this foundation.
-
-For our purposes---building hardware-portable agentic RL systems---CCCL/DIA occupies a specific and limited position:
-
-\begin{enumerate}
-\item \textbf{As reference implementation:} CCCL's algorithms (CUB's \texttt{BlockReduce}, \texttt{DeviceRadixSort}, \texttt{DeviceTopK}) represent the state of the art for GPU-optimized parallel primitives. When writing the Trainium2 equivalent of these algorithms, CCCL serves as the performance benchmark to beat---the ``gold standard'' configuration sequence against which new hardware's kernel quality is measured.
-
-\item \textbf{As non-portable dependency:} Any code that uses CCCL directly is locked to NVIDIA GPUs. For a multi-platform agentic system, CCCL code must be isolated behind a hardware abstraction layer and replaced with platform-specific implementations on TPU and Trainium2.
-
-\item \textbf{As ecosystem anchor:} CCCL is part of NVIDIA's strategy to make the CUDA ecosystem so comprehensive and convenient that developers never want to leave. The DIA board's tracking of features like \texttt{cuda::stream}, \texttt{cuda::event}, and C++26 senders integration shows NVIDIA investing in making CUDA C++ feel like modern C++---a powerful retention mechanism.
-\end{enumerate}
-
-In the language of \emph{Anthropic~WantToDoWhat}: CCCL makes the NVIDIA prison cell more luxurious. It does not help you escape.
-
-% ============================================================
-\section{The Open-Source Counterstrategy: XLA, JAX, and NKI}
-\label{sec:3.2.opensource}
-% ============================================================
-
-AWS's counterstrategy to CCCL is a three-pronged open-source effort:
-
-\begin{description}
-\item[XLA Graph Compiler:] Open-source compiler that lowers high-level computation graphs to hardware-specific instructions. Supports GPU (via CUDA), TPU, and Trainium (via Neuron). This is the ``portable'' layer---but as discussed, portability comes at a performance cost relative to hand-written kernels.
-
-\item[JAX Software Stack:] Functional transformation framework (grad, vmap, pmap, jit) built on XLA. Provides a hardware-agnostic programming model that compiles to any XLA backend. AWS is investing in JAX support on Trainium to attract researchers from the TPU/JAX ecosystem.
-
-\item[NKI (Neuron Kernel Interface):] The ``escape hatch'' for when XLA's auto-generated kernels are insufficient. NKI allows writing Trainium-native kernels in a Python-like DSL, with the option to drop down to ISA-level assembly for maximum control. The NKI Library provides pre-optimized kernels for the most critical operations.
-\end{description}
-
-The parallel to NVIDIA's stack is:
-\begin{center}
-\begin{tabular}{@{}ll@{}}
-\toprule
-\textbf{NVIDIA Stack} & \textbf{AWS/Trainium Stack} \\
-\midrule
-CUDA Runtime & Neuron Runtime \\
-CCCL (Thrust/CUB/libcudacxx) & NKI Library (pre-built kernels) \\
-cuBLAS/cuDNN/Transformer Engine & NKI custom kernels / XLA auto-tuned \\
-NCCL & NeuronLink collectives (via NxD) \\
-Megatron-Core & neuronx-distributed (NxD) / NxD Inference \\
-NeMo Framework & neuronx-nemo-megatron (deprecated $\to$ NxDI) \\
-PTX (manual assembly) & Trainium2 ISA (manual assembly) \\
-Nsight Systems / Nsight Compute & Neuron Profile (\texttt{neuron-profile}) \\
-cuda-gdb / compute-sanitizer & \texttt{neuron-top}, \texttt{neuron-monitor} \\
-\bottomrule
-\end{tabular}
-\end{center}
-
-The key asymmetry: NVIDIA's stack is mature, deeply integrated, and supported by millions of developers. AWS's stack is younger, evolving rapidly (the Neuron SDK has released 27+ major versions in quick succession, with breaking changes between versions), and supported by a smaller but growing community. Anthropic's bet is that for the narrow vertical of AI training/inference, a small team of assembly-level experts can achieve equivalent or superior performance on Trainium2, provided they have direct ISA access---which Trainium2's open architecture grants.
-
-% ============================================================
-\section{Validation Tests for Agentic System Quality}
+\section{Validation Tests for Agentic Training Quality}
 \label{sec:3.3}
-% ============================================================
 
 Our primary goal is to produce agentic RL systems whose training runs, kernel configurations, and agent behavior exhibit the properties we desire. In \S\ref{sec:3.2} we established how to construct hardware-portable kernel stacks with long effective lifetimes before degeneration; this is an important criterion, but it does not guarantee that the resulting agent behavior is satisfactory for deployment. How, then, does one determine whether an agentic training run is producing sufficiently high-quality results?
 
 If a human engineer examines a sequence of training loss values, reward curves, or kernel utilization metrics, the chance of correctly identifying subtle pathologies is small. Engineers tend to overlook phenomena that \emph{appear} normal---such as a reward plateau that is actually a convergent cycle (analogous to the cycle degeneration of \S\ref{sec:3.1})---while flagging apparent anomalies that are statistically expected. Therefore, we must apply systematic, unbiased quantitative tests.
 
-Statistical theory provides us with quantitative measures of training quality. There are innumerably many conceivable tests; we shall discuss those that have proven most useful, most informative, and most amenable to automated computation within the training loop itself.
+Statistical theory provides us with quantitative measures of training quality. There are innumerably many conceivable tests; we shall discuss those that have proven most useful, most informative, and most amenable to automated computation within the training loop itself. If a training run passes tests $T_1, T_2, \ldots, T_n$, we cannot guarantee it will not fail under test $T_{n+1}$; but each additional passing test increases our confidence---innocent until proven guilty.
 
-If a training run passes tests $T_1, T_2, \ldots, T_n$, we cannot guarantee it will not fail under test $T_{n+1}$; but each additional passing test increases our confidence. In practice, we apply five or six different types of validation tests to each training run, and if all are satisfactorily passed, we consider the run acceptable---innocent until proven guilty.
+Two types of tests must be distinguished: \emph{empirical tests} (\S\ref{sec:3.3.2}), where the training infrastructure collects runtime statistics and computes validation metrics; and \emph{theoretical tests} (\S\ref{sec:3.3.3}), where the mathematical structure of the recurrence and the convergence guarantees are used to predict expected behavior. The general methods of \S\ref{sec:3.3.1} ($\chi^2$ and Kolmogorov--Smirnov) underpin both approaches, while the spectral test (\S\ref{sec:3.3.4}) is the most powerful theoretical tool for detecting degenerate structure.
 
-Two types of tests must be distinguished: \emph{empirical tests}, where the training infrastructure (Agent Lightning's \texttt{trace\_aggregator} and \texttt{store}) collects runtime statistics and computes validation metrics; and \emph{theoretical tests}, where the mathematical structure of the kernel configuration recurrence (\S\ref{sec:3.2}) and the RL algorithm convergence guarantees are used to predict expected behavior.
-
-\subsection{General Test Methods for Agent Training Quality}
+% ============================================================
+\subsection{General Test Methods for Agent Training Data}
 \label{sec:3.3.1}
 
-\noindent\textbf{A. The $\chi^2$ Test for Utilization Uniformity.}\quad The $\chi^2$ test is perhaps the most fundamental validation tool. In the agentic RL context, we apply it to three distributions:
+\noindent\textbf{A. The $\chi^2$ Test.}\quad The $\chi^2$ test is perhaps the most fundamental validation tool. Recall from TAOCP~\S3.3.1: given $n$ independent observations falling into $k$ categories with probabilities $p_1, \ldots, p_k$, the test statistic is
+\begin{equation}
+V = \sum_{s=1}^{k} \frac{(Y_s - np_s)^2}{np_s}
+\label{eq:chi2}
+\end{equation}
+The derivation proceeds via $Z_s = (Y_s - np_s)/\sqrt{np_s}$, the constraint $\sqrt{p_1}Z_1 + \cdots + \sqrt{p_k}Z_k = 0$, and polar coordinate integration over the resulting $(k{-}1)$-surface, yielding
+\begin{equation}
+\lim_{n\to\infty}\Pr(V \leqslant v) = \gamma\!\bigl(\tfrac{k-1}{2},\tfrac{v}{2}\bigr)\big/\Gamma\!\bigl(\tfrac{k-1}{2}\bigr)
+\label{eq:chi2-limit}
+\end{equation}
+where $\gamma$ is the incomplete gamma function. In the agentic RL context, we apply this to three distributions:
 
 \begin{description}
-\item[(i) NeuronCore Utilization Distribution.] If the training loop distributes work across $k$~NeuronCores, each core should process approximately $n/k$ of the total $n$~training steps. Let $Y_s$ be the number of steps processed by core~$s$, and $p_s = 1/k$ be the expected fraction under uniform distribution. The $\chi^2$ statistic is
-\[
-V = \sum_{s=1}^{k} \frac{(Y_s - n/k)^2}{n/k}
-\]
-with $\nu = k-1$ degrees of freedom. A value of $V$ that falls below the $p=1\%$ percentile of the $\chi^2$ distribution indicates suspiciously uniform utilization (possible measurement error); a value above the $p=99\%$ percentile indicates a load imbalance that may arise from heterogeneous kernel performance across NeuronCores.
+\item[(i) NeuronCore Utilization Distribution.] If the training loop distributes work across $k$~NeuronCores, each processing approximately $n/k$ of $n$~training steps, the $\chi^2$ statistic~\eqref{eq:chi2} with $\nu = k{-}1$ degrees of freedom quantifies load imbalance. For a Trainium2 cluster with $k=64$ ($\nu=63$): 95th percentile $\approx 82.5$; $V > 82.5$ indicates statistically significant imbalance warranting investigation of the NxD parallelism configuration.
 
-\item[(ii) Reward Value Distribution.] Across $n$~rollout episodes, partition the reward range into $k$~equal-width bins. The distribution of observed rewards into these bins should match the expected distribution under the current policy. A significant $\chi^2$ deviation indicates either reward model miscalibration or exploration collapse (Issue~\#490).
+\item[(ii) Reward Value Distribution.] Across $n$~rollout episodes, partition the reward range into $k$~equal-width bins. A significant $\chi^2$ deviation indicates reward model miscalibration or exploration collapse (Issue~\#490, analyzed in \S\ref{sec:3.4.1}).
 
-\item[(iii) Gradient Norm Distribution.] Across training steps, the distribution of per-layer gradient norms should follow a pattern consistent with the optimizer's expected behavior. Bimodal gradient distributions, detectable via $\chi^2$ on quantile bins, indicate that some layers are training while others are stalled---a symptom of mixed-precision misconfiguration that manifests differently on CUDA (NaN propagation through FP16 underflow) and Trainium2 (BF16 exponent range behavior in the matrix engine).
+\item[(iii) Gradient Norm Distribution.] During distributed training, gradient norms across $k$~data-parallel workers should be approximately uniform. The $\chi^2$ test detects stragglers indicating data skew or hardware heterogeneity.
 \end{description}
 
-\noindent The $\chi^2$ table (reproduced from TAOCP Vol.~2, Table~3.3.1-1) provides critical values for interpreting $V$:
-
-\begin{center}
-\begin{tabular}{@{}crrrrrrr@{}}
+\smallskip
+\begin{center}\small
+\begin{tabular}{@{}rrrrrrrr@{}}
 \toprule
-$\nu$ & $p=1\%$ & $p=5\%$ & $p=25\%$ & $p=50\%$ & $p=75\%$ & $p=95\%$ & $p=99\%$ \\
+$\nu$ & $p{=}1\%$ & $5\%$ & $25\%$ & $50\%$ & $75\%$ & $95\%$ & $99\%$ \\
 \midrule
-1  & 0.00016 & 0.00393 & 0.1015 & 0.4549 & 1.323 & 3.841  & 6.635 \\
-2  & 0.02010 & 0.1026  & 0.5754 & 1.386  & 2.773 & 5.991  & 9.210 \\
-5  & 0.5543  & 1.1455  & 2.675  & 4.351  & 6.626 & 11.07  & 15.09 \\
-10 & 2.558   & 3.940   & 6.737  & 9.342  & 12.55 & 18.31  & 23.21 \\
-20 & 8.260   & 10.85   & 15.45  & 19.34  & 23.83 & 31.41  & 37.57 \\
+1 & .00016 & .00393 & .1015 & .4549 & 1.323 & 3.841 & 6.635 \\
+5 & .5543 & 1.145 & 2.675 & 4.351 & 6.626 & 11.07 & 15.09 \\
+10 & 2.558 & 3.940 & 6.737 & 9.342 & 12.55 & 18.31 & 23.21 \\
+20 & 8.260 & 10.85 & 15.45 & 19.34 & 23.83 & 31.41 & 37.57 \\
 \bottomrule
 \end{tabular}
 \end{center}
 
-\noindent For a Trainium2 cluster with $k=64$ NeuronCores ($\nu=63$), the 95th percentile of $\chi^2$ is approximately $82.5$. If $V > 82.5$, the load imbalance is statistically significant at the 5\% level and warrants investigation of the NxD parallelism configuration.
-
 \medskip
-\noindent\textbf{B. The Kolmogorov--Smirnov Test for Reward Convergence.}\quad Where the $\chi^2$ test partitions observed values into discrete bins, the Kolmogorov--Smirnov (KS) test operates directly on the empirical cumulative distribution function (CDF) and is therefore more sensitive to distributional shifts in continuous-valued quantities such as reward signals.
+\noindent\textbf{B. The Kolmogorov--Smirnov Test.}\quad The KS test operates on the empirical CDF. Given $n$~observations from distribution $F(x)$:
+\begin{equation}
+K_n^+ = \sqrt{n}\sup_x(F_n(x) - F(x)),\qquad K_n^- = \sqrt{n}\sup_x(F(x) - F_n(x))
+\label{eq:ks}
+\end{equation}
+Smirnov's exact distribution (TAOCP eq.~3.3.1-(25)):
+\begin{equation}
+\Pr\!\bigl(K_n^+ \leqslant t/\sqrt{n}\bigr) = \frac{t}{n^n}\sum_{0\leqslant k\leqslant t}\binom{n}{k}(k{-}t)^k(t{+}n{-}k)^{n-k-1}
+\label{eq:ks-exact}
+\end{equation}
+with the large-$n$ approximation $\Pr(K_n^+\leqslant s)=1-e^{-2s^2}(1-\frac{2}{3}s/\sqrt{n}+O(1/n))$.
 
-Given two consecutive training epochs $i$ and $i+1$, let $F_i(r)$ and $F_{i+1}(r)$ denote the empirical CDFs of rollout rewards. The two-sample KS statistic is:
-\[
-D_{n_1, n_2} = \sup_r \bigl| F_i(r) - F_{i+1}(r) \bigr|
-\]
-where $n_1, n_2$ are the number of rollouts in each epoch. The null hypothesis is that both epochs' reward distributions are drawn from the same underlying distribution---i.e., the policy has not meaningfully changed. If $D_{n_1, n_2}$ exceeds the critical value $c(\alpha) \sqrt{(n_1 + n_2)/(n_1 n_2)}$, the policy has undergone a statistically significant shift at confidence level $\alpha$.
+In the agentic RL context, the two-sample KS test compares consecutive training epochs. Given epochs~$i$ and~$i{+}1$ with empirical reward CDFs $F_i(r)$ and $F_{i+1}(r)$, the statistic $D_{n_1,n_2} = \sup_r|F_i(r) - F_{i+1}(r)|$ serves three purposes: (1)~convergence detection (small $D$ for consecutive epochs); (2)~catastrophic forgetting detection (sudden spike in $D$); (3)~reward model staleness quantification.
 
-In the agentic RL context, the KS test serves three diagnostic purposes: (1)~\emph{convergence detection}: when $D$ drops below a threshold for several consecutive epochs, training has converged (or stalled---the $\chi^2$ reward test distinguishes these); (2)~\emph{catastrophic forgetting detection}: a sudden spike in $D$ after a period of small values indicates the policy has ``forgotten'' previous competencies; (3)~\emph{reward model staleness}: if the environment changes but the reward model does not, the KS test between the reward model's output distribution and the true-success distribution (when ground truth is available) quantifies the staleness.
+For Agent Lightning, the KS test is computed by the observability module using reward data from the \texttt{store} backends. On Trainium2, this is a CPU-side $O(n\log n)$ computation adding no NeuronCore load.
 
-For Agent Lightning, the KS test is computed by the \texttt{observability} module's metrics collector, using reward data persisted in the \texttt{store} backends. On Trainium2, the test itself is a CPU-side computation (sorting $O(n \log n)$ rewards and computing the supremum) and adds no load to the NeuronCores.
-
+% ============================================================
 \subsection{Empirical Tests for Operational Health}
 \label{sec:3.3.2}
 
-The classical randomness tests from TAOCP~\S3.3.2 (run test, gap test, serial test, poker test) each have a precise analog in agentic system validation:
+The classical empirical tests (TAOCP~\S3.3.2) each have a precise agentic system analog:
 
 \begin{description}
-\item[Run Test $\to$ Rollout Length Stability.] In a sequence of rollout episode lengths $\ell_1, \ell_2, \ldots, \ell_n$, a ``run up'' is a maximal subsequence $\ell_i < \ell_{i+1} < \cdots < \ell_{i+r}$. Under stable training, the distribution of run lengths should match the theoretical distribution for independent observations. Excessively long runs indicate reward drift; excessively short runs indicate policy oscillation. In Agent Lightning, the \texttt{store} backends record episode lengths, and the \texttt{trace\_aggregator} at trajectory level preserves the sequential ordering needed for this test.
+\item[Run Test $\to$ Rollout Length Stability.] In episode lengths $\ell_1, \ell_2, \ldots, \ell_n$, a ``run up'' is a maximal increasing subsequence. Excessively long runs indicate reward drift; excessively short runs indicate policy oscillation. The \texttt{store} backends record episode lengths; the \texttt{trace\_aggregator} at trajectory level preserves ordering.
 
-\item[Gap Test $\to$ Inter-Failure Interval Analysis.] If kernel failures (OOM events, NKI compilation errors, DMA timeouts) occur at steps $t_1, t_2, \ldots$, the gaps $g_i = t_{i+1} - t_i$ should follow a geometric distribution under the assumption of independent, memoryless failures. Clustering of failures (gaps shorter than expected) indicates a systematic hardware issue---on Trainium2, this may signal SBUF fragmentation or NeuronLink congestion. Issue~\#107 (server OOM during training) and Issue~\#438 (memory leak) would both be detectable via gap test anomalies.
+\item[Gap Test $\to$ Inter-Failure Interval Analysis.] If kernel failures (OOM, NKI compilation errors, DMA timeouts) occur at steps $t_1, t_2, \ldots$, the gaps $g_i = t_{i+1} - t_i$ should follow a geometric distribution under independent, memoryless failures.
 
-\item[Serial Test $\to$ Consecutive Action Correlation.] In the agent's action sequence $a_1, a_2, \ldots, a_n$, the serial test examines pairs $(a_i, a_{i+1})$. Under a well-trained policy with sufficient exploration, the joint distribution of consecutive actions should approximate the product of marginals (independence). High serial correlation indicates the agent is stuck in a repetitive pattern---precisely the ``exploration collapse'' of Issue~\#490. The \texttt{trace\_aggregator} at transition level provides the pair data needed for this test.
+\textbf{Case study: OOM failures on Trainium2} (Issues~\#107, \#284, \#352, \#438). Three patterns:
 
-\item[Poker Test $\to$ Action Diversity.] Partition the action sequence into groups of $k$~consecutive actions and classify each group by its pattern (all same, all different, one pair, etc.). The poker test compares the observed pattern frequencies against their theoretical probabilities. Low action diversity---detectable as an excess of ``all same'' or ``one pair'' patterns---indicates insufficient exploration and may signal that the GRPO or PPO advantage estimates have collapsed to near-zero variance.
+(i)~\emph{Trajectory accumulation overflow.} The XLA runtime pre-allocates for $\max(T)$; variable episode length~$T$ wastes $(\max(T)-\mathbb{E}[T])\cdot B_{\mathrm{state}}$ bytes. Each new $\max(T)$ triggers recompilation.
+
+(ii)~\emph{KV-cache fragmentation.} Neuron SDK pre-allocates contiguous KV-cache per sequence; one long episode can fragment entire NeuronCore HBM. Issue~\#347's ``thinking mode'' inflates KV-cache $2$--$10\times$.
+
+(iii)~\emph{Gradient buffer persistence.} On Trainium2, gradients persist in the XLA graph until \texttt{mark\_step()}; multiple micro-steps without this barrier can exceed HBM capacity.
+
+\textbf{Gap test diagnostic:} clustered failures (short gaps) $\Rightarrow$ systematic (pattern~i/iii); uniformly distributed $\Rightarrow$ stochastic (pattern~ii).
+
+\item[Serial Test $\to$ Consecutive Action Correlation.] Pairs $(a_i, a_{i+1})$ should approximate independence. High correlation indicates exploration collapse (Issue~\#490, \S\ref{sec:3.4.1}).
+
+\item[Poker Test $\to$ Action Diversity.] Groups of $k$~consecutive actions classified by pattern. Low diversity indicates GRPO/PPO advantage collapse.
 \end{description}
 
 \medskip
-\noindent\textbf{Theorem (Temporal Correlation Preservation in GRPO Batching).}\quad The serial test above requires that transitions from the \emph{same} rollout remain adjacent in the training batch. Issue~\#287 proposes keeping transitions from the same rollout in one mini-batch. We prove this is necessary, not merely convenient.
+\noindent\textbf{The \texttt{trace\_aggregator} as Empirical Test Enabler.}\quad Two modes: \emph{transition-level} (each $(s_t,a_t,r_t,s_{t+1})$ annotated with rollout ID and step index, enabling the serial test) and \emph{trajectory-level} (entire episodes as single records, enabling run and poker tests). The \texttt{AgentModeDaemon} supports runtime switching.
 
-\begin{theorem}[Temporal Correlation Preservation]\label{thm:temporal-correlation}
-Let $\RolloutTraj = (s_1, a_1, r_1, \ldots, s_T, a_T, r_T)$ be a rollout trajectory from prompt~$p$, and let the GRPO group $\mathcal{G}$ contain $G$ trajectories sharing prompt~$p$. If transitions from different rollouts are interleaved into the same mini-batch during gradient computation, the per-step advantage estimates become biased.
+% ============================================================
+\subsection[Theoretical Tests]{*Theoretical Tests: Migration-Validated Guarantees}
+\label{sec:3.3.3}
 
-\emph{Proof sketch.} GRPO computes the group advantage as $\hat{A}_i = (R_i - \bar{R}_\mathcal{G}) / \sigma_{R,\mathcal{G}}$, where $R_i$ is the trajectory-level reward. This advantage is applied uniformly to all tokens in trajectory~$i$. Now suppose the mini-batch contains transitions $(s_t^{(i)}, a_t^{(i)})$ from trajectory~$i$ and $(s_{t'}^{(j)}, a_{t'}^{(j)})$ from trajectory~$j$ with $R_i \neq R_j$. The gradient contribution from this batch is:
+{\small\emph{(This section may be skipped on first reading.)}}
+
+\medskip
+Where the empirical tests of \S\ref{sec:3.3.2} detect anomalies \emph{after} they occur, the theoretical tests predict anomalies \emph{before} they manifest, by analyzing the mathematical structure of the training system. TAOCP~\S3.3.3 derives theoretical bounds on LCG quality using the algebraic structure of the recurrence $X_{n+1} = aX_n + c \pmod{m}$. We derive analogous bounds for agentic RL systems by analyzing the algebraic structure of the hardware migration.
+
+\medskip
+\noindent\textbf{A. The Temporal Correlation Preservation Theorem.}\quad The serial test (\S\ref{sec:3.3.2}) requires transitions from the same rollout to remain adjacent in the training batch. We prove this is necessary, not merely convenient.
+
+\begin{theorem}[Temporal Correlation Preservation]\label{thm:grpo-correlation}
+Let $\tau = (s_1, a_1, r_1, \ldots, s_T, a_T, r_T)$ be a rollout trajectory. GRPO computes the group advantage $\hat{A}_i = (R_i - \bar{R}_\mathcal{G})/\sigma_{R,\mathcal{G}}$. If transitions from different rollouts are interleaved in the same mini-batch, the gradient
 \[
-\hat{g}_{\mathrm{batch}} = \hat{A}_i \nabla_\theta \log \pi_\theta(a_t^{(i)} | s_t^{(i)}) + \hat{A}_j \nabla_\theta \log \pi_\theta(a_{t'}^{(j)} | s_{t'}^{(j)}).
+\hat{g}_{\mathrm{batch}} = \hat{A}_i\nabla_\theta\log\pi_\theta(a_t^{(i)}|s_t^{(i)}) + \hat{A}_j\nabla_\theta\log\pi_\theta(a_{t'}^{(j)}|s_{t'}^{(j)})
 \]
-If $s_t^{(i)}$ and $s_{t'}^{(j)}$ are similar states but from different points in their respective rollouts, the gradient averages conflicting signals: trajectory~$i$'s advantage pushes the policy in one direction, trajectory~$j$'s in another. The expected gradient over random interleaving has an additional variance term of $\mathrm{Var}(\hat{A}) \cdot \|\nabla_\theta \log \pi\|^2$, absent when trajectories are batched separately. \qed
+acquires an additional variance term $\mathrm{Var}(\hat{A})\cdot\|\nabla_\theta\log\pi\|^2$ absent when trajectories are batched separately. On Trainium2, the XLA memory planner's static shape requirement forces padding to $\max(T)$, wasting SBUF capacity $\propto\mathrm{Var}(T)$. \qed
 \end{theorem}
 
-\noindent The practical consequence for Agent Lightning: the \texttt{trace\_aggregator} must group transitions by rollout ID before passing them to the VERL training backend. On Trainium2, this grouping interacts with the XLA memory planner's static shape requirement---variable-length rollouts within a batch must be padded to the maximum length, wasting \SBUF{} capacity proportional to the length variance $\mathrm{Var}(T)$ across the group.
+\medskip
+\noindent\textbf{B. The Version Compatibility Congruence.}\quad Agent Lightning's dependency chain
+\[
+\texttt{Agent Lightning}\to\texttt{VERL}\to\texttt{vLLM}\to\texttt{PyTorch}\to\texttt{Hardware SDK}
+\]
+extends on Trainium2 to $\texttt{PyTorch}\to\texttt{PyTorch/XLA}\to\texttt{Neuron SDK}\to\texttt{NKI Runtime}$. Version compatibility is a simultaneous congruence: $v_i \equiv v_i^* \pmod{M_i}$ for all~$i$. By the CRT, a solution exists iff the moduli are pairwise coprime---i.e., compatibility ranges are independent. The $\chi^2$ test (\S\ref{sec:3.3.1}) validates this: sampling $n$~random version combinations, the observed pass/fail distribution should match the CRT prediction. Significant $\chi^2$ deviation indicates hidden version dependencies (cf.\ VERL~0.6/vLLM~0.11 split, PR~\#394).
 
 \medskip
-\noindent\textbf{The \texttt{trace\_aggregator} as Serial Test Enabler.}\quad The \texttt{trace\_aggregator} (PR~\#134, commit \texttt{4235731a}) is the critical infrastructure component that makes the serial test, poker test, and run test computationally feasible within the training loop. Its two aggregation modes determine which tests can be applied:
+\noindent\textbf{C. The Four-Layer Migration as Theoretical Failure Taxonomy.}\quad Each Megatron-to-Trainium2 migration layer introduces a \emph{theoretically distinct} failure mode class:
 
 \begin{description}
-\item[Transition-level aggregation:] Each state-action-reward-next\_state tuple $(s_t, a_t, r_t, s_{t+1})$ is emitted independently to the store. The serial test requires examining consecutive pairs $(a_t, a_{t+1})$, which are available only if the store preserves the temporal ordering \emph{within} each rollout. The \texttt{trace\_aggregator} at transition level annotates each tuple with its rollout ID and step index, enabling the serial test to reconstruct the action sequence $a_1, a_2, \ldots, a_T$ from the stored tuples. Without this annotation, transitions from different rollouts would be interleaved in the store, destroying the temporal structure that the serial test depends on. This is the data-engineering analog of Theorem~\ref{thm:temporal-correlation}: just as interleaving transitions in the training batch introduces gradient bias, interleaving transitions in the \emph{store} introduces serial test bias.
+\item[Layer 1 (Parallelism $\to$ NxD):] Communication topology mismatch. NCCL's ring/tree algorithms $\to$ NeuronLink's 2-level hierarchy. \emph{Theoretical test:} the $\chi^2$ utilization test (\S\ref{sec:3.3.1}(i)) detects load imbalance from topology mismatch.
 
-\item[Trajectory-level aggregation:] The entire episode $(s_1, a_1, r_1, \ldots, s_T, a_T, r_T)$ is emitted as a single record. The run test operates directly on the sequence of trajectory rewards $R_1, R_2, \ldots$ (each trajectory's total reward), and the poker test operates on action sequences extracted from trajectories. Trajectory-level aggregation preserves all temporal structure by construction, but at higher memory cost: each trajectory record includes the full action sequence rather than individual tuples. On Trainium2, where the XLA memory planner pre-allocates tensor shapes, trajectory-level storage requires padding all trajectories to the maximum episode length---the same padding waste analyzed in Exercise~20 of \S\ref{sec:3.1}.
+\item[Layer 2 (Fused Kernels $\to$ NKI):] Compute primitive mismatch. CUDA Tensor Cores (SIMT) $\to$ Trainium2 Matrix Engine (VLIW). The NKI API (\texttt{nki.language.*}) targets scalar, vector, and tensor engines; the GPSIMD engine handles non-tensor operations (15--20\% of attention kernel cycles). \emph{Theoretical test:} the spectral test (\S\ref{sec:3.3.4}) detects lattice structure in auto-tuner configurations for these kernels.
+
+\item[Layer 3 (Communication Overlap $\to$ DMA):] Overlap model mismatch. CUDA streams $\to$ DMA engines with hardware-level concurrency. \emph{Theoretical test:} the gap test (\S\ref{sec:3.3.2}) applied to inter-communication latencies.
+
+\item[Layer 4 (Memory $\to$ Neuron Runtime):] Allocation model mismatch. Dynamic CUDA caching allocator $\to$ static XLA memory planner with \texttt{mark\_step()} barriers. \emph{Theoretical test:} the gap test applied to OOM failures (\S\ref{sec:3.3.2} case study).
 \end{description}
 
-\noindent The operational recommendation is to use trajectory-level aggregation during the initial training phase (when episode lengths are short and exploration is high, making the poker test and serial test most informative) and transition-level aggregation during fine-tuning (when episodes are long and credit assignment granularity matters more than temporal correlation analysis). The \texttt{AgentModeDaemon} (\S\ref{sec:3.2.daemon}) supports runtime switching between aggregation modes via its \texttt{trace\_aggregator} parameter, enabling this phase-dependent strategy without restarting the training loop.
+\noindent The Cartesian product of these layers quantifies migration cost: $O(k{+}d)$ best case (platform-independent bugs) and $O(3\cdot k\cdot d)$ worst case (each platform--kernel--failure triple unique).
 
+\medskip
+\noindent\textbf{D. The Governance Invariant Sufficiency Theorem.}\quad The Operator~RL kernel (\texttt{src/agent\_os}) enforces four invariants: (I)~No Bypass, (II)~Fail Closed, (III)~Audit Everything, (IV)~Crash Isolation. We claim:
+
+\begin{theorem}[Governance Sufficiency]\label{thm:governance}
+If invariants (I)--(IV) hold, then: (a)~every agent action passes through the policy engine and can be validated by the $\chi^2$ governance compliance test (\S\ref{sec:3.3.1}); (b)~every policy violation is recorded in the Flight Recorder and contributes to the gap test (\S\ref{sec:3.3.2}); (c)~no user-space agent crash propagates to the governance layer, ensuring the validation framework remains operational during hardware failures.
+\end{theorem}
+
+\noindent \emph{Proof sketch.} (a)~follows from (I): since all I/O transits kernel-space, the \texttt{FlightRecorderEmitter} captures every action as a \texttt{LightningSpan}. (b)~follows from (II)+(III): denied actions emit \texttt{SIGPOLICY} (non-maskable) and are logged. (c)~follows from (IV): the kernel runs in a separate process with independent exception handling. \qed
+
+% ============================================================
 \subsection{The Spectral Test for Kernel Schedule Analysis}
 \label{sec:3.3.4}
 
-The spectral test (TAOCP~\S3.3.4) is the most powerful theoretical test for detecting lattice structure in sequences generated by linear recurrences. In the kernel auto-tuning context, we apply it as follows.
+The spectral test (TAOCP~\S3.3.4) is the most powerful theoretical test for detecting lattice structure. Consider a kernel auto-tuner generating tiling configurations $\mathbf{x}_1, \mathbf{x}_2, \ldots \in \mathbb{Z}^d$ with $d$~tunable parameters. If the update rule $\mathbf{x}_{n+1} = f(\mathbf{x}_n)$ has linear structure, the configurations lie on a lattice.
 
-Consider a kernel auto-tuner that generates a sequence of tiling configurations $\mathbf{x}_1, \mathbf{x}_2, \ldots \in \mathbb{Z}^d$ where $d$ is the number of tunable parameters (tile dimensions, VLIW slot assignments, prefetch depths). If the auto-tuner uses a deterministic update rule $\mathbf{x}_{n+1} = f(\mathbf{x}_n)$, and if $f$ has linear structure (e.g., it is a multi-dimensional linear congruential generator), then the configurations will lie on a lattice in $\mathbb{Z}^d$.
+The spectral test computes the minimum distance $\nu_d$ between adjacent hyperplanes. A small $\nu_d$ means configurations are clustered on widely-spaced hyperplanes---failing to explore uniformly. For the Trainium2 GEMM auto-tuner with $d=4$ (M-tile, N-tile, K-tile, VLIW-pack), the test reveals whether the tuner covers all viable regions or is trapped in a subspace.
 
-The spectral test computes the minimum distance $\nu_d$ between adjacent hyperplanes of this lattice. A small $\nu_d$ means the configurations are clustered on widely-spaced parallel hyperplanes---they fail to explore the configuration space uniformly. For the Trainium2 GEMM auto-tuner with $d=4$ parameters (M-tile, N-tile, K-tile, VLIW-pack), the spectral test reveals whether the tuner is visiting all viable tiling regions or is trapped in a low-dimensional subspace.
+A configuration achieving 95\% utilization on GPU/TPU provides \emph{no information} about Trainium2 performance---the architectures are sufficiently different that configuration spaces are essentially independent. The spectral test must be applied \emph{independently} per platform.
 
-More importantly for agentic RL: the spectral test can be applied to the \emph{policy parameter trajectory} during training. If the gradient updates cause the policy parameters to trace a path that lies on a low-dimensional lattice in parameter space, the training has degenerated into a periodic orbit---the policy is oscillating between a small number of behaviors rather than converging. This is the high-dimensional analog of the cycle degeneration detected by Floyd's algorithm in Experiment~3.1A.
+More importantly: the spectral test applies to the \emph{policy parameter trajectory} during training. If gradient updates trace a path on a low-dimensional lattice in parameter space, training has degenerated into a periodic orbit. This is the high-dimensional analog of the cycle degeneration of \S\ref{sec:3.1}.
 
-\subsection{Exploration Collapse Detection}
-\label{sec:3.3.5}
+% ============================================================
+% §3.4  OTHER TYPES OF AGENT TRAINING QUANTITIES
+% ============================================================
+% Maps to TAOCP Vol.2 §3.4 (Other Types of Random Quantities, pp.104-130)
+% Structure: 3.4.1, 3.4.2 — exact TAOCP numbering
+% ============================================================
 
-Issue~\#490 identifies a structural failure mode that the validation tests above are designed to detect but that deserves explicit treatment: \emph{exploration collapse}, where an agent converges to a fixed policy and loses the ability to discover novel behaviors not represented in the reward signal. The issue documents five concrete engineering gaps in current agentic RL systems, each mappable to a validation test from this chapter.
+\section{Other Types of Agent Training Configurations}
+\label{sec:3.4}
+
+The validation tests of \S\ref{sec:3.3} operate primarily on \emph{scalar} training metrics (utilization counts, reward values, action labels). But an agentic RL system produces a much richer space of ``random quantities'': continuous reward distributions with complex shapes (\S\ref{sec:3.4.1}), multi-agent sampling strategies with non-trivial correlations (\S\ref{sec:3.4.2}), and structured trajectory data that spans multiple turns and tool calls.
+
+% ============================================================
+\subsection{Reward and Configuration Distributions}
+\label{sec:3.4.1}
+
+TAOCP~\S3.4.1 treats numerical distributions---how to transform uniform random numbers into arbitrary distributions (normal, exponential, etc.). In our setting, the analogous question is: how to transform raw agent behaviors into well-shaped reward signals and training configurations.
 
 \medskip
-\noindent\textbf{(i) Trajectory Entropy Monitoring.} Define the \emph{trajectory entropy} over a sliding window of $W$ episodes as
+\noindent\textbf{A. Credit Assignment: Three Distribution Strategies.}\quad The agent executes $(a_1,\ldots,a_T)$ over an episode, observing scalar reward~$R$ only at the end (Issues~\#31, \#282, \#390, \#392). Three credit assignment strategies produce three different reward \emph{distributions} over actions:
+
+\begin{description}
+\item[Trajectory-Level:] $\hat{A}_t = R - b$ for all~$t$. Uniform distribution of credit. Minimal memory (scalar $R$ + log-probs). On Trainium2, trajectory-level \texttt{trace\_aggregator} suffices. Gradient variance $= O(T)$.
+
+\item[Transition-Level:] Reward model assigns $r_t$ per step; $\hat{A}_t = r_t + \gamma V(s_{t+1}) - V(s_t)$ (GAE). Non-uniform distribution matching action importance. Memory $\sim 3T$ increase; for $T > 100$ on Trainium2, OOM risk is real.
+
+\item[Action-Level:] Per-token rewards via process reward models (Issues~\#387, \#390, \#392). Token-level distribution. Memory $O(T\cdot L)$ where $L$ = response length. Requires \texttt{trace\_aggregator} at transition level with per-token annotation---not yet fully supported (Issue~\#392).
+\end{description}
+
+The choice propagates to the validation framework: the serial test (\S\ref{sec:3.3.2}) requires transition-level data; the $\chi^2$ reward test (\S\ref{sec:3.3.1}) is meaningful only with trajectory-level rewards unless intermediate rewards are available.
+
+\medskip
+\noindent\textbf{B. Exploration Collapse as Distribution Degeneration.}\quad Issue~\#490 identifies the failure mode where the agent's action distribution collapses to a point mass. Define trajectory entropy over a sliding window of $W$~episodes:
 \[
-H_W = -\sum_{i=1}^{K} p_i \log p_i
+H_W = -\sum_{i=1}^{K}p_i\log p_i
 \]
-where $p_i$ is the empirical frequency of the $i$-th distinct tool-call sequence pattern in the window. If $H_W$ drops below a threshold $H_{\min}$ while the mean reward plateaus (i.e., $|\bar{R}_W - \bar{R}_{W-1}| < \epsilon$), the agent has collapsed to a fixed policy rather than mastering the task space. In Agent Lightning's architecture, the \texttt{tracer} records the action sequences needed to compute $H_W$; the \texttt{store} backends persist them across training steps. This metric is the agentic analog of the ``run test'' from \S\ref{sec:3.3.2}: a monotonically decreasing $H_W$ produces an excessively long ``run down'' in the entropy sequence.
+where $p_i$ is the frequency of the $i$-th tool-call pattern. If $H_W$ drops below $H_{\min}$ while reward plateaus, the distribution has degenerated.
 
-\medskip
-\noindent\textbf{(ii) Reward Staleness Detection.} The reward function is assumed correct for the duration of training, but in real deployments, environment dynamics shift---APIs evolve, data distributions drift, new capabilities appear. Issue~\#490 proposes tracking the correlation between the reward signal and an independently measured task success metric. When this correlation degrades below a threshold, the reward function should be flagged for review. In the integration bridge (\S\ref{sec:3.2.agenticrl}), the \texttt{PolicyReward} class from \texttt{operatorRL/src/agent\_os/integrations/agent\_lightning/reward.py} already maintains per-epoch statistics (\texttt{get\_stats()}); extending it to track reward--success correlation requires only a running Pearson coefficient over the \texttt{CompositeReward} components.
+\emph{Reward staleness detection}: track the correlation between the reward signal and an independent success metric. When correlation degrades, the reward function is stale. The \textsc{PolicyReward} class's \texttt{get\_stats()} feeds this.
 
-\medskip
-\noindent\textbf{(iii) Novelty--Routine Classification.} Agent Lightning's \texttt{emit\_*()} functions capture what the agent did and what reward it received, but not whether the behavior was \emph{novel} (first occurrence) or \emph{routine} (repetition of a known-good policy). The four quadrants of the novelty--reward matrix carry different training implications:
-\begin{center}
+\emph{Novelty--routine classification}:
+\begin{center}\small
 \begin{tabular}{@{}lll@{}}
 \toprule
 & High Reward & Low Reward \\
 \midrule
-Novel behavior & Discovery (study, don't just reinforce) & Exploration (valuable signal) \\
-Routine behavior & Exploitation (fine, but not learning) & Degradation (flag immediately) \\
+Novel & Discovery (study, don't just reinforce) & Exploration (valuable signal) \\
+Routine & Exploitation (fine, not learning) & Degradation (flag immediately) \\
 \bottomrule
 \end{tabular}
 \end{center}
-Implementing novelty detection requires comparing each trajectory against the historical trace distribution---a computation that the \texttt{FlightRecorderEmitter}'s \texttt{get\_violation\_summary()} could be extended to support by hashing trajectory action sequences and maintaining a Bloom filter of seen patterns.
 
-\subsection{Credit Assignment in Multi-Turn Agentic RL}
-\label{sec:3.3.credit}
+\medskip
+\noindent\textbf{C. On-Policy vs Off-Policy Distributions.}\quad Issue~\#98 asks: ``Is the training on-policy?'' This is fundamental. On-policy (GRPO default) requires fresh rollouts at every policy update---hardware utilization depends on rollout throughput. Off-policy reuses stored trajectories from the \texttt{store}'s collection-based backend---reducing rollout cost but introducing distribution shift that the KS test (\S\ref{sec:3.3.1}B) must monitor. Agent Lightning supports both: the \texttt{store}'s trajectory grouping by epoch enables replay for off-policy, while the \texttt{runner}'s synchronous mode ensures fresh data for on-policy.
 
-The validation tests above assume that each training signal (reward, gradient, utilization metric) can be attributed to a specific cause. In single-step RL, this attribution is straightforward: the reward for action $a_t$ in state $s_t$ informs the policy gradient for that state-action pair. In multi-turn agentic RL---the setting of Agent Lightning's \texttt{runner} and \texttt{tracer} components---the agent executes a sequence of tool-use actions $(a_1, a_2, \ldots, a_T)$ over an episode of length $T$, and a single scalar reward $R$ is observed only at the end. The credit assignment problem is: \emph{which actions contributed positively to $R$, and which were wasted or harmful?}
+\medskip
+\noindent\textbf{D. The Reward Composition Formula.}\quad The integration bridge (\texttt{operatorRL/src/agent\_os/integrations/agent\_lightning/reward.py}) composes rewards:
+\[
+R_{\mathrm{final}} = R_{\mathrm{base}} + \sum_{v\in\mathcal{V}}\phi(v) + b_{\mathrm{clean}}\cdot\mathbf{1}[\mathcal{V}{=}\emptyset]
+\]
+where $\phi(v)$ maps violation severity (critical: $-100$, high: $-50$, medium: $-10$, low: $-1$) and $b_{\mathrm{clean}}=5$. Alternative multiplicative mode: $R_{\mathrm{final}} = R_{\mathrm{base}}\cdot\alpha$ ($\alpha=0.5$). This is \emph{not} a standard inference workload---it interleaves governance evaluation with scalar reward computation.
 
-This problem is central to agentic RL and is discussed in Agent Lightning Issues~\#31, \#282, \#390, and \#392. Three credit assignment strategies are available, each with distinct hardware implications:
+\medskip
+\noindent\textbf{E. Thinking Mode and KV-Cache Distribution.}\quad Issue~\#347 (``How to turn off thinking mode'') reveals a distribution problem: chain-of-thought tokens inflate the KV-cache by $2$--$10\times$ without contributing to task reward. On Trainium2, where the Neuron SDK pre-allocates contiguous KV-cache per sequence, this directly reduces maximum concurrent batch size. The $\chi^2$ test (\S\ref{sec:3.3.1}) applied to per-token reward distributions can detect when thinking tokens dominate training signal without improving outcomes.
+
+% ============================================================
+\subsection{Multi-Agent Coordination and Rollout Strategies}
+\label{sec:3.4.2}
+
+TAOCP~\S3.4.2 treats random sampling (selecting $m$ items from $n$ without replacement) and shuffling (generating random permutations). In our setting, the analogous problems are: sampling agents for multi-agent training; shuffling rollout assignments across heterogeneous hardware; and coordinating trust across agent boundaries.
+
+\medskip
+\noindent\textbf{A. The Nexus Trust Exchange.}\quad Operator~RL's Nexus module (\texttt{modules/nexus/}) is a decentralized trust exchange for AI agents (Issue~\#92). Its five components:
 
 \begin{description}
-\item[Trajectory-Level Credit.] The entire reward $R$ is attributed uniformly to all actions in the episode. The policy gradient for each action is $\nabla_\theta \log \pi_\theta(a_t | s_t) \cdot (R - b)$ where $b$ is a baseline. This is the simplest strategy and the one currently implemented in Agent Lightning's GRPO backend (via VERL). Its advantage is minimal memory overhead: only the scalar reward $R$ and the trajectory log-probabilities need to be stored. On Trainium2, the \texttt{trace\_aggregator} at trajectory level (\S\ref{sec:3.2.daemon}) suffices. Its disadvantage: high gradient variance, scaling as $O(T)$ with episode length, which slows convergence.
-
-\item[Transition-Level Credit.] A reward model assigns intermediate rewards $r_t$ at each step. The policy gradient uses per-step advantages $\hat{A}_t = r_t + \gamma V(s_{t+1}) - V(s_t)$ (GAE-style). This reduces variance but requires: (a)~a reward model that can evaluate partial trajectories, and (b)~storing $T$ intermediate reward values plus the value function estimates---increasing the memory footprint by a factor of $\sim 3T$ relative to trajectory-level. On Trainium2, this means the XLA runtime's memory planner must accommodate the additional tensors, and for long episodes ($T > 100$), OOM becomes a real risk (Issue~\#107, \#438).
-
-\item[Action-Level Credit.] Fine-grained credit assignment via token-level rewards (e.g., process reward models). Each \emph{token} in the agent's output receives a reward signal. This is the most informative but most expensive strategy: the memory footprint scales as $O(T \cdot L)$ where $L$ is the average response length in tokens. For the Agent Lightning + Operator RL system, action-level credit requires the \texttt{trace\_aggregator} to operate at transition level with per-token annotation---a mode not yet fully supported (see Issue~\#392 for the proposed taxonomy).
+\item[\texttt{registry.py}:] Agent registration with DIDs, capabilities, and privacy policies. \texttt{verify\_peer()} forces network adoption via \texttt{IATPUnverifiedPeerException}.
+\item[\texttt{reputation.py}:] Scores 0--1000 across five tiers: UNTRUSTED (0--299), PROBATIONARY (300--499), STANDARD (500--699), TRUSTED (700--899), VERIFIED\_PARTNER (900--1000). Trust score $\geq 700$ required for hardware co-location without IATP isolation.
+\item[\texttt{escrow.py}:] Conditional credit release on \texttt{ProofOfOutcome}---the multi-agent analog of the reward assignment problem.
+\item[\texttt{arbiter.py}:] Dispute resolution via Flight Recorder replay. The arbiter is the multi-agent analog of the $\chi^2$ test: deterministic validation of claimed outcomes.
+\item[\texttt{dmz.py}:] Secure data handoff with \texttt{DataHandlingPolicy} (retention, permissions, audit).
 \end{description}
 
-The choice of credit assignment strategy directly affects which validation tests from \S\ref{sec:3.3.1}--\S\ref{sec:3.3.4} are applicable. The serial test (\S\ref{sec:3.3.2}) requires transition-level data to compute consecutive action correlations. The poker test requires at minimum trajectory-level action sequences. The $\chi^2$ reward distribution test (\S\ref{sec:3.3.1}) is meaningful only with trajectory-level rewards unless intermediate rewards are available. Designing a validation suite thus requires committing to a credit assignment granularity first---a constraint that propagates all the way down to the hardware memory allocation decisions of \S\ref{sec:3.2.migration.memory}.
+The Mute Agent architecture (\texttt{modules/mute-agent/}) decomposes tasks into a Reasoning Agent (``Face'') and an Execution Agent (``Hands'') with a handshake protocol ensuring the latter never acts without the former's approval.
+
+\medskip
+\noindent\textbf{B. Hardware Partitioning as Sampling.}\quad On a Trainium2 node with 16~NeuronCores, Nexus partitions hardware: (a)~each agent gets 2~cores (8~agents, limited TP); (b)~main agent gets 8~cores for TP, 8~critics each get 1; (c)~dynamic reallocation by policy engine. On H100 with MIG, granularity is 7~slices. Optimized partitions do \emph{not} transfer across platforms---a concrete instance of configuration space independence (\S\ref{sec:3.3.4}).
+
+The composite modulus analogy: just as $\mathrm{lcm}(\lambda(p_1^{e_1}),\ldots,\lambda(p_r^{e_r}))$ gives the LCG period for composite~$m$ (Lemma~Q, \S\ref{sec:3.2.1.2}), the multi-agent convergence period is $\mathrm{lcm}(\lambda_1,\ldots,\lambda_n)$. This is approximate---agents interact through shared state---but tightest for independent roles (Issue~\#109, Chinese Werewolf game).
+
+\medskip
+\noindent\textbf{C. Distributed Rollout Parallelism.}\quad Issues~\#82, \#104, \#106 report that only 1-of-8 GPUs is used during rollout. The root cause: Agent Lightning's \texttt{runner} invokes the LLM proxy sequentially for each step in a multi-turn episode. Parallelism applies \emph{across} episodes (multiple rollout workers), not \emph{within} episodes. Trainium2's NeuronCore architecture, with finer partitioning granularity than MIG, enables more workers per node---but the proxy must support concurrent inference requests. Issue~\#262 (streaming not fully supported) is the bottleneck.
+
+\medskip
+\noindent\textbf{D. Rollout Failure Handling.}\quad Issues~\#218, \#448: rollouts can fail mid-execution (API timeout, sandbox crash, tool error). Agent Lightning's commit \texttt{19c72db6} handles empty tensors from failed rollouts, but the retry cost on Trainium2 is non-trivial: each retry may trigger XLA recompilation if the episode shape differs from the cached graph. The gap test (\S\ref{sec:3.3.2}) applied to retry intervals detects systematic failure patterns.
 
 % ============================================================
-\section{Exercises}
-\label{sec:3.2.exercises}
+% *§3.5  WHAT IS AN AGENTIC SYSTEM
+% ============================================================
+% Maps to TAOCP Vol.2 *§3.5 (What Is a Random Sequence, pp.131-162)
 % ============================================================
 
+\section[What Is an Agentic System]{*What Is an Agentic System}
+\label{sec:3.5}
+
+{\small\emph{(This section may be skipped on first reading.)}}
+
+\medskip
+TAOCP~*\S3.5 asks a philosophical question: what does it \emph{mean} for a sequence to be ``random''? Analogously, we ask: what does it mean for a system to be ``agentic''? This is not merely definitional---the answer determines which validation tests are applicable and which properties must be guaranteed by the architecture.
+
+\medskip
+\noindent\textbf{A. The Self-Evolving Loop.}\quad An agentic system is one that \emph{self-deploys}, gathers \emph{environment feedback}, and \emph{self-evolves}---using Megatron/Trainium2 infrastructure with Claude Code running fully autonomously. The concrete loop:
 \begin{enumerate}
+\item \textbf{Agent rollout} (Agent Lightning \texttt{runner}): executing in a live environment on \emph{whatever hardware is available}.
+\item \textbf{Reward computation} (\texttt{reward.py} + \textsc{PolicyReward}): combining task reward with governance penalties (\S\ref{sec:3.4.1}D).
+\item \textbf{Policy update} (VERL backend): distributed training via GRPO/PPO on Trainium2, requiring all Megatron-equivalent parallelism from Layer~1 (\S\ref{sec:3.3.3}C).
+\item \textbf{Self-deployment} (Operator~RL \texttt{control-plane}): deploying the updated model with safety constraints.
+\item \textbf{Iteration}: the loop repeats, with the agent continuously improving.
+\end{enumerate}
 
-\item[\textbf{1.}] [20] Compare the memory hierarchy of an NVIDIA H100 GPU (HBM3 $\to$ L2 $\to$ shared memory $\to$ registers) with that of a Trainium2 chip (HBM $\to$ SBUF/PSUM scratchpad $\to$ engine-local registers). For a GEMM kernel with tile size $128 \times 128$ in BF16, compute the minimum data movement in bytes for each platform, assuming optimal tiling.
+\begin{figure}[ht]
+\centering\small
+\begin{verbatim}
++=================================================================+
+|                    OPERATOR RL (Governance)                      |
+|  +------------------+ +-------------------+ +----------------+  |
+|  | SCAK (Layer 4)   | | Policy Engine (3) | | IATP (Layer 2) |  |
+|  | Self-Correction  | | Syscall Check     | | Trust Boundary |  |
+|  +--------+---------+ +--------+----------+ +-------+--------+  |
+|  +-------------------+ +-------------------+ +---------------+   |
+|  | Primitives (L1)   | | Control Plane     | | Nexus         |   |
+|  | action/obs/reward | | Scheduler         | | Multi-Agent   |   |
+|  +-------------------+ +-------------------+ +---------------+   |
++============================|=====================================+
+                             | Kernel Bridge (PR #478)
++============================|=====================================+
+|                 AGENT LIGHTNING (Training)                       |
+|  +---------+ +----------+ +--------+ +------------------------+ |
+|  | Runner  | | Tracer   | | Store  | | Daemon (v0=HTTP/v1=St) | |
+|  +---------+ +----------+ +--------+ +------------------------+ |
+|  +---------+ +-----------+ +------------------------------+     |
+|  | Adapter | | trace_agg | | VERL Backend (GRPO/PPO)      |     |
+|  +---------+ +-----------+ +------------------------------+     |
++============================|=====================================+
+                             | Hardware Abstraction Boundary
++============================|=====================================+
+|              HARDWARE KERNEL LAYER (per-platform)               |
+|  +------------------+ +------------------+ +------------------+ |
+|  | NVIDIA GPU       | | Google TPU       | | AWS Trainium2    | |
+|  | CUDA/cuBLAS/NCCL | | XLA/JAX          | | NKI/NxD/ISA     | |
+|  | Megatron-Core    | | Pathways         | | Hand-written asm | |
+|  +------------------+ +------------------+ +------------------+ |
++=================================================================+
+\end{verbatim}
+\caption{System architecture. The validation tests of \S\ref{sec:3.3} operate at the Agent Lightning layer; the theoretical tests of *\S\ref{sec:3.3.3} trace failures down to the Hardware Kernel Layer.}
+\label{fig:system-arch}
+\end{figure}
 
-\item[\textbf{2.}] [$M20$] Megatron's tensor parallelism performs $2$ all-reduce operations per transformer layer in the forward pass and $2$ in the backward pass. If the model has $L$ layers, the hidden dimension is $H$, and the sequence length is $S$, express the total communication volume (in bytes, assuming BF16) as a function of $L$, $H$, $S$, and the tensor parallelism degree $T$. Under what conditions does the computation-to-communication ratio favor Trainium2's NeuronLink (800 GB/s bidirectional) over NVIDIA's NVLink (900 GB/s on H100)?
+\medskip
+\noindent\textbf{B. The Governance Kernel.}\quad The four kernel invariants (Theorem~\ref{thm:governance}, \S\ref{sec:3.3.3}D) are the agentic analog of the axioms that define a random sequence. Just as TAOCP~*\S3.5 defines randomness via complexity-theoretic properties (Martin-L\"of tests, Kolmogorov complexity), we define ``agentic quality'' via governance invariants. The signal dispatch table:
 
-\item[\textbf{3.}] [$HM25$] The NKI Library provides optimized attention kernels in two variants: CTE (Compile-Time Execution) and TKG. Describe the algorithmic difference between these variants and explain why a single universal attention kernel cannot achieve peak utilization on Trainium2's VLIW architecture for all sequence lengths. (Hint: consider the relationship between the VLIW instruction bundle width and the number of independent operations available at different phases of the attention computation.)
-
-\item[\textbf{4.}] [$HM35$] Design a hardware abstraction layer for the Operator RL system (\texttt{operatorRL/src/agent\_os}) that dispatches collective communication operations to NCCL (GPU), XLA collectives (TPU), or NxD (Trainium2) based on a runtime hardware detection mechanism. Your design should support the ``hot migration'' scenario where an agentic rollout worker is dynamically reassigned from one accelerator type to another mid-episode. Analyze the state synchronization overhead in terms of the number of bytes that must be transferred.
-
-\item[\textbf{5.}] [$M22$] In the Agent Lightning training loop (\texttt{agentlightning/trainer}), the gradient synchronization step uses all-reduce across data-parallel workers. If the Trainium2 cluster has a 2-level topology (NeuronLink within a node, EFA across nodes), design a hierarchical all-reduce that minimizes the total communication time. Express the time in terms of the message size $M$, the number of NeuronCores per node $N$, the number of nodes $P$, the NeuronLink bandwidth $\beta_1$, and the EFA bandwidth $\beta_2$. Compare with the ring all-reduce algorithm used by NCCL on a flat NVLink topology.
-
-\item[\textbf{6.}] [$M22$] (Relates to Chapter~3.1, Exercise~6) Consider a kernel auto-tuner that searches for configurations on Trainium2 using the recurrence $\mathbf{X}_{n+1} = f(\mathbf{X}_n)$ where $\mathbf{X}$ is a vector of tiling parameters and $f$ is a function that evaluates the kernel's utilization and proposes a new configuration. Using the theory of ultimately periodic sequences from Chapter~3.1, prove that the auto-tuner must eventually cycle, and design an algorithm (analogous to Floyd's or Brent's cycle detection) that detects this degeneration using $O(1)$ additional memory.
-
-\item[\textbf{7.}] [$HM45$] Implement a complete, working NKI kernel for fused RMSNorm with BF16-to-FP8 quantization on Trainium2, and compare its throughput against the NKI Library's \texttt{nkilib.rmsnorm\_quant} kernel for hidden dimensions $H \in \{4096, 8192, 16384\}$. Discuss any performance gaps in terms of instruction scheduling efficiency (VLIW slot utilization) and memory access patterns (SBUF bank conflicts, if applicable). \textit{(Note: this exercise requires Trainium2 hardware access and familiarity with NKI \citep{awsneuron2025nki}. Expect several weeks of engineering effort.)}
-
-\item[\textbf{8.}] [$HM30$] The companion document \emph{Anthropic~WantToDoWhat} states that Anthropic is ``co-designing next-generation Trainium hardware'' with Annapurna Labs. Formalize this hardware-software co-design as an optimization problem: given a set of critical kernel shapes $\mathcal{K} = \{k_1, \ldots, k_n\}$ and hardware parameters $\mathcal{H} = \{h_1, \ldots, h_m\}$, define an objective function that measures aggregate throughput. \textit{Explain why the resulting optimization is non-convex} (discrete hardware parameters, non-monotone tile-size/pipeline interactions, integer constraints on engine counts). Propose a relaxation or heuristic approach.
-
-\item[\textbf{9.}] [$HM30$] \textbf{(Credit Assignment)} Design a credit assignment algorithm for Agent Lightning that assigns rewards to individual tool-use steps in a multi-turn rollout of length $T$. Derive the variance of the advantage estimate $\hat{A}_t$ under: (a)~trajectory-level credit ($\hat{A}_t = R - b$ for all $t$), (b)~transition-level credit ($\hat{A}_t = r_t + \gamma V(s_{t+1}) - V(s_t)$), and (c)~action-level credit (per-token reward). Express each variance as a function of $T$ and the reward signal noise $\sigma^2_r$. Under what conditions does transition-level credit outweigh its additional memory cost on Trainium2? (See \S\ref{sec:3.3.credit}.)
-
-\item[\textbf{10.}] [$HM50$] \textbf{(Open Research Problem.)} Issue~\#490 reports exploration collapse: agents converge to fixed policies. Formalize this as cycle degeneration in policy parameter space (cf.\ \S\ref{sec:3.1}). Propose a detection mechanism based on the spectral test (\S\ref{sec:3.3.4}) applied to the policy gradient trajectory, and design an intervention that forces the policy off its periodic orbit without destroying learned behavior. Analyze the hardware cost on Trainium2.
-
-\item[\textbf{11.}] [$M20$] \textbf{(From Issue~\#489: GRPO Grouping.)} In multi-turn agent RL, GRPO normalizes advantages within a group of $G$ rollouts that share the same prompt. Issue~\#489 asks: is it valid to mix samples from \emph{different} prompts in the same GRPO group? Consider the following concrete example (from the \texttt{calc\_x} agent with \texttt{rollout\_n=4}):
-
-\begin{center}
-\begin{tabular}{@{}llllr@{}}
+\begin{center}\small
+\begin{tabular}{@{}lclcc@{}}
 \toprule
-Sample & Rollout & Turn & Prompt Context & Reward \\
+\textbf{Signal} & \textbf{Val} & \textbf{Description} & \textbf{Maskable} & \textbf{Recovery} \\
 \midrule
-1 & Rollout~1, Turn~0 & \texttt{[system, user]} & Initial query & 1.0 \\
-2 & Rollout~1, Turn~1 & \texttt{[..., assistant, tool\_response]} & After tool call & 1.0 \\
-3 & Rollout~2, Turn~0 & \texttt{[system, user]} & Initial query (no tool) & 0.0 \\
-4 & Rollout~3, Turn~0 & \texttt{[system, user]} & Initial query & 1.0 \\
-5 & Rollout~3, Turn~1 & \texttt{[..., assistant, tool\_response]} & After tool call & 1.0 \\
-6 & Rollout~4, Turn~0 & \texttt{[system, user]} & Initial query (no tool) & 0.0 \\
+\texttt{SIGSTOP}/\texttt{SIGCONT} & 1/2 & Pause/resume & Yes & --- \\
+\texttt{SIGKILL} & 4 & Immediate termination & \textbf{No} & New agent \\
+\texttt{SIGWARN} & 6 & Quality degradation & Yes & Retrain \\
+\texttt{SIGEXPLORE} & 7 & Exploration collapse & Yes & Noise inject \\
+\texttt{SIGPOLICY} & 8 & Policy violation & \textbf{No} & None \\
+\texttt{SIGTRUST} & 9 & Trust violation & \textbf{No} & None \\
 \bottomrule
 \end{tabular}
 \end{center}
 
-All 6 samples share the same \texttt{uid} and are grouped together for GRPO advantage computation. But Turn~0 samples have prompt $p_0 = [\text{system}, \text{user}]$, while Turn~1 samples have prompt $p_1 = [\text{system}, \text{user}, \text{assistant}, \text{tool\_response}]$---fundamentally different inputs. (a)~Prove that if prompts $p_0, p_1$ have reward distributions $R_0 \sim \mathcal{N}(\mu_0, \sigma_0^2)$ and $R_1 \sim \mathcal{N}(\mu_1, \sigma_1^2)$ with $\mu_0 \neq \mu_1$, then the group-normalized advantage $\hat{A}_i = (R_i - \bar{R}) / \sigma_R$ is \emph{biased}: actions under prompt $p_0$ receive systematically higher (or lower) advantages regardless of their quality. (b)~Derive the bias magnitude as a function of $|\mu_0 - \mu_1|$, $G$, and the mixing ratio $n_0/n_1$. (c)~In the example above, Turn~0 samples with $R=0$ (no tool use) receive negative advantages, while Turn~1 samples (post-tool-call) receive positive advantages. Explain why this creates a gradient signal that \emph{discourages tool use at Turn~0}---the opposite of the intended behavior---and propose a correction. (Hint: consider computing advantages separately within each prompt group.)
+\medskip
+\noindent\textbf{C. The NVIDIA Fortress and the Escape.}\quad CCCL (Thrust/CUB/libcudacxx) is NVIDIA's ``Standard C++ Library for CUDA''---the \texttt{libc} of the GPU world. The CCCL~3.2 release (early 2026) added runtime abstractions (\texttt{cuda::stream}), memory resource APIs, and speed-of-light algorithms (\texttt{cub::DeviceTopK}). For us, CCCL is \emph{precisely what you cannot use} on Trainium2. It makes the NVIDIA fortress more comfortable but does not help you escape.
 
-\item[\textbf{12.}] [$HM25$] \textbf{(From Issue~\#470: Local Models.)} Agent Lightning's daemon (\texttt{agentlightning/verl/daemon.py}) uses the \texttt{\_update\_proxy\_server\_v1()} function to route LLM inference requests. Modify this function to support a local vLLM \citep{kwon2023vllm} server running on Trainium2 via NxD Inference. Specifically: (a)~identify which HTTP endpoints the proxy must implement, (b)~explain why the \texttt{/v1/completions} endpoint's token streaming behavior differs between CUDA-backed vLLM and Neuron-backed vLLM (hint: Neuron's pipeline execution model produces tokens in batches rather than one-by-one), and (c)~propose a buffering strategy that masks this difference from the agent.
+AWS's counterstrategy: XLA (portable compiler, performance cost), JAX (functional transforms on any XLA backend), and NKI (``escape hatch'' for hand-written Trainium2 kernels). The complete stack correspondence:
 
-\item[\textbf{13.}] [$M25$] \textbf{(From Issue~\#448: Failed Rollouts.)} When an agent rollout fails mid-episode (e.g., tool-use timeout, environment crash), the \texttt{trace\_aggregator} receives an incomplete trajectory of length $T' < T$. The commit \texttt{19c72db6} handles empty tensors to prevent crashes, but the RL algorithm must still decide how to use partial data. Define a formal framework: let $\tau_\text{partial} = (s_1, a_1, r_1, \ldots, s_{T'}, a_{T'})$ be an incomplete trajectory truncated by failure. (a)~Under trajectory-level credit, show that na\"ively assigning $R = 0$ introduces a systematic negative bias of magnitude $\mathbb{E}[R | \text{complete}] \cdot P(\text{failure})$. (b)~Propose a correction using importance weighting. (c)~Analyze the memory overhead of storing partial trajectories on Trainium2, given that the XLA memory planner pre-allocates for full episode length $T$.
+\begin{center}\small
+\begin{tabular}{@{}ll@{}}
+\toprule
+\textbf{NVIDIA Stack} & \textbf{AWS/Trainium Stack} \\
+\midrule
+CUDA Runtime & Neuron Runtime \\
+CCCL (Thrust/CUB/libcudacxx) & NKI Library \\
+cuBLAS/cuDNN/TransformerEngine & NKI custom / XLA auto-tuned \\
+NCCL & NeuronLink collectives (NxD) \\
+Megatron-Core & neuronx-distributed (NxD) \\
+PTX assembly & Trainium2 ISA assembly \\
+Nsight Systems/Compute & Neuron Profile \\
+cuda-gdb/compute-sanitizer & \texttt{neuron-top}/\texttt{neuron-monitor} \\
+\bottomrule
+\end{tabular}
+\end{center}
 
-\item[\textbf{14.}] [$20$] \textbf{(From Issue~\#464: VERL Configuration.)} Agent Lightning's VERL backend accepts a full VERL configuration object, but only a subset of parameters actually take effect. Examining the daemon initialization code in \texttt{agentlightning/verl/trainer.py} (lines 463--469), the daemon receives only the model path and temperature---not \texttt{val\_kwargs}, \texttt{truncation}, or \texttt{top\_p}. (a)~Explain why this parameter narrowing exists: what is the architectural reason that the Agent Lightning daemon cannot forward all VERL parameters? (Hint: the daemon operates in ``v1 Store'' mode where the LLM proxy intercepts requests, and the proxy's OpenAI-compatible endpoint supports only a subset of generation parameters.) (b)~For each of the following parameters, determine whether it takes effect or is silently ignored: \texttt{actor\_rollout\_ref.rollout.temperature}, \texttt{.top\_p}, \texttt{.top\_k}, \texttt{.n} (rollout count), \texttt{data.truncation}. (c)~Propose an architecture change that would allow the daemon to forward arbitrary VERL parameters to the underlying inference engine, and analyze the compatibility implications for both CUDA-backed vLLM and Neuron-backed inference.
+\noindent Anthropic's bet: for the narrow vertical of AI training/inference, a small team of assembly experts can achieve equivalent performance on Trainium2, given direct ISA access.
 
+\medskip
+\noindent\textbf{D. Toward a Fourth Platform.}\quad Issue~\#108 asks about Huawei Ascend NPU---a fourth hardware target beyond GPU/TPU/Trainium. The Cartesian product of debug spaces (\S\ref{sec:3.3.3}C) grows to $O(4\cdot k\cdot d)$ in the worst case. The validation framework of \S\ref{sec:3.3} is platform-agnostic by design: the $\chi^2$, KS, and empirical tests operate on metrics (utilization, reward, action sequences) that are meaningful on any accelerator.
+
+% ============================================================
+% §3.6  SUMMARY
+% ============================================================
+% Maps to TAOCP Vol.2 §3.6 (Summary, pp.163-174)
+% ============================================================
+
+\section{Summary}
+\label{sec:3.6}
+
+The central message of this chapter is that optimal hardware kernel configurations are not produced by ad hoc methods; certain theory should be used. The progression from \S\ref{sec:3.1} through \S\ref{sec:3.5} mirrors TAOCP's treatment of random number generation:
+
+\begin{description}
+\item[\S\ref{sec:3.1}:] Motivation---why hand-optimized kernel configurations are essential for self-deploying agentic systems on Trainium2.
+\item[\S\ref{sec:3.2}:] Construction---the linear congruential framework for kernel configuration generation, with modulus (\S\ref{sec:3.2.1.1}), multiplier (\S\ref{sec:3.2.1.2}), and potency (\S\ref{sec:3.2.1.3}) mapped to hardware configuration spaces.
+\item[\S\ref{sec:3.3}:] Validation---$\chi^2$ (\S\ref{sec:3.3.1}A), KS (\S\ref{sec:3.3.1}B), empirical (\S\ref{sec:3.3.2}), theoretical (*\S\ref{sec:3.3.3}), and spectral (\S\ref{sec:3.3.4}) tests applied to NeuronCore utilization, reward convergence, OOM failure patterns, and policy parameter trajectories.
+\item[\S\ref{sec:3.4}:] Distribution theory---credit assignment strategies (\S\ref{sec:3.4.1}), exploration collapse detection, multi-agent coordination via Nexus (\S\ref{sec:3.4.2}), and rollout sampling.
+\item[*\S\ref{sec:3.5}:] Foundations---what makes a system ``agentic,'' the governance kernel, the NVIDIA$\to$Trainium2 migration, and the self-evolving training loop.
+\end{description}
+
+% ============================================================
+% EXERCISES
+% ============================================================
+
+\subsection*{Exercises --- Chapter 3}
+
+\begin{enumerate}
+\item[1.] [20] Compare the memory hierarchy of H100 (HBM3$\to$L2$\to$SMEM$\to$registers) with Trainium2 (HBM$\to$SBUF/PSUM$\to$registers). For GEMM $128{\times}128$ BF16, compute minimum data movement per platform.
+
+\item[2.] [$M20$] Express Megatron TP communication volume as $f(L,H,S,T)$ in BF16 bytes. When does NeuronLink (800~GB/s) match NVLink (900~GB/s)?
+
+\item[3.] [$HM25$] Explain why CTE and TKG attention variants exist and why no universal attention kernel achieves peak VLIW utilization for all sequence lengths.
+
+\item[4.] [$HM35$] Design a hardware abstraction layer for \texttt{agent\_os} dispatching to NCCL/XLA/NxD with runtime detection. Analyze ``hot migration'' synchronization overhead.
+
+\item[5.] [$M22$] Design hierarchical all-reduce for Trainium2's 2-level topology. Compare with ring all-reduce on flat NVLink.
+
+\item[6.] [$M22$] Prove that a kernel auto-tuner with $\mathbf{X}_{n+1}=f(\mathbf{X}_n)$ must eventually cycle. Design Floyd-style detection with $O(1)$ memory.
+
+\item[7.] [$HM45$] Implement NKI fused RMSNorm + BF16$\to$FP8 quantization. Compare with \texttt{nkilib.rmsnorm\_quant} for $H\in\{4096,8192,16384\}$.
+
+\item[8.] [$HM30$] Formalize HW-SW co-design as optimization. Explain non-convexity.
+
+\item[9.] [$HM30$] Derive $\mathrm{Var}(\hat{A}_t)$ under trajectory/transition/action credit. When does transition-level justify its Trainium2 memory cost?
+
+\item[10.] [$HM50$] \textbf{(Open.)} Formalize exploration collapse as cycle degeneration. Propose spectral-test-based detection and intervention. Analyze Trainium2 cost.
+
+\item[11.] [$M20$] \textbf{(Issue~\#489.)} Is mixing different prompts in one GRPO group valid? Analyze via composite modulus decomposition.
+
+\item[12.] [$M20$] Implement trajectory entropy $H_W$ (\S\ref{sec:3.4.1}B). Derive $\mathbb{E}[H_W]$ under uniform random policy.
+
+\item[13.] [20] \textbf{(Cartesian Debug Space.)} GPU: 5~failure modes/kernel. TPU: 3. Trainium2: 7. 20~kernels. Compute total debug space. How does binary search help?
+
+\item[14.] [$HM35$] Formalize the three OOM patterns (\S\ref{sec:3.3.2}) as stochastic processes. Derive a likelihood ratio test distinguishing systematic from stochastic failures.
 \end{enumerate}
 
 % ============================================================
-
-% ============================================================
-\appendix
-\section{Operator RL Module Reference}
-\label{app:operatorrl-modules}
+% MODULE REFERENCES (condensed into §3.6 as summary tables)
 % ============================================================
 
-The Operator RL repository (\texttt{operatorRL}) organizes its kernel architecture into the following module hierarchy. Each module corresponds to one or more layers of the 4-layer agent governance stack described in \S\ref{sec:3.2.agenticrl}.
+\subsection*{Operator RL Module Reference}
 
 \begin{description}
-\item[\texttt{modules/primitives}] \textbf{(Layer~1: Core Primitives.)} Fundamental operations for agent execution: action dispatch, observation parsing, reward signal routing. These are the lowest-level building blocks, analogous to TAOCP's MIX instruction set --- the atomic operations from which all higher-level agent behavior is composed.
-
-\item[\texttt{modules/iatp}] \textbf{(Layer~2: Inter-Agent Trust Protocol.)} Manages trust boundaries between cooperating agents. When agents share hardware resources (e.g., multiple agents training on the same Trainium2 node), IATP enforces isolation guarantees: one agent's policy update cannot corrupt another's gradient buffer. The \texttt{SIGTRUST} signal (\S\ref{sec:3.2.agenticrl}, Table~\ref{tab:signals}) is IATP's enforcement mechanism.
-
-\item[\texttt{modules/emk}] \textbf{(Episodic Memory Kernel.)} Manages episodic memory across multi-turn rollouts. In agentic RL, the agent must remember past actions within an episode (working memory) and across episodes (episodic memory). EMK provides a kernel-level API for storing and retrieving episodic context, backed by the VFS mount at \texttt{/agent/\{id\}/mem/episodic}.
-
-\item[\texttt{modules/scak}] \textbf{(Layer~4: Self-Correcting Agent Kernel.)} The highest layer: detects policy degradation, triggers self-correction, and manages the feedback loop between the agent's runtime behavior and its training updates. SCAK consumes the validation test results from \S\ref{sec:3.3} --- if the $\chi^2$ utilization test or the spectral test detects anomalies, SCAK can issue a retraining signal.
-
-\item[\texttt{modules/cmvk}] \textbf{(Cross-Model Verification Kernel.)} Ensures numerical consistency when the same model runs on different hardware backends. After migrating a kernel from CUDA to NKI (\S\ref{sec:3.2.migration.kernels}), CMVK runs a verification suite comparing output tensors within a specified tolerance ($\epsilon \leq 10^{-3}$ for BF16 operations).
-
-\item[\texttt{modules/nexus}] \textbf{(Nexus Trust Exchange --- ``The Visa Network for AI Agents.'') } A decentralized trust exchange with six components: \texttt{AgentRegistry} (DID-based agent registration and capability discovery), \texttt{ReputationEngine} (0--1000 trust scoring with 5 tiers and slashing), \texttt{EscrowManager} (conditional credit escrow with ProofOfOutcome), \texttt{Arbiter} (dispute resolution via Flight Recorder log replay), \texttt{DMZProtocol} (secure data handoff with retention/training/forwarding policies), and \texttt{NexusClient} (SDK). See \S\ref{sec:3.2.multiagent} for detailed analysis of each component's role in multi-agent agentic RL.
-
-\item[\texttt{modules/amb}] \textbf{(Agent Memory Buffer.)} A ring buffer for short-term agent state, used during rollout execution. AMB is the runtime complement to EMK's persistent episodic storage.
-
-\item[\texttt{modules/caas}] \textbf{(Compliance-as-a-Service.)} Governance module for regulatory compliance in self-deploying agents. CaaS logs all agent actions to an immutable audit trail and enforces domain-specific constraints (e.g., financial transaction limits, PII handling policies).
-
-\item[\texttt{modules/observability}] \textbf{(Observability.)} Metrics, traces, and logs for the kernel itself. Integrates with Agent Lightning's dashboard (\texttt{agentlightning/dashboard}) and the Flight Recorder.
-
-\item[\texttt{benchmarks/bench\_kernel.py}] Benchmarks for kernel-level operations. See Exercise~4 (\S\ref{sec:3.2.exercises}).
-
-\item[\texttt{benchmarks/bench\_policy.py}] Benchmarks for the policy engine's evaluation latency --- critical for ensuring governance overhead remains negligible during training.
-
-\item[\texttt{examples/self-evaluating}] A complete example of a self-evaluating agent that runs the validation tests from \S\ref{sec:3.3} on its own training metrics and triggers SCAK-mediated self-correction when anomalies are detected.
-
-\item[\texttt{examples/agent-lightning-training}] Demonstrates the complete self-evolving training loop: an agent governed by Operator~RL generates rollouts, Agent Lightning trains the policy via GRPO, and the updated model is redeployed under governance constraints. Runnable on a single machine targeting GPU or Trainium2 backends.
-
-\item[\texttt{src/agent\_os/prompt\_injection.py}] Prompt injection detection for adversarial agentic RL. During rollout, adversarial inputs may attempt to manipulate agent behavior. The $\chi^2$ action diversity test (\S\ref{sec:3.3.2}) can detect injection attacks: an injected prompt that forces repetitive behavior produces a statistically significant deviation from the expected action distribution.
-
-\item[\texttt{src/agent\_os/sandbox.py}] Sandboxed execution environments for untrusted agent actions. On multi-platform hardware, sandboxing requires platform-specific isolation: CUDA MPS on GPU, XLA device assignment on TPU, NeuronCore partition on Trainium2. The sandbox is the enforcement mechanism for Invariant~4 (Crash Isolation).
-
-\item[\texttt{src/agent\_os/supervisor.py}] Erlang-style supervision tree for multi-agent systems. When a child agent crashes (hardware fault, policy violation, or rollout failure), the supervisor's restart strategy determines whether to restart that agent alone (one-for-one), restart all siblings (one-for-all), or escalate. The restart strategy directly affects the gap test (\S\ref{sec:3.3.2}): one-for-all restarts produce clustered failures detectable as non-geometric gap distributions.
-
-\item[\texttt{src/agent\_os/semantic\_policy.py}] Semantic policy engine using NLP for policy evaluation. Unlike static rule-based policies, semantic policies express natural-language constraints (e.g., ``do not access customer PII during training rollouts'') where ``PII'' is semantically understood, not pattern-matched. The semantic engine runs on the GPSIMD scalar unit on Trainium2, overlapping with tensor computation on the MME.
-
-\item[\texttt{src/agent\_os/stateless.py}] Stateless execution mode where the agent operates without persistent server-side state, relying entirely on the context window and policy rules. This mode enables transparent cross-platform migration: a stateless agent can be moved from a GPU worker to a Trainium2 worker mid-episode without state serialization overhead.
-
-\item[\texttt{src/agent\_os/memory\_guard.py}] Enforces hard limits on agent memory consumption. On Trainium2, where SBUF capacity constrains the effective context window, MemoryGuard triggers truncation when the agent's accumulated KV-cache exceeds the SBUF allocation---analogous to reducing the modulus $m$ to fit within the hardware's word size (\S\ref{sec:3.2.1.1}).
-
-\item[\texttt{modules/mcp-kernel-server}] MCP (Model Context Protocol) server exposing Operator~RL governance capabilities. This enables Claude Code and other MCP-compatible agents to invoke the policy engine before executing potentially dangerous actions---the mechanism by which a fully autonomous Claude Code instance can self-govern during the agentic RL training loop.
-
-\item[\texttt{modules/mute-agent}] The ``Face/Hands'' architecture (\S\ref{sec:3.2.multiagent}): a Reasoning Agent plans, an Execution Agent acts, connected by a handshake protocol. The Mute Agent's knowledge graph (\texttt{multidimensional\_graph.py}) maintains a multi-dimensional world model updated from rollout experiences, and its listener architecture (\texttt{listener/adapters/}) monitors all other Operator~RL modules, making it the ``nervous system'' of the agent OS.
-
-\item[\texttt{templates/policies/}] 115K of policy templates covering common governance scenarios: HIPAA compliance, SOC2 auditing, financial trading constraints, PII protection, and multi-agent coordination rules. These templates are ``known good configurations''---analogous to the recommended multiplier values in the tables of \S\ref{sec:3.2.1.2}.
-
-\item[\texttt{notebooks/}] Six Jupyter notebooks demonstrating core features: \texttt{01-hello-agent-os}, \texttt{02-policy-engine}, \texttt{03-time-travel-debug}, \texttt{04-cross-model-verification}, \texttt{05-multi-agent}, \texttt{06-compliance}. The time-travel debugging notebook uses lifecycle snapshots (\texttt{lifecycle.py}) to replay agent behavior from any point---critical for debugging ``degenerate configurations'' detected by \S\ref{sec:3.3}'s statistical tests.
+\item[\texttt{src/agent\_os/}] Stateless kernel. Invariants I--IV (\S\ref{sec:3.3.3}D). Syscall interception.
+\item[\texttt{modules/scak/}] Self-Correcting Agent Kernel (Layer~4). Real-time behavior correction.
+\item[\texttt{modules/iatp/}] Inter-Agent Trust Protocol (Layer~2). \texttt{SIGTRUST} on breach.
+\item[\texttt{modules/nexus/}] Multi-agent trust exchange (\S\ref{sec:3.4.2}A). Five components.
+\item[\texttt{modules/emk/}] Episodic Memory Kernel. Cross-episode state for credit assignment (\S\ref{sec:3.4.1}).
+\item[\texttt{modules/mute-agent/}] Face/Hands architecture (\S\ref{sec:3.4.2}A).
+\item[\texttt{packages/control-plane/}] Scheduler + signals. \texttt{SIGEXPLORE} triggers (\S\ref{sec:3.4.1}B).
+\item[\texttt{modules/observability/}] Metrics collection for \S\ref{sec:3.3} validation tests.
+\item[\texttt{modules/caas/}] Compliance-as-a-Service. $\chi^2$-validated governance (\S\ref{sec:3.3.1}).
 \end{description}
 
-\section{Agent Lightning Component Reference}
-\label{app:agentlightning-components}
+\subsection*{Agent Lightning Component Reference}
 
 \begin{description}
-\item[\texttt{agentlightning/store/}] Seven backend implementations (memory, SQLite, MongoDB, client-server, collection-based, threaded, base) for the LightningStore coordination layer. The multiple backends mirror the modulus choice discussion in \S\ref{sec:3.2.1.1}: just as different moduli $m$ suit different hardware word sizes, different store backends suit different deployment scales.
-
-\item[\texttt{agentlightning/tracer/}] Captures the agent's interaction trace during rollout. The tracer records state-action-reward-next\_state tuples at the transition level and assembles them into trajectories. This data feeds both the training loop (via \texttt{trace\_aggregator}) and the validation tests of \S\ref{sec:3.3}.
-
-\item[\texttt{agentlightning/adapter/}] Framework adapters (LangChain, CrewAI, etc.) that convert diverse agent framework outputs into the standardized trace format. The \texttt{TracerTraceToTriplet} adapter family handles the conversion from raw traces to (state, action, reward) triplets suitable for RL training.
-
-\item[\texttt{agentlightning/algorithm/}] RL algorithm implementations organized as a plugin architecture. Each algorithm is a subclass of \texttt{BaseAlgorithm} registered via the \texttt{@algorithm} decorator (\texttt{algorithm/decorator.py}), enabling runtime algorithm selection without code changes---analogous to selecting different multiplier $a$ values while keeping the modulus fixed. As of early 2026, three algorithm families are supported:
-
-\begin{description}
-\item[\textbf{GRPO}] (Group Relative Policy Optimization, via VERL): generates $G$ responses per prompt, computes reward for each, and derives advantages from group statistics without a separate critic network. Memory-efficient on Trainium2 because eliminating the critic frees one NeuronCore's worth of SBUF/PSUM capacity.
-\item[\textbf{PPO}] (Proximal Policy Optimization, via VERL): requires a learned value function (critic) alongside the policy. On Trainium2, the critic model's memory footprint must be accommodated in the XLA memory plan alongside the policy, doubling the minimum NeuronCore allocation.
-\item[\textbf{APO}] (Automatic Prompt Optimization, \texttt{algorithm/apo/}): a fundamentally different paradigm that uses \emph{text gradients}---natural-language descriptions of how a prompt should change---to iteratively refine agent instructions. APO requires no hardware-specific numerical computation; its ``.poml'' prompt templates (\texttt{algorithm/apo/prompts/}) serve as the ``multiplier $a$'' in the LCG analogy, determining how the current prompt configuration transforms into the next. A poorly designed template leads to premature prompt convergence, just as a poorly chosen multiplier leads to short-period LCGs.
-\end{description}
-The VERL interface (\texttt{algorithm/verl/interface.py}) bridges Agent Lightning's trajectory format to VERL's \texttt{DataProto}, handling the conversion from (prompt, response, reward) triplets to packed tensor batches for gradient computation. This conversion is where the hardware-specific training backend (PyTorch DDP on CUDA, NxD on Trainium) is first invoked.
-
-\item[\texttt{agentlightning/adapter/}] Framework adapters that convert diverse agent framework outputs into Agent Lightning's canonical \texttt{Span} and \texttt{Trace} types. Adapters exist for LangChain, CrewAI, Vercel~AI, and OpenAI Agents SDK, among others. The \texttt{TracerTraceToTriplet} adapter family (\texttt{adapter/triplet.py}) handles the final conversion from raw traces to (state, action, reward) triplets suitable for RL training---the fundamental data unit analogous to the $(X_n, X_{n+1})$ pairs in LCG analysis (\S\ref{sec:3.2.1}). Issues~\#308, \#311, \#425, and~\#432 document adapter bugs that arise from subtle differences in how frameworks represent tool calls, streaming responses, and multi-turn context. These bugs are the ``increment $c$'' of our LCG analogy---runtime overhead that perturbs the idealized training signal.
-
-\item[\texttt{agentlightning/litagent/}] A lightweight built-in agent framework. The \texttt{@litagent} decorator (\texttt{litagent/decorator.py}) transforms any Python callable into a trainable agent, automatically tracing inputs, outputs, and intermediate tool calls for RL training. Unlike adapters for external frameworks, LitAgent is designed specifically for RL training efficiency: it minimizes serialization overhead by capturing trajectories directly in the format expected by the \texttt{trace\_aggregator}. For rapid prototyping of new agentic RL experiments on a single Trainium2 node (or CPU), LitAgent eliminates the framework integration complexity that adapters must handle.
-
-\item[\texttt{agentlightning/store/}] Seven interchangeable backend implementations for the LightningStore trajectory persistence layer: (1)~in-memory (for debugging and unit tests), (2)~SQLite (single-machine persistence), (3)~MongoDB (distributed, horizontally scalable), (4)~client-server (decoupled storage with REST API), (5)~collection-based (structured retrieval by training iteration), (6)~threaded (concurrent access from multiple rollout workers), and (7)~base (abstract interface). The collection abstraction groups trajectories by training epoch, enabling replay and off-policy training---where stored trajectories from earlier policies are reused for gradient computation. The existence of multiple backends mirrors the modulus choice discussion in \S\ref{sec:3.2.1.1}: just as different moduli $m$ suit different hardware word sizes, different store backends suit different deployment scales. Issues~\#395 (lifecycle), \#397 (startup failures), and~\#436 (cleanup) document store reliability challenges; each represents a failure mode in the ``increment $c$'' of the training recurrence.
-
-\item[\texttt{agentlightning/tracer/}] Captures the full agent interaction trace during rollout. The tracer records every LLM call, tool invocation, and environment observation as structured \texttt{Span} objects with token IDs, logprobs, and timing metadata. This trace is the ``observation'' in the MDP formulation---without faithful tracing, the RL training signal is corrupted. The \texttt{trace\_aggregator} (PR~\#134, commit \texttt{4235731a}) supports both transition-level and trajectory-level aggregation; the former treating each step independently (enabling the serial test of \S\ref{sec:3.3.2}), the latter preserving temporal structure (required for trajectory-level credit assignment in \S\ref{sec:3.3.credit}). Issue~\#326 documents a bug where incorrect \texttt{token\_ids} in traces caused training divergence---illustrating why tracer fidelity is a correctness requirement, not merely a convenience. Tracer backends include AgentOps, OpenTelemetry, Weights \& Biases Weave, and a dummy backend for testing.
-
-\item[\texttt{agentlightning/emitter/}] The write-side interface to the training data pipeline. Emitters package rollout results, rewards, and metrics into structured events consumed by the training loop. The reward emitter (\texttt{emitter/reward.py}) accepts scalar or structured rewards at configurable granularity---per-token, per-action, or per-episode---and associates them with the corresponding tracer spans. The \texttt{FlightRecorderEmitter} (\S\ref{sec:3.2.bridge}) adapts Operator~RL's audit log to the store's span format.
-
-\item[\texttt{agentlightning/execution/}] Manages agent task execution lifecycle: scheduling, timeout, retry, and error handling. The shared-memory transport (\texttt{execution/shared\_memory.py}) implements zero-copy trajectory exchange between rollout workers and the training process, avoiding serialization overhead for large rollout batches. On Trainium2, execution timeouts must account for XLA compilation overhead---the first invocation of a new graph shape may take 10--100$\times$ longer than subsequent invocations.
-
-\item[\texttt{agentlightning/llm\_proxy.py}] The inference abstraction layer (60K lines). Routes inference requests to the appropriate backend (vLLM, SGLang, OpenAI API, Azure, or local models---see Issue~\#470) and handles batching, caching, and error recovery. Every inference call during rollout is intercepted, capturing token logprobs and completion metadata required for policy gradient computation. Issue~\#262 notes streaming responses are not yet fully supported. On Trainium2, the proxy must manage XLA graph compilation caching: if a new sequence length triggers recompilation, the proxy queues requests until compilation completes, adding latency that the gap test of \S\ref{sec:3.3.2} can detect as inter-failure interval anomalies.
-
-\item[\texttt{agentlightning/instrumentation/}] OpenTelemetry-compatible observability. Pluggable backends include AgentOps (Issues~\#47, \#49, \#56 document authentication and streaming failures), Weights \& Biases Weave, LiteLLM proxy monitoring, and vLLM metrics export. Every rollout, reward computation, and training step emits structured spans that feed Operator~RL's observability module and the \S\ref{sec:3.3} statistical tests.
-
-\item[\texttt{contrib/adapter/agentos.py}] The Agent-OS adapter (PR~\#478, commit \texttt{49bf9cd9}: ``Kernel-Level Safety for RL Training'') integrates Operator~RL's governance layer with Agent Lightning's training pipeline. The \texttt{contrib/algorithm/env\_verl/} module provides environment-interactive training where the RL loop includes real environment execution---the defining characteristic of \emph{agentic} RL as opposed to standard offline RL.
-
-\item[\texttt{contrib/recipes/}] Production-tested training recipes for specific agentic tasks: AlfWorld (text-based household tasks), ScienceWorld (scientific reasoning), WebShop (web-based shopping), and search\_r1 (search-augmented reasoning). Each recipe specifies the algorithm (GRPO/PPO/APO), hyperparameters, and hardware requirements. AlfWorld's text-only environment is CPU-bounded during rollout but GPU-bounded during training; WebShop requires headless browser rendering infrastructure that introduces I/O latency invisible to the kernel auto-tuner. These recipes are the most concrete demonstrations of the full agentic RL loop: environment interaction $\to$ trajectory capture $\to$ reward computation $\to$ policy update.
-
-\item[\texttt{examples/claude\_code/}] Demonstrates the ``agentic RL'' vision end-to-end: Claude Code generates code solutions in a sandboxed environment (\texttt{operatorRL/src/agent\_os/sandbox.py}), Agent Lightning captures the interaction traces, and the policy is updated via GRPO training. This is the concrete implementation of the self-deploying, self-feedback, self-evolving loop described in \S\ref{sec:3.2.agenticrl}---running on Megatron/Trainium2 with Claude Code fully autonomous.
-
-\item[\texttt{examples/tinker/}] A minimal RL training loop for rapid prototyping, runnable on a single GPU or CPU. This is the ``small modulus'' equivalent (\S\ref{sec:3.2.1.1})---testing the system with minimal infrastructure before scaling to distributed Trainium2 training.
+\item[\texttt{runner/}] Rollout execution. \texttt{GovernedRunner} adds policy enforcement.
+\item[\texttt{tracer/}] Trace capture. \texttt{trace\_aggregator}: transition/trajectory modes (\S\ref{sec:3.3.2}).
+\item[\texttt{store/}] 7~backends. Collection grouping enables KS epoch comparison (\S\ref{sec:3.3.1}B).
+\item[\texttt{algorithm/}] GRPO (default), PPO (critic required), APO (text gradients).
+\item[\texttt{adapter/}] LangChain, CrewAI, Vercel~AI, OpenAI SDK. \texttt{TracerTraceToTriplet} conversion.
+\item[\texttt{verl/daemon.py}] \texttt{AgentModeDaemon}: v0 (HTTP) / v1 (Store).
+\item[\texttt{emitter/}] Reward emitter + \texttt{FlightRecorderEmitter} (governance$\to$training signal).
+\item[\texttt{llm\_proxy.py}] Inference abstraction. XLA compilation caching on Trainium2.
+\item[\texttt{examples/claude\_code/}] End-to-end agentic RL: self-deploying loop on Megatron/Trainium2.
 \end{description}
 
 \bibliographystyle{plainnat}

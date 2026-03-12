@@ -1,0 +1,320 @@
+[
+  {
+    "desc": "\u00a73.1 Introduction",
+    "old": "L88-282",
+    "new": "\u00a73.1",
+    "summary": "KEEP: 195 lines unchanged"
+  },
+  {
+    "desc": "\u00a73.2 + all subsections",
+    "old": "L283-1001",
+    "new": "\u00a73.2",
+    "summary": "KEEP: 719 lines unchanged"
+  },
+  {
+    "desc": "\u03c7\u00b2 test: NeuronCore utilization",
+    "old": "old \u00a73.3.1(i)",
+    "new": "\u00a73.3.1",
+    "summary": "KEEP: \u03c7\u00b2 applied to k NeuronCores, V statistic, \u03bd=k-1 df, critical value 82.5 for k=64"
+  },
+  {
+    "desc": "\u03c7\u00b2 test: Reward distribution",
+    "old": "old \u00a73.3.1(ii)",
+    "new": "\u00a73.3.1",
+    "summary": "KEEP: Reward bins, exploration collapse indicator"
+  },
+  {
+    "desc": "\u03c7\u00b2 test: Gradient norm",
+    "old": "old \u00a73.3.1(iii)",
+    "new": "\u00a73.3.1",
+    "summary": "KEEP: Distributed training straggler detection"
+  },
+  {
+    "desc": "\u03c7\u00b2 Table 3.3.1-1",
+    "old": "old \u00a73.3.1",
+    "new": "\u00a73.3.1",
+    "summary": "KEEP: percentile table"
+  },
+  {
+    "desc": "KS test: reward convergence",
+    "old": "old \u00a73.3.1B",
+    "new": "\u00a73.3.1",
+    "summary": "KEEP: Two-sample KS, convergence/forgetting/staleness detection"
+  },
+  {
+    "desc": "TAOCP \u03c7\u00b2 derivation (eq chi2-dist)",
+    "old": "new",
+    "new": "\u00a73.3.1",
+    "summary": "ADD: Polar coordinate derivation \u2192 incomplete gamma function"
+  },
+  {
+    "desc": "TAOCP KS exact distribution (eq ks-exact)",
+    "old": "new",
+    "new": "\u00a73.3.1",
+    "summary": "ADD: Smirnov formula, large-n approximation"
+  },
+  {
+    "desc": "Run Test \u2192 Rollout Length Stability",
+    "old": "old \u00a73.3.2",
+    "new": "\u00a73.3.2",
+    "summary": "KEEP"
+  },
+  {
+    "desc": "Gap Test \u2192 Inter-Failure Interval",
+    "old": "old \u00a73.3.2",
+    "new": "\u00a73.3.2",
+    "summary": "KEEP"
+  },
+  {
+    "desc": "Serial Test \u2192 Consecutive Action Correlation",
+    "old": "old \u00a73.3.2",
+    "new": "\u00a73.3.2",
+    "summary": "KEEP"
+  },
+  {
+    "desc": "Poker Test \u2192 Action Diversity",
+    "old": "old \u00a73.3.2",
+    "new": "\u00a73.3.2",
+    "summary": "KEEP"
+  },
+  {
+    "desc": "OOM 3-pattern case study",
+    "old": "old \u00a73.3.2",
+    "new": "\u00a73.3.2",
+    "summary": "KEEP: trajectory accumulation, KV-cache frag, gradient buffer persistence"
+  },
+  {
+    "desc": "trace_aggregator as Serial Test Enabler",
+    "old": "old \u00a73.3.2",
+    "new": "\u00a73.3.2",
+    "summary": "KEEP"
+  },
+  {
+    "desc": "GRPO Temporal Correlation Theorem",
+    "old": "old \u00a73.3.2",
+    "new": "\u2605\u00a73.3.3",
+    "summary": "MOVE: Theorem + proof sketch \u2192 theoretical validation of batching"
+  },
+  {
+    "desc": "CRT version compatibility analysis",
+    "old": "old \u00a73.3.1C",
+    "new": "\u2605\u00a73.3.3",
+    "summary": "MOVE: v_i \u2261 v_i* (mod M_i) \u2192 theoretical dependency analysis"
+  },
+  {
+    "desc": "4-layer migration map as validation theory",
+    "old": "old \u00a73.3.3",
+    "new": "\u2605\u00a73.3.3",
+    "summary": "REWRITE: Parallelism/Kernels/Comm/Memory \u2192 theoretical failure mode taxonomy"
+  },
+  {
+    "desc": "Cartesian product of debug spaces",
+    "old": "old \u00a73.3.3",
+    "new": "\u2605\u00a73.3.3",
+    "summary": "MOVE: O(3\u00b7k\u00b7d) worst-case analysis \u2192 theoretical complexity bound"
+  },
+  {
+    "desc": "Degenerate cross-platform configs",
+    "old": "old \u00a73.3.4",
+    "new": "\u2605\u00a73.3.3",
+    "summary": "MOVE: Configuration independence proof \u2192 theoretical validation limit"
+  },
+  {
+    "desc": "Governance invariant formal proofs",
+    "old": "new",
+    "new": "\u2605\u00a73.3.3",
+    "summary": "ADD: Formal proof that 4 kernel invariants are sufficient for crash isolation (M13,M14)"
+  },
+  {
+    "desc": "Spectral test: lattice structure",
+    "old": "old \u00a73.3.4",
+    "new": "\u00a73.3.4",
+    "summary": "KEEP: \u03bd_d min distance, Trainium2 GEMM 4-param auto-tuner"
+  },
+  {
+    "desc": "Spectral test: policy parameter trajectory",
+    "old": "old \u00a73.3.4",
+    "new": "\u00a73.3.4",
+    "summary": "KEEP: Periodic orbit detection in parameter space"
+  },
+  {
+    "desc": "Credit assignment: 3 strategies",
+    "old": "old \u00a73.3.6",
+    "new": "\u2605\u00a73.4.1",
+    "summary": "MOVE: trajectory/transition/action-level + memory implications (M5,M6,M7)"
+  },
+  {
+    "desc": "Exploration collapse: trajectory entropy",
+    "old": "old \u00a73.3.5",
+    "new": "\u2605\u00a73.4.1",
+    "summary": "MOVE: H_W entropy, reward staleness, novelty-routine matrix (M5\u2192Issue#490)"
+  },
+  {
+    "desc": "On-policy vs off-policy distinction",
+    "old": "new",
+    "new": "\u2605\u00a73.4.1",
+    "summary": "ADD: Fundamental RL distinction + hardware utilization impact (M11)"
+  },
+  {
+    "desc": "LoRA/parameter-efficient distributions",
+    "old": "new",
+    "new": "\u2605\u00a73.4.1",
+    "summary": "ADD: Fused LoRA kernel migration Trainium2 (M12\u2192Issue#365,#383)"
+  },
+  {
+    "desc": "Process rewards / intermediate rewards",
+    "old": "new",
+    "new": "\u2605\u00a73.4.1",
+    "summary": "ADD: Causal credit assignment across tool-use steps (M7\u2192Issue#387,#390,#392)"
+  },
+  {
+    "desc": "Thinking mode / reasoning tokens",
+    "old": "new",
+    "new": "\u2605\u00a73.4.1",
+    "summary": "ADD: CoT compute cost in rollouts, KV-cache inflation (M20\u2192Issue#347)"
+  },
+  {
+    "desc": "Reward formula: R_final composition",
+    "old": "old \u00a73.3.3",
+    "new": "\u00a73.4.1",
+    "summary": "MOVE: PolicyReward additive/multiplicative formula"
+  },
+  {
+    "desc": "Multi-agent: Nexus trust exchange",
+    "old": "old \u00a73.3.5",
+    "new": "\u2605\u00a73.4.2",
+    "summary": "MOVE: registry/reputation/escrow/arbiter/dmz + trust-weighted rewards (M9)"
+  },
+  {
+    "desc": "Multi-agent: Mute Agent architecture",
+    "old": "old \u00a73.3.5",
+    "new": "\u2605\u00a73.4.2",
+    "summary": "MOVE: Face/Hands reasoning+execution decomposition"
+  },
+  {
+    "desc": "Multi-agent: Hardware partitioning",
+    "old": "old \u00a73.3.5",
+    "new": "\u2605\u00a73.4.2",
+    "summary": "MOVE: NeuronCore partitioning, MIG comparison"
+  },
+  {
+    "desc": "Composite modulus convergence analogy",
+    "old": "old \u00a73.3.5",
+    "new": "\u2605\u00a73.4.2",
+    "summary": "MOVE: lcm(\u03bb_1,...,\u03bb_n) multi-agent period decomposition"
+  },
+  {
+    "desc": "Distributed rollout parallelism",
+    "old": "new",
+    "new": "\u2605\u00a73.4.2",
+    "summary": "ADD: Why 1-of-8 GPUs used, Trainium2 solution (M15\u2192Issue#82,#104,#106)"
+  },
+  {
+    "desc": "Rollout timeout and failure handling",
+    "old": "new",
+    "new": "\u2605\u00a73.4.2",
+    "summary": "ADD: Failed rollout retry strategies + hardware cost (M16\u2192Issue#218,#448)"
+  },
+  {
+    "desc": "Multimodal agent training",
+    "old": "new",
+    "new": "\u2605\u00a73.4.2",
+    "summary": "ADD: Vision encoder kernel migration exercise (M10\u2192Issue#105,#110)"
+  },
+  {
+    "desc": "Self-evolving loop definition",
+    "old": "old \u00a73.3.3",
+    "new": "\u2605\u00a73.5",
+    "summary": "MOVE: rollout\u2192reward\u2192update\u2192deploy\u2192iterate"
+  },
+  {
+    "desc": "System architecture ASCII figure",
+    "old": "old \u00a73.3.3",
+    "new": "\u2605\u00a73.5",
+    "summary": "MOVE: OperatorRL/AgentLightning/HW 3-layer figure"
+  },
+  {
+    "desc": "4 kernel invariants",
+    "old": "old \u00a73.3.3",
+    "new": "\u2605\u00a73.5",
+    "summary": "MOVE: No Bypass, Fail Closed, Audit Everything, Crash Isolation"
+  },
+  {
+    "desc": "Signal dispatch table",
+    "old": "old \u00a73.3.3",
+    "new": "\u2605\u00a73.5",
+    "summary": "MOVE: SIGKILL/SIGEXPLORE/SIGPOLICY/SIGTRUST"
+  },
+  {
+    "desc": "Integration bridge: 4 adapter components",
+    "old": "old \u00a73.3.3",
+    "new": "\u2605\u00a73.5",
+    "summary": "MOVE: GovernedRunner/PolicyReward/FlightRecorderEmitter/GovernedEnvironment"
+  },
+  {
+    "desc": "Daemon: two execution modes",
+    "old": "old \u00a73.3.3",
+    "new": "\u2605\u00a73.5",
+    "summary": "MOVE: v0=HTTP server, v1=LightningStore"
+  },
+  {
+    "desc": "CCCL ecosystem analysis",
+    "old": "old \u00a73.3.3",
+    "new": "\u2605\u00a73.5",
+    "summary": "MOVE: Thrust/CUB/libcudacxx \u2192 'makes NVIDIA prison more luxurious'"
+  },
+  {
+    "desc": "NVIDIA vs Trainium stack table",
+    "old": "old \u00a73.3.3",
+    "new": "\u2605\u00a73.5",
+    "summary": "MOVE: Complete stack correspondence"
+  },
+  {
+    "desc": "Open-source counterstrategy: XLA/JAX/NKI",
+    "old": "old \u00a73.3.3",
+    "new": "\u2605\u00a73.5",
+    "summary": "MOVE: AWS 3-pronged approach"
+  },
+  {
+    "desc": "SCAK module architecture",
+    "old": "new",
+    "new": "\u2605\u00a73.5",
+    "summary": "ADD: Self-correcting kernel formal description (M13)"
+  },
+  {
+    "desc": "Control-plane scheduling algorithm",
+    "old": "new",
+    "new": "\u2605\u00a73.5",
+    "summary": "ADD: Formalize as Algorithm C (M14)"
+  },
+  {
+    "desc": "Ascend NPU acknowledgment",
+    "old": "new",
+    "new": "\u2605\u00a73.5",
+    "summary": "ADD: Fourth hardware platform (M21\u2192Issue#108)"
+  },
+  {
+    "desc": "Dashboard and observability",
+    "old": "new",
+    "new": "\u2605\u00a73.5",
+    "summary": "ADD: operatorRL/modules/observability + agentlightning/dashboard (M18)"
+  },
+  {
+    "desc": "OperatorRL module reference",
+    "old": "old Appendix A",
+    "new": "\u00a73.6",
+    "summary": "MOVE+CONDENSE: Module table with \u00a73.x cross-refs"
+  },
+  {
+    "desc": "Agent Lightning component reference",
+    "old": "old Appendix B",
+    "new": "\u00a73.6",
+    "summary": "MOVE+CONDENSE: Component table with \u00a73.x cross-refs"
+  },
+  {
+    "desc": "Chapter exercises (14 problems)",
+    "old": "old Exercises",
+    "new": "\u00a73.6",
+    "summary": "MOVE: Exercises distributed per-section + collected in \u00a73.6"
+  }
+]
