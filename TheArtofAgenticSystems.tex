@@ -1208,7 +1208,14 @@ When integrated with Agent Lightning's training infrastructure (\texttt{agentlig
 \begin{enumerate}
 \item \textbf{Agent rollout} (Agent Lightning \texttt{runner}): The agent executes in a live environment, generating trajectories. The rollout engine must run on \emph{whatever hardware is available}---GPU, TPU, or Trainium2---and the kernel stack must provide equivalent throughput on each.
 
-\item \textbf{Reward computation} (Agent Lightning \texttt{reward.py}): Trajectory rewards are computed, potentially using a separate model (reward model or verifier). This is a standard inference workload that benefits from the same kernel optimizations as the main model.
+\item \textbf{Reward computation} (Agent Lightning \texttt{reward.py} + Operator RL \texttt{integrations/agent\_lightning/reward.py}): Trajectory rewards combine a task-completion signal $R_{\mathrm{base}}$ with governance penalties from the \textsc{PolicyReward} class. The integration bridge's reward formula is:
+\[
+R_{\mathrm{final}} = \begin{cases}
+R_{\mathrm{base}} + \displaystyle\sum_{v \in \mathcal{V}} \phi(v) + b_{\mathrm{clean}} \cdot \mathbf{1}[\mathcal{V} = \emptyset] & \text{(additive mode)} \\[6pt]
+R_{\mathrm{base}} \cdot \alpha & \text{(multiplicative mode, any } v \in \mathcal{V}\text{)}
+\end{cases}
+\]
+where $\phi(v)$ maps violation severity to penalties (critical: $-100$, high: $-50$, medium: $-10$, low: $-1$), $b_{\mathrm{clean}} = 5$ is a compliance bonus, and $\alpha = 0.5$ is the multiplicative discount factor. The reward is clamped to $[R_{\min}, R_{\max}]$ (default $[-100, 100]$). This is \emph{not} a standard inference workload---it interleaves kernel policy evaluation with scalar reward computation, and on Trainium2, the policy evaluation step (which invokes the governance kernel's rule engine) runs on the GPSIMD engine while the GEMM-heavy forward pass occupies the matrix engine, enabling overlap.
 
 \item \textbf{Policy update} (Agent Lightning \texttt{trainer}, with \texttt{verl} backend): The agent's policy parameters are updated using RL algorithms (GRPO \citep{shao2024deepseekmath} or PPO \citep{schulman2017ppo} via VERL). This is a distributed training step that requires all the Megatron-equivalent parallelism primitives discussed in Section~\ref{sec:3.2.migration.parallelism}.
 
@@ -1218,6 +1225,21 @@ When integrated with Agent Lightning's training infrastructure (\texttt{agentlig
 \end{enumerate}
 
 For this loop to function on Trainium2 specifically, each step requires the kernel migrations described in Section~\ref{sec:3.2.migration}. The critical path is Step~3 (policy update), where the full distributed training stack---parallelism, fused kernels, communication overlap, memory management---must operate at near-peak hardware utilization.
+
+\medskip
+\noindent\textbf{The Integration Bridge: Four Adapter Components.} The directory \texttt{operatorRL/src/agent\_os/integrations/agent\_lightning/} contains the concrete bridge between the governance kernel and the RL training loop. Four Python modules implement the bridge; each maps a governance concept to an Agent Lightning abstraction.
+
+\begin{description}
+\item[\texttt{runner.py}: \textsc{GovernedRunner}.] Wraps Agent Lightning's \texttt{Runner} interface with kernel policy enforcement. The key mechanism is the \texttt{step()} coroutine: before every agent action reaches the environment, the kernel's \texttt{execute\_async()} interposes a policy check. If a violation is detected, the runner records a \texttt{PolicyViolation} object annotated with severity (\texttt{critical}, \texttt{high}, \texttt{medium}, \texttt{low}) and type (\texttt{BLOCKED}, \texttt{MODIFIED}, \texttt{WARNED}, \texttt{SIGNAL\_SENT}). The rollout result is wrapped in a \texttt{GovernedRollout} dataclass that carries both the task output and the violation metadata. Critically, \texttt{GovernedRunner} follows Agent Lightning's runner lifecycle: \texttt{init()} $\to$ \texttt{init\_worker(worker\_id, store)} $\to$ \texttt{step()} / \texttt{iter()} $\to$ \texttt{teardown\_worker()} $\to$ \texttt{teardown()}. This lifecycle alignment is what makes the governance layer transparent to the VERL backend---the trainer sees a standard runner that happens to produce richer metadata.
+
+\item[\texttt{reward.py}: \textsc{PolicyReward}.] Converts governance violations into RL training signals. The reward computation is $R_{\mathrm{final}} = R_{\mathrm{base}} + \sum_{v \in \mathcal{V}} \phi(v) + \mathbf{1}[\mathcal{V} = \emptyset] \cdot b_{\mathrm{clean}}$, where $R_{\mathrm{base}}$ is the task reward, $\phi(v)$ maps violation severity to a penalty (default: critical $= -100$, high $= -50$, medium $= -10$, low $= -1$), and $b_{\mathrm{clean}} = 5$ is a bonus for zero-violation execution. An alternative multiplicative mode sets $R_{\mathrm{final}} = R_{\mathrm{base}} \cdot \alpha$ (default $\alpha = 0.5$) on any violation. The \texttt{CompositeReward} class further supports multi-dimensional rewards with configurable weights---addressing the multi-objective tension identified in Issue~\#490.
+
+\item[\texttt{emitter.py}: \textsc{FlightRecorderEmitter}.] Adapts the kernel's Flight Recorder audit log to Agent Lightning's \texttt{LightningStore} span format. Each Flight Recorder entry (policy check, signal dispatch, tool call) is converted to a \texttt{LightningSpan} with structured attributes (e.g., \texttt{agent\_os.policy\_violated}, \texttt{agent\_os.signal\_type}). The emitter supports both batch export (\texttt{emit\_to\_store()}) and async streaming. For the validation tests of \S\ref{sec:3.3}, the \texttt{get\_violation\_summary()} method provides the per-policy violation rates needed by the $\chi^2$ test on governance compliance distribution.
+
+\item[\texttt{environment.py}: \textsc{GovernedEnvironment}.] A Gym-compatible environment wrapper that converts kernel governance into standard RL signals: $(\mathit{state}, \mathit{reward}, \mathit{terminated}, \mathit{truncated}, \mathit{info})$. The environment terminates the episode on critical violations (configurable via \texttt{terminate\_on\_critical}), applies per-step efficiency penalties (default $-0.1$), and tracks compliance metrics across episodes. On Trainium2, the environment's \texttt{step()} function is the outermost loop of the training pipeline---its per-call overhead (kernel policy check + Flight Recorder write + violation penalty computation) must be negligible compared to the agent's forward pass latency, which is dominated by the NKI attention kernel execution time analyzed in \S\ref{sec:3.2.migration.kernels}.
+\end{description}
+
+\noindent The combined effect: Agent Lightning trains agents that are simultaneously optimized for task performance \emph{and} governance compliance, because the RL reward signal encodes both. Table~\ref{tab:governance-training} (from the integration README) quantifies this: agents trained with \textsc{GovernedRunner} achieve 0.0\% policy violations while maintaining higher task accuracy (79.2\% vs 76.4\%) than ungoverned baselines---the governance signal acts as an implicit regularizer that prevents reward hacking via policy-violating shortcuts.
 
 \medskip
 \noindent\textbf{Signal Dispatch Table.} The Agent~OS kernel communicates with agents through a POSIX-inspired signal mechanism (see \texttt{operatorRL/packages/control-plane/src/\allowbreak agent\_control\_plane/signals.py}). Table~\ref{tab:signals} defines the signal set.
@@ -1430,6 +1452,35 @@ The spectral test computes the minimum distance $\nu_d$ between adjacent hyperpl
 
 More importantly for agentic RL: the spectral test can be applied to the \emph{policy parameter trajectory} during training. If the gradient updates cause the policy parameters to trace a path that lies on a low-dimensional lattice in parameter space, the training has degenerated into a periodic orbit---the policy is oscillating between a small number of behaviors rather than converging. This is the high-dimensional analog of the cycle degeneration detected by Floyd's algorithm in Experiment~3.1A.
 
+\subsection{Exploration Collapse Detection}
+\label{sec:3.3.5}
+
+Issue~\#490 identifies a structural failure mode that the validation tests above are designed to detect but that deserves explicit treatment: \emph{exploration collapse}, where an agent converges to a fixed policy and loses the ability to discover novel behaviors not represented in the reward signal. The issue documents five concrete engineering gaps in current agentic RL systems, each mappable to a validation test from this chapter.
+
+\medskip
+\noindent\textbf{(i) Trajectory Entropy Monitoring.} Define the \emph{trajectory entropy} over a sliding window of $W$ episodes as
+\[
+H_W = -\sum_{i=1}^{K} p_i \log p_i
+\]
+where $p_i$ is the empirical frequency of the $i$-th distinct tool-call sequence pattern in the window. If $H_W$ drops below a threshold $H_{\min}$ while the mean reward plateaus (i.e., $|\bar{R}_W - \bar{R}_{W-1}| < \epsilon$), the agent has collapsed to a fixed policy rather than mastering the task space. In Agent Lightning's architecture, the \texttt{tracer} records the action sequences needed to compute $H_W$; the \texttt{store} backends persist them across training steps. This metric is the agentic analog of the ``run test'' from \S\ref{sec:3.3.2}: a monotonically decreasing $H_W$ produces an excessively long ``run down'' in the entropy sequence.
+
+\medskip
+\noindent\textbf{(ii) Reward Staleness Detection.} The reward function is assumed correct for the duration of training, but in real deployments, environment dynamics shift---APIs evolve, data distributions drift, new capabilities appear. Issue~\#490 proposes tracking the correlation between the reward signal and an independently measured task success metric. When this correlation degrades below a threshold, the reward function should be flagged for review. In the integration bridge (\S\ref{sec:3.2.agenticrl}), the \texttt{PolicyReward} class from \texttt{operatorRL/src/agent\_os/integrations/agent\_lightning/reward.py} already maintains per-epoch statistics (\texttt{get\_stats()}); extending it to track reward--success correlation requires only a running Pearson coefficient over the \texttt{CompositeReward} components.
+
+\medskip
+\noindent\textbf{(iii) Novelty--Routine Classification.} Agent Lightning's \texttt{emit\_*()} functions capture what the agent did and what reward it received, but not whether the behavior was \emph{novel} (first occurrence) or \emph{routine} (repetition of a known-good policy). The four quadrants of the novelty--reward matrix carry different training implications:
+\begin{center}
+\begin{tabular}{@{}lll@{}}
+\toprule
+& High Reward & Low Reward \\
+\midrule
+Novel behavior & Discovery (study, don't just reinforce) & Exploration (valuable signal) \\
+Routine behavior & Exploitation (fine, but not learning) & Degradation (flag immediately) \\
+\bottomrule
+\end{tabular}
+\end{center}
+Implementing novelty detection requires comparing each trajectory against the historical trace distribution---a computation that the \texttt{FlightRecorderEmitter}'s \texttt{get\_violation\_summary()} could be extended to support by hashing trajectory action sequences and maintaining a Bloom filter of seen patterns.
+
 \subsection{Credit Assignment in Multi-Turn Agentic RL}
 \label{sec:3.3.credit}
 
@@ -1474,7 +1525,24 @@ The choice of credit assignment strategy directly affects which validation tests
 
 \item[\textbf{10.}] [$HM50$] \textbf{(Open Research Problem.)} Issue~\#490 reports exploration collapse: agents converge to fixed policies. Formalize this as cycle degeneration in policy parameter space (cf.\ \S\ref{sec:3.1}). Propose a detection mechanism based on the spectral test (\S\ref{sec:3.3.4}) applied to the policy gradient trajectory, and design an intervention that forces the policy off its periodic orbit without destroying learned behavior. Analyze the hardware cost on Trainium2.
 
-\item[\textbf{11.}] [$M20$] \textbf{(From Issue~\#489: GRPO Grouping.)} In multi-turn agent RL, GRPO normalizes advantages within a group of $G$ rollouts that share the same prompt. Issue~\#489 asks: is it valid to mix samples from \emph{different} prompts in the same GRPO group? Prove that if prompts $p_1, p_2$ have reward distributions $R_1 \sim \mathcal{N}(\mu_1, \sigma_1^2)$ and $R_2 \sim \mathcal{N}(\mu_2, \sigma_2^2)$ with $\mu_1 \neq \mu_2$, then the group-normalized advantage $\hat{A}_i = (R_i - \bar{R}) / \sigma_R$ is \emph{biased}: actions under prompt $p_1$ receive systematically higher (or lower) advantages regardless of their quality. Derive the bias magnitude as a function of $|\mu_1 - \mu_2|$, $G$, and the mixing ratio.
+\item[\textbf{11.}] [$M20$] \textbf{(From Issue~\#489: GRPO Grouping.)} In multi-turn agent RL, GRPO normalizes advantages within a group of $G$ rollouts that share the same prompt. Issue~\#489 asks: is it valid to mix samples from \emph{different} prompts in the same GRPO group? Consider the following concrete example (from the \texttt{calc\_x} agent with \texttt{rollout\_n=4}):
+
+\begin{center}
+\begin{tabular}{@{}llllr@{}}
+\toprule
+Sample & Rollout & Turn & Prompt Context & Reward \\
+\midrule
+1 & Rollout~1, Turn~0 & \texttt{[system, user]} & Initial query & 1.0 \\
+2 & Rollout~1, Turn~1 & \texttt{[..., assistant, tool\_response]} & After tool call & 1.0 \\
+3 & Rollout~2, Turn~0 & \texttt{[system, user]} & Initial query (no tool) & 0.0 \\
+4 & Rollout~3, Turn~0 & \texttt{[system, user]} & Initial query & 1.0 \\
+5 & Rollout~3, Turn~1 & \texttt{[..., assistant, tool\_response]} & After tool call & 1.0 \\
+6 & Rollout~4, Turn~0 & \texttt{[system, user]} & Initial query (no tool) & 0.0 \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+All 6 samples share the same \texttt{uid} and are grouped together for GRPO advantage computation. But Turn~0 samples have prompt $p_0 = [\text{system}, \text{user}]$, while Turn~1 samples have prompt $p_1 = [\text{system}, \text{user}, \text{assistant}, \text{tool\_response}]$---fundamentally different inputs. (a)~Prove that if prompts $p_0, p_1$ have reward distributions $R_0 \sim \mathcal{N}(\mu_0, \sigma_0^2)$ and $R_1 \sim \mathcal{N}(\mu_1, \sigma_1^2)$ with $\mu_0 \neq \mu_1$, then the group-normalized advantage $\hat{A}_i = (R_i - \bar{R}) / \sigma_R$ is \emph{biased}: actions under prompt $p_0$ receive systematically higher (or lower) advantages regardless of their quality. (b)~Derive the bias magnitude as a function of $|\mu_0 - \mu_1|$, $G$, and the mixing ratio $n_0/n_1$. (c)~In the example above, Turn~0 samples with $R=0$ (no tool use) receive negative advantages, while Turn~1 samples (post-tool-call) receive positive advantages. Explain why this creates a gradient signal that \emph{discourages tool use at Turn~0}---the opposite of the intended behavior---and propose a correction. (Hint: consider computing advantages separately within each prompt group.)
 
 \item[\textbf{12.}] [$HM25$] \textbf{(From Issue~\#470: Local Models.)} Agent Lightning's daemon (\texttt{agentlightning/verl/daemon.py}) uses the \texttt{\_update\_proxy\_server\_v1()} function to route LLM inference requests. Modify this function to support a local vLLM \citep{kwon2023vllm} server running on Trainium2 via NxD Inference. Specifically: (a)~identify which HTTP endpoints the proxy must implement, (b)~explain why the \texttt{/v1/completions} endpoint's token streaming behavior differs between CUDA-backed vLLM and Neuron-backed vLLM (hint: Neuron's pipeline execution model produces tokens in batches rather than one-by-one), and (c)~propose a buffering strategy that masks this difference from the agent.
 
