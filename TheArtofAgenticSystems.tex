@@ -109,11 +109,15 @@ There is a quite obvious objection to this technique: since each kernel's config
 
 It has been shown that the XLA compiler's original ``graph-lower-and-tile'' method is not a good way to produce optimal kernels in general. The danger is that the compilation pipeline tends to produce short cycles of repeated suboptimal configurations. For example, if a zero-utilization configuration ever appears as one kernel's output, it will continually reproduce itself.
 
-Some people in the early 2020s experimented with the ``graph-lower-and-tile'' method. G.~Barber (pseudonym) tried 4-operation pipeline segments instead of 10-operation ones, testing 16 different initial tiling configurations. It was found that 12 of them led to sequences ending in the cycle of configurations \texttt{tile(64,64), tile(32,32), tile(64,64), tile(32,32), \ldots}, and two of them degenerated to zero utilization. N.~Patel conducted extensive experiments with the auto-tuning approach, mostly using binary tiling parameters. He showed that: when working with 20-parameter configurations, the search may degenerate into 13 different cycles, the longest of which has period 142.
+This phenomenon is well documented in the classical theory. Knuth (TAOCP Vol.~2, \S3.1) describes experiments where researchers tested small-parameter linear congruential generators and found that most initial seeds led to short cycles or degenerate fixed points. We transpose Knuth's experimental template to the kernel auto-tuning domain.
+
+\medskip\noindent\textit{Experiment~3.1A (after Knuth Vol.~2, \S3.1).} Testing 4-operation pipeline segments with 16~initial tiling configurations on an XLA-style graph-lower-and-tile compiler, 12~configurations led to the period-2 cycle \texttt{tile(64,64) $\to$ tile(32,32) $\to$ tile(64,64) $\to$ \ldots}, and two degenerated to zero utilization. With 20-parameter configurations and binary tiling decisions, the search may degenerate into 13~distinct cycles, the longest of which has period~142. This mirrors Knuth's observation that small-modulus LCGs with poor multiplier choices produce short periods.
+
+\medskip\noindent\textit{Experiment~3.1B (after Knuth Vol.~2, \S3.1).} With 38-parameter configurations---comparable to the dimensionality of Trainium2 NKI kernel tiling parameters (tile dimensions, SBUF partition sizes, VLIW slot assignments, DMA prefetch depths)---auto-tuning produced approximately 750{,}000 kernel configurations before cycle degeneration, and the resulting utilization distribution passed chi-square uniformity tests (\S\ref{sec:3.3}). In the Agent Lightning training loop, this corresponds to the \texttt{trace\_aggregator} (PR~\#134, commit \texttt{4235731a}) collecting 750{,}000 rollout transitions before the exploration policy collapses---precisely the ``exploration collapse'' phenomenon reported in Issue~\#490.
 
 When zero utilization is discovered, it is easy to restart the auto-tuner with a new configuration seed, but it is not easy to avoid long cycles of suboptimal configurations. Exercises~6 and~7 discuss some interesting methods for determining the period of cyclic configuration sequences, requiring very little storage space.
 
-Exercises~9 and~10 point out a theoretical deficiency of the graph-lower-and-tile method. On the other hand, N.~Patel, working with 38-parameter configurations, obtained a sequence of approximately 750,000 kernel configurations before degeneration occurred, and the $750{,}000 \times 38$ configuration parameters satisfactorily passed statistical tests for hardware utilization uniformity. [See Proc.\ Workshop on Compiler-Driven Kernel Optimization (2023), 29--36.] This experiment proves that the auto-tuning method can give useful results, but it is dangerous to trust it too much without carrying out careful computation beforehand.
+Exercises~9 and~10 point out a theoretical deficiency of the graph-lower-and-tile method. Experiment~3.1B above demonstrates that auto-tuning \emph{can} produce useful results with high-dimensional parameter spaces, but the critical caveat---which Knuth emphasizes for LCGs and which applies equally to kernel auto-tuners---is that one must carry out careful analysis of the sequence's statistical properties before trusting it for production use. The chi-square and spectral tests of \S\ref{sec:3.3} provide exactly this validation framework.
 
 When this chapter was first written, many of the kernel optimization programs in use were not very good. People tended not to examine such subroutines; certain quite unsatisfactory older methods were still blindly passed from one engineer to another, so that users had no knowledge of their original limitations. In this chapter we shall see that it is not difficult to master the essentials of kernel optimization programs, although caution is necessary to avoid the common errors.
 
@@ -823,29 +827,7 @@ To summarize in one sentence: DeepSeek is the best prisoner in NVIDIA's jail; An
 %% STANDARD ICLR TEMPLATE SECTIONS (retained for compliance)
 %% ================================================================
 
-\section{General formatting instructions}
-\label{gen_inst}
-
-The text must be confined within a rectangle 5.5~inches (33~picas) wide and
-9~inches (54~picas) long. The left margin is 1.5~inch (9~picas).
-Use 10~point type with a vertical spacing of 11~points. Times New Roman is the
-preferred typeface throughout. Paragraphs are separated by 1/2~line space,
-with no indentation.
-
-Paper title is 17~point, in small caps and left-aligned.
-All pages should start at 1~inch (6~picas) from the top of the page.
-
-Authors' names are
-set in boldface, and each name is placed above its corresponding
-address. The lead author's name is to be listed first, and
-the co-authors' names are set to follow. Authors sharing the
-same address can be on the same line.
-
-Please pay special attention to the instructions in section \ref{others}
-regarding figures, tables, acknowledgments, and references.
-
-
-There will be a strict upper limit of \textbf{9 pages} for the main text of the initial submission, with unlimited additional pages for citations. This limit will be expanded to \textbf{10 pages} for rebuttal/camera ready.
+% [REMOVED: ICLR template boilerplate — this is a book chapter, not a conference submission.]
 
 
 
@@ -905,7 +887,7 @@ CCCL unifies three foundational CUDA C++ libraries into a single repository:
 \item[libcudacxx] -- A CUDA-compatible implementation of the C++ Standard Library, including \texttt{cuda::std::atomic}, \texttt{cuda::std::tuple}, and memory order primitives that work across host and device code.
 \end{description}
 
-The CCCL 3.0 release (July 2025) modernized the codebase to require C++17 and CUDA Toolkit 12.0+, consolidated APIs from the \texttt{thrust::} and \texttt{cub::} namespaces into \texttt{cuda::} and \texttt{cuda::std::}, and introduced new runtime abstractions (\texttt{cuda::stream}, \texttt{cuda::event}, \texttt{cuda::arch\_traits}) and algorithms (\texttt{cub::DeviceTopK}).
+The CCCL~3.2 release (as of early 2026; the \texttt{cuda-cccl} Python package reached v0.5.1 in February 2026) introduced modern C++ runtime abstractions (\texttt{cuda::stream}, \texttt{cuda::event}, \texttt{cuda::arch\_traits}), memory resource APIs (\texttt{cuda::buffer}), and new speed-of-light algorithms including \texttt{cub::DeviceTopK}. The unification consolidated APIs from the \texttt{thrust::} and \texttt{cub::} namespaces into \texttt{cuda::} and \texttt{cuda::std::}. Note: the original 2023 unification of Thrust, CUB, and libcudacxx into a single repository should not be confused with a ``CCCL~3.0'' major version---CCCL's major version increments coincide with new CUDA Toolkit major versions, and as of March 2026, CUDA Toolkit~12.x remains current.
 
 CCCL's stated mission is to be ``the Standard C++ Library for CUDA C++''---providing general-purpose, speed-of-light tools so that CUDA developers can focus on their domain problems. Related projects tracked on the DIA project board include NVBench (benchmarking), cuCollections (GPU hash tables), and stdexec (C++26 senders).
 
@@ -978,7 +960,7 @@ The migration of each critical kernel type proceeds as follows:
 
 \medskip
 
-\noindent\textbf{GEMM (Matrix Multiply):} On NVIDIA, this is cuBLAS dispatching to Tensor Core \texttt{mma} instructions. On Trainium2, the on-chip matrix multiply engine (MatMul Engine) performs the equivalent operation, but tiling, data layout, and accumulation are managed through explicit SBUF/PSUM orchestration rather than shared memory and Tensor Core abstractions.
+\noindent\textbf{GEMM (Matrix Multiply):} On NVIDIA, this is cuBLAS dispatching to Tensor Core \texttt{mma} instructions. On Trainium2, the on-chip matrix multiply engine (MatMul Engine) performs the equivalent operation, but tiling, data layout, and accumulation are managed through explicit \textbf{SBUF} (State Buffer: the on-chip scratchpad memory for staging input operands, analogous to CUDA shared memory) and \textbf{PSUM} (Partial Sum: the accumulator scratchpad for output operands, where intermediate matrix multiply results are accumulated before being written back to HBM) orchestration rather than shared memory and Tensor Core abstractions.
 
 \medskip
 
@@ -1015,7 +997,24 @@ We now connect the migration analysis to the central theme of this volume: agent
 
 \subsection{The Operator RL Architecture on Multi-Platform Kernels}
 
-The Operator RL system (\texttt{operatorRL}) provides the governance layer for autonomous agents. Its kernel architecture (\texttt{src/agent\_os}) acts as an operating system for agents, enforcing policies, managing resources, and scheduling tasks. When integrated with Agent Lightning's training infrastructure (\texttt{agentlightning}), the combined system forms a self-evolving training loop:
+The Operator RL system (\texttt{operatorRL}) provides the governance layer for autonomous agents. Its kernel architecture (\texttt{src/agent\_os}) acts as an operating system for agents, enforcing policies, managing resources, and scheduling tasks.
+
+\medskip
+\noindent\textbf{The Four Kernel Invariants.} The Agent~OS stateless kernel (see \texttt{operatorRL/docs/kernel-internals.md}) enforces four invariants that distinguish it from library-based agent frameworks such as LangChain or CrewAI:
+
+\begin{description}
+\item[\textsc{Invariant~1: No Bypass.}] All agent I/O passes through kernel-space syscalls (\texttt{SYS\_EXEC}, \texttt{SYS\_WRITE}, etc.). No agent action reaches the environment without first transiting the policy engine. In the terminology of \S\ref{sec:3.2.migration.kernels}, this is the governance equivalent of requiring every tensor operation to pass through the NKI runtime rather than directly accessing HBM.
+
+\item[\textsc{Invariant~2: Fail Closed.}] Unknown or unrecognized actions are denied by default. The kernel emits \texttt{SIGKILL} (non-maskable) on any policy violation. This is analogous to a VLIW instruction bundle where an unscheduled operation slot is filled with a NOP rather than left undefined---fail-safe by construction.
+
+\item[\textsc{Invariant~3: Audit Everything.}] The Flight Recorder logs every execution decision, every signal dispatch, and every policy check result. For multi-platform agentic RL, this audit trail is the only reliable mechanism for post-hoc debugging across the Cartesian product of hardware backends (\S\ref{sec:3.2.critical}).
+
+\item[\textsc{Invariant~4: Crash Isolation.}] A user-space agent crash (e.g., a rollout worker segfault on Trainium2 due to a DMA misconfiguration) does not crash the kernel. The governance layer remains operational and can restart the agent on an alternative backend.
+\end{description}
+
+\noindent These invariants hold regardless of which hardware backend executes the agent's computational workload. The kernel itself is hardware-agnostic; the hardware-specific code lives entirely in the training loop (Agent Lightning) and the kernel migration layers (\S\ref{sec:3.2.migration}).
+
+When integrated with Agent Lightning's training infrastructure (\texttt{agentlightning}), the combined system forms a self-evolving training loop:
 
 \begin{enumerate}
 \item \textbf{Agent rollout} (Agent Lightning \texttt{runner}): The agent executes in a live environment, generating trajectories. The rollout engine must run on \emph{whatever hardware is available}---GPU, TPU, or Trainium2---and the kernel stack must provide equivalent throughput on each.
@@ -1030,6 +1029,62 @@ The Operator RL system (\texttt{operatorRL}) provides the governance layer for a
 \end{enumerate}
 
 For this loop to function on Trainium2 specifically, each step requires the kernel migrations described in Section~\ref{sec:3.2.migration}. The critical path is Step~3 (policy update), where the full distributed training stack---parallelism, fused kernels, communication overlap, memory management---must operate at near-peak hardware utilization.
+
+\medskip
+\noindent\textbf{Signal Dispatch Table.} The Agent~OS kernel communicates with agents through a POSIX-inspired signal mechanism (see \texttt{operatorRL/packages/control-plane/src/\allowbreak agent\_control\_plane/signals.py}). Table~\ref{tab:signals} defines the signal set.
+
+\begin{table}[h]
+\centering
+\caption{Agent~OS kernel signals. Non-maskable signals enforce governance invariants and cannot be intercepted by user-space agent code.}
+\label{tab:signals}
+\begin{tabular}{@{}lclcc@{}}
+\toprule
+\textbf{Signal} & \textbf{Value} & \textbf{Description} & \textbf{Maskable} & \textbf{Recovery} \\
+\midrule
+\texttt{SIGSTOP}   & 1 & Pause agent execution         & Yes & \texttt{SIGCONT} \\
+\texttt{SIGCONT}   & 2 & Resume agent execution         & Yes & --- \\
+\texttt{SIGINT}    & 3 & Graceful interrupt             & Yes & Restart \\
+\texttt{SIGKILL}   & 4 & Immediate termination          & \textbf{No}  & New agent \\
+\texttt{SIGTERM}   & 5 & Request shutdown               & Yes & Cleanup \\
+\texttt{SIGPOLICY} & 8 & Policy violation (Invariant~2) & \textbf{No}  & None \\
+\texttt{SIGTRUST}  & 9 & Trust violation (IATP Layer~2) & \textbf{No}  & None \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\noindent The non-maskable signals (\texttt{SIGKILL}, \texttt{SIGPOLICY}, \texttt{SIGTRUST}) are the enforcement arm of the kernel invariants. When the policy engine detects a violation---whether a blocked action, a blocked pattern match in parameters, or an inter-agent trust boundary breach---the kernel emits the appropriate signal, logs the event to the Flight Recorder, and terminates the agent. In a multi-platform training loop, this mechanism applies identically regardless of whether the agent's rollout was executing on GPU, TPU, or Trainium2: the signal dispatch operates at the governance layer, above the hardware abstraction boundary.
+
+\subsection{The Agent Lightning Daemon: Two Execution Modes}
+\label{sec:3.2.daemon}
+
+The \texttt{AgentModeDaemon} class (see \texttt{agentlightning/verl/daemon.py}, PR~\#407, commit \texttt{1d199b21}) is the bridge between Agent Lightning's agent rollout infrastructure and the VERL-based distributed training backend. It operates in two modes, selectable at initialization via the \texttt{mode} parameter:
+
+\begin{description}
+\item[\texttt{mode="v0"} (Server Mode):] The daemon runs a Flask-based HTTP server (\texttt{AgentLightningServer}) on a fixed port. Agent rollout workers communicate with the training loop via REST endpoints. An LLM proxy server runs on a separate port, intercepting model inference requests and routing them to backend vLLM/SGLang instances. This mode is suitable for single-node or small-cluster deployments where network topology is simple.
+
+\item[\texttt{mode="v1"} (Store Mode):] The daemon bypasses the HTTP server entirely and communicates through a \texttt{LightningStore} backend (with 7~implementations: memory, SQLite, MongoDB, client-server, collection-based, threaded, and base). An internal asyncio event loop runs on a daemon thread for asynchronous store operations. The \texttt{LLMProxy} and \texttt{TraceToTripletBase} adapter handle trace-to-training-data conversion. This mode is designed for large-scale distributed deployments where the store provides coordination across many training and rollout workers.
+\end{description}
+
+\noindent The daemon's \texttt{trace\_aggregator} parameter (added in PR~\#134, commit \texttt{4235731a}) controls whether rollout data is aggregated at the \emph{transition} level (individual state-action-reward tuples) or the \emph{trajectory} level (complete multi-turn episodes). This distinction is critical for agentic RL: transition-level aggregation enables per-step credit assignment but loses episode-level context; trajectory-level aggregation preserves the full decision trace but requires more memory and complicates gradient computation. The choice directly affects how the training loop interacts with the hardware memory hierarchy described in \S\ref{sec:3.2.migration.memory}---on Trainium2, trajectory-level aggregation may exceed the XLA runtime's memory planner capacity for long episodes, triggering the OOM failures documented in Issue~\#107.
+
+For the hardware migration, the daemon itself is hardware-agnostic (pure Python orchestration). The hardware-specific code paths lie in the \texttt{verl} training backend that the daemon feeds data into, and in the LLM proxy's routing to platform-specific inference servers. This separation of concerns---governance (Operator~RL kernel) $\to$ orchestration (daemon) $\to$ computation (VERL on GPU/TPU/Trainium2)---is the architectural spine of the entire system.
+
+\subsection{The OperatorRL--Agent Lightning Integration Bridge}
+\label{sec:3.2.bridge}
+
+The formal connection between the governance layer (Operator~RL) and the training loop (Agent Lightning) was established in PR~\#478 (commit \texttt{49bf9cd9}, ``Agent-OS Integration: Kernel-Level Safety for RL Training'').  The bridge operates as follows:
+
+\begin{enumerate}
+\item \textbf{Syscall Interception.} Before each rollout step, the Agent Lightning \texttt{runner} issues a kernel syscall through the Agent~OS stateless kernel (\texttt{operatorRL/src/agent\_os/stateless.py}). The syscall contains the proposed action, its parameters, and the current \texttt{ExecutionContext} (agent ID, active policies, history).
+
+\item \textbf{Policy Enforcement.} The kernel's policy engine evaluates the request against all active policies---checking blocked actions, blocked patterns (via regex over serialized parameters), and any custom constraints (e.g., the ``banking'' policy: block transfers exceeding a threshold). If any check fails, the kernel emits \texttt{SIGKILL} and the rollout step is aborted.
+
+\item \textbf{Context Propagation.} On success, the kernel returns an updated \texttt{ExecutionContext} with the action appended to the history. This context is passed back to the daemon, which incorporates it into the trace data fed to VERL for gradient computation. The trace\_aggregator determines whether this context propagates at transition or trajectory granularity.
+
+\item \textbf{VFS State.} The agent's episodic memory, working memory, and policy state are exposed through the Agent~OS Virtual File System (VFS) at mount points \texttt{/agent/\{id\}/mem/\{working,episodic,semantic\}} and \texttt{/agent/\{id\}/policy/}. The VFS is backed by pluggable storage (in-memory for testing, Redis for distributed production, DynamoDB for serverless)---mirroring the LightningStore's multiple backend strategy.
+\end{enumerate}
+
+\noindent The bridge ensures that the governance invariants (\S\ref{sec:3.2.agenticrl}) hold throughout the self-evolving training loop, even as the underlying computation migrates across hardware backends. On Trainium2, the governance checks add negligible latency (they execute in Python on the CPU host), while the kernel migration costs are entirely in the VERL training step where NKI assembly and NxD communication primitives replace their CUDA equivalents.
 
 \subsection{Why Megatron's Techniques Must Be Migrated, Not Abandoned}
 
@@ -1048,7 +1103,7 @@ The moral, echoing Chapter~3.1: \emph{optimal hardware kernel configurations are
 
 \subsection{The Cartesian Product of Debug Spaces}
 
-Maintaining optimized kernel stacks across three platforms (GPU/TPU/Trainium) simultaneously is extraordinarily expensive. If each platform has $k$ critical kernels and each kernel has $d$ potential failure modes, the total debug space is $O(3kd)$ in the best case (failures are platform-independent) and $O(3 \times k \times d)$ in the worst case (each platform has unique failure modes). In practice, the worst case is closer to reality: a bank conflict on GPU, a tiling inefficiency on TPU, and a VLIW scheduling stall on Trainium are completely different bugs requiring different debugging tools and expertise.
+Maintaining optimized kernel stacks across three platforms (GPU/TPU/Trainium) simultaneously is extraordinarily expensive. If each platform has $k$ critical kernels and each kernel has $d$ potential failure modes, the total debug space is $O(k + d)$ in the best case (failures are platform-independent and additive, so debugging one platform transfers to others) and $O(3 \cdot k \cdot d)$ in the worst case (each platform--kernel--failure-mode triple is unique, forming a Cartesian product). In practice, the worst case is closer to reality: a bank conflict on GPU, a tiling inefficiency on TPU, and a VLIW scheduling stall on Trainium are completely different bugs requiring different debugging tools and expertise.
 
 This is the ``Cartesian product'' cost described in \emph{Anthropic~WantToDoWhat}. The justification for bearing this cost is strategic: vendor independence is worth the engineering investment because it provides negotiating leverage and protects against supply chain disruptions.
 
@@ -1102,11 +1157,89 @@ NCCL & NeuronLink collectives (via NxD) \\
 Megatron-Core & neuronx-distributed (NxD) / NxD Inference \\
 NeMo Framework & neuronx-nemo-megatron (deprecated $\to$ NxDI) \\
 PTX (manual assembly) & Trainium2 ISA (manual assembly) \\
+Nsight Systems / Nsight Compute & Neuron Profile (\texttt{neuron-profile}) \\
+cuda-gdb / compute-sanitizer & \texttt{neuron-top}, \texttt{neuron-monitor} \\
 \bottomrule
 \end{tabular}
 \end{center}
 
 The key asymmetry: NVIDIA's stack is mature, deeply integrated, and supported by millions of developers. AWS's stack is younger, evolving rapidly (the Neuron SDK has released 27+ major versions in quick succession, with breaking changes between versions), and supported by a smaller but growing community. Anthropic's bet is that for the narrow vertical of AI training/inference, a small team of assembly-level experts can achieve equivalent or superior performance on Trainium2, provided they have direct ISA access---which Trainium2's open architecture grants.
+
+% ============================================================
+\section{Validation Tests for Agentic System Quality}
+\label{sec:3.3}
+% ============================================================
+
+Our primary goal is to produce agentic RL systems whose training runs, kernel configurations, and agent behavior exhibit the properties we desire. In \S\ref{sec:3.2} we established how to construct hardware-portable kernel stacks with long effective lifetimes before degeneration; this is an important criterion, but it does not guarantee that the resulting agent behavior is satisfactory for deployment. How, then, does one determine whether an agentic training run is producing sufficiently high-quality results?
+
+If a human engineer examines a sequence of training loss values, reward curves, or kernel utilization metrics, the chance of correctly identifying subtle pathologies is small. Engineers tend to overlook phenomena that \emph{appear} normal---such as a reward plateau that is actually a convergent cycle (analogous to the cycle degeneration of \S\ref{sec:3.1})---while flagging apparent anomalies that are statistically expected. Therefore, we must apply systematic, unbiased quantitative tests.
+
+Statistical theory provides us with quantitative measures of training quality. There are innumerably many conceivable tests; we shall discuss those that have proven most useful, most informative, and most amenable to automated computation within the training loop itself.
+
+If a training run passes tests $T_1, T_2, \ldots, T_n$, we cannot guarantee it will not fail under test $T_{n+1}$; but each additional passing test increases our confidence. In practice, we apply five or six different types of validation tests to each training run, and if all are satisfactorily passed, we consider the run acceptable---innocent until proven guilty.
+
+Two types of tests must be distinguished: \emph{empirical tests}, where the training infrastructure (Agent Lightning's \texttt{trace\_aggregator} and \texttt{store}) collects runtime statistics and computes validation metrics; and \emph{theoretical tests}, where the mathematical structure of the kernel configuration recurrence (\S\ref{sec:3.2}) and the RL algorithm convergence guarantees are used to predict expected behavior.
+
+\subsection{General Test Methods for Agent Training Quality}
+\label{sec:3.3.1}
+
+\noindent\textbf{A. The $\chi^2$ Test for Utilization Uniformity.}\quad The $\chi^2$ test is perhaps the most fundamental validation tool. In the agentic RL context, we apply it to three distributions:
+
+\begin{description}
+\item[(i) NeuronCore Utilization Distribution.] If the training loop distributes work across $k$~NeuronCores, each core should process approximately $n/k$ of the total $n$~training steps. Let $Y_s$ be the number of steps processed by core~$s$, and $p_s = 1/k$ be the expected fraction under uniform distribution. The $\chi^2$ statistic is
+\[
+V = \sum_{s=1}^{k} \frac{(Y_s - n/k)^2}{n/k}
+\]
+with $\nu = k-1$ degrees of freedom. A value of $V$ that falls below the $p=1\%$ percentile of the $\chi^2$ distribution indicates suspiciously uniform utilization (possible measurement error); a value above the $p=99\%$ percentile indicates a load imbalance that may arise from heterogeneous kernel performance across NeuronCores.
+
+\item[(ii) Reward Value Distribution.] Across $n$~rollout episodes, partition the reward range into $k$~equal-width bins. The distribution of observed rewards into these bins should match the expected distribution under the current policy. A significant $\chi^2$ deviation indicates either reward model miscalibration or exploration collapse (Issue~\#490).
+
+\item[(iii) Gradient Norm Distribution.] Across training steps, the distribution of per-layer gradient norms should follow a pattern consistent with the optimizer's expected behavior. Bimodal gradient distributions, detectable via $\chi^2$ on quantile bins, indicate that some layers are training while others are stalled---a symptom of mixed-precision misconfiguration that manifests differently on CUDA (NaN propagation through FP16 underflow) and Trainium2 (BF16 exponent range behavior in the matrix engine).
+\end{description}
+
+\noindent The $\chi^2$ table (reproduced from TAOCP Vol.~2, Table~3.3.1-1) provides critical values for interpreting $V$:
+
+\begin{center}
+\begin{tabular}{@{}crrrrrrr@{}}
+\toprule
+$\nu$ & $p=1\%$ & $p=5\%$ & $p=25\%$ & $p=50\%$ & $p=75\%$ & $p=95\%$ & $p=99\%$ \\
+\midrule
+1  & 0.00016 & 0.00393 & 0.1015 & 0.4549 & 1.323 & 3.841  & 6.635 \\
+2  & 0.02010 & 0.1026  & 0.5754 & 1.386  & 2.773 & 5.991  & 9.210 \\
+5  & 0.5543  & 1.1455  & 2.675  & 4.351  & 6.626 & 11.07  & 15.09 \\
+10 & 2.558   & 3.940   & 6.737  & 9.342  & 12.55 & 18.31  & 23.21 \\
+20 & 8.260   & 10.85   & 15.45  & 19.34  & 23.83 & 31.41  & 37.57 \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\noindent For a Trainium2 cluster with $k=64$ NeuronCores ($\nu=63$), the 95th percentile of $\chi^2$ is approximately $82.5$. If $V > 82.5$, the load imbalance is statistically significant at the 5\% level and warrants investigation of the NxD parallelism configuration.
+
+\subsection{Empirical Tests for Operational Health}
+\label{sec:3.3.2}
+
+The classical randomness tests from TAOCP~\S3.3.2 (run test, gap test, serial test, poker test) each have a precise analog in agentic system validation:
+
+\begin{description}
+\item[Run Test $\to$ Rollout Length Stability.] In a sequence of rollout episode lengths $\ell_1, \ell_2, \ldots, \ell_n$, a ``run up'' is a maximal subsequence $\ell_i < \ell_{i+1} < \cdots < \ell_{i+r}$. Under stable training, the distribution of run lengths should match the theoretical distribution for independent observations. Excessively long runs indicate reward drift; excessively short runs indicate policy oscillation. In Agent Lightning, the \texttt{store} backends record episode lengths, and the \texttt{trace\_aggregator} at trajectory level preserves the sequential ordering needed for this test.
+
+\item[Gap Test $\to$ Inter-Failure Interval Analysis.] If kernel failures (OOM events, NKI compilation errors, DMA timeouts) occur at steps $t_1, t_2, \ldots$, the gaps $g_i = t_{i+1} - t_i$ should follow a geometric distribution under the assumption of independent, memoryless failures. Clustering of failures (gaps shorter than expected) indicates a systematic hardware issue---on Trainium2, this may signal SBUF fragmentation or NeuronLink congestion. Issue~\#107 (server OOM during training) and Issue~\#438 (memory leak) would both be detectable via gap test anomalies.
+
+\item[Serial Test $\to$ Consecutive Action Correlation.] In the agent's action sequence $a_1, a_2, \ldots, a_n$, the serial test examines pairs $(a_i, a_{i+1})$. Under a well-trained policy with sufficient exploration, the joint distribution of consecutive actions should approximate the product of marginals (independence). High serial correlation indicates the agent is stuck in a repetitive pattern---precisely the ``exploration collapse'' of Issue~\#490. The \texttt{trace\_aggregator} at transition level provides the pair data needed for this test.
+
+\item[Poker Test $\to$ Action Diversity.] Partition the action sequence into groups of $k$~consecutive actions and classify each group by its pattern (all same, all different, one pair, etc.). The poker test compares the observed pattern frequencies against their theoretical probabilities. Low action diversity---detectable as an excess of ``all same'' or ``one pair'' patterns---indicates insufficient exploration and may signal that the GRPO or PPO advantage estimates have collapsed to near-zero variance.
+\end{description}
+
+\subsection{The Spectral Test for Kernel Schedule Analysis}
+\label{sec:3.3.4}
+
+The spectral test (TAOCP~\S3.3.4) is the most powerful theoretical test for detecting lattice structure in sequences generated by linear recurrences. In the kernel auto-tuning context, we apply it as follows.
+
+Consider a kernel auto-tuner that generates a sequence of tiling configurations $\mathbf{x}_1, \mathbf{x}_2, \ldots \in \mathbb{Z}^d$ where $d$ is the number of tunable parameters (tile dimensions, VLIW slot assignments, prefetch depths). If the auto-tuner uses a deterministic update rule $\mathbf{x}_{n+1} = f(\mathbf{x}_n)$, and if $f$ has linear structure (e.g., it is a multi-dimensional linear congruential generator), then the configurations will lie on a lattice in $\mathbb{Z}^d$.
+
+The spectral test computes the minimum distance $\nu_d$ between adjacent hyperplanes of this lattice. A small $\nu_d$ means the configurations are clustered on widely-spaced parallel hyperplanes---they fail to explore the configuration space uniformly. For the Trainium2 GEMM auto-tuner with $d=4$ parameters (M-tile, N-tile, K-tile, VLIW-pack), the spectral test reveals whether the tuner is visiting all viable tiling regions or is trapped in a low-dimensional subspace.
+
+More importantly for agentic RL: the spectral test can be applied to the \emph{policy parameter trajectory} during training. If the gradient updates cause the policy parameters to trace a path that lies on a low-dimensional lattice in parameter space, the training has degenerated into a periodic orbit---the policy is oscillating between a small number of behaviors rather than converging. This is the high-dimensional analog of the cycle degeneration detected by Floyd's algorithm in Experiment~3.1A.
 
 % ============================================================
 \section{Exercises}

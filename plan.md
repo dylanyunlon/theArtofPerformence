@@ -1416,3 +1416,21 @@ git show 19c72db6  #  empty tensor handling for failed rollouts
 # Verify: git log --all --oneline | grep -i "verl-agent\|multi-turn data\|training_rollout_async\|ray hang"
 # Returns empty — confirmed discussion-only.
 ```
+
+
+2026.3.12 10:47 update:
+10个已完成任务
+#plan.md项内容Commit1S1删除ICLR模板样板文字(826-848行)6bd9e5a2T5修正CCCL版本声明 — CCCL 3.0从未发布，实际为3.2f7981ee3T1修正大O错误 — O(3kd)和O(3×k×d)是同一表达式d5981c343P-109从kernel-internals.md形式化4个内核不变量ef29c7d53P-107从kernel-internals.md添加信号分发表3de8ae563P-1, T21替换虚构人物G. Barber/N. Patel为正确归因的实验c79517a73P-101添加daemon.py双模式架构(v0 Server / v1 Store)9fb3c8e83P-19添加operatorRL–Agent Lightning集成桥接041bb4a9S3, M1-M4添加§3.3验证测试 — 最关键缺失章节4f631d010T22, T8补全对比表的profiling/debug行；定义SBUF/PSUM4ee4d1c
+
+并行的10个任务建议
+
+S7: 确保 \end{document} 存在且格式正确
+S6/3P-17: 创建 references.bib 并添加 \cite{} 命令
+S10: 对§3.2.1到§3.2.1.3中的纯数论证明加上正确Knuth归因，替换为kernel schedule periodicity的新定理
+T3: 补充Virtual Pipeline Parallelism (interleaved 1F1B)
+T6: 补充GPSIMD engine描述
+T12/T13: 标记"Trainium assembly"为伪代码或重写为VLIW格式
+A2: 修正1/3 deployment risk为非对称分析
+M6: 添加多轮agent RL信用分配章节
+E8: 重新校准习题难度等级
+3P-100: 添加系统架构TikZ图
