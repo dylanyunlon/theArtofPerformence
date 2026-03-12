@@ -44,6 +44,10 @@
 
 \maketitle
 
+\begin{abstract}
+This chapter develops the theory and practice of hardware-aware agent training by transposing the structure of Knuth's analysis of random number generation (TAOCP Vol.~2, Ch.~3) onto the domain of agentic reinforcement learning systems with heterogeneous accelerator backends. \S\ref{sec:3.1} introduces the problem: why assembly-level kernel optimization is necessary for self-deploying, self-evolving agent systems. \S\ref{sec:3.2} constructs the migration map from NVIDIA's Megatron-LM ecosystem to AWS Trainium2, analyzing each layer---parallelism primitives, fused kernels, communication overlap, memory management---and identifying the CCCL/DIA project's position in the NVIDIA fortress. \S\ref{sec:3.3} provides validation tests (chi-square, run test, spectral test, credit assignment) for assessing agentic training quality on heterogeneous hardware. The technical substrate is drawn from two open-source projects: \texttt{operatorRL} (kernel-level agent governance) and \texttt{agent-lightning} (RL training framework with VERL backend).
+\end{abstract}
+
 
 %% ================================================================
 %% SECTION 3.1 — INTRODUCTION
