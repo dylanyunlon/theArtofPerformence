@@ -1,0 +1,165 @@
+% ==================================================================
+% references.bib — Bibliography for The Art of Agentic Systems Programming
+% ==================================================================
+
+@book{knuth1997taocp2,
+  author    = {Donald E. Knuth},
+  title     = {The Art of Computer Programming, Volume 2: Seminumerical Algorithms},
+  edition   = {3rd},
+  publisher = {Addison-Wesley},
+  year      = {1997},
+  isbn      = {978-0-201-89684-8}
+}
+
+@article{shoeybi2019megatron,
+  author    = {Mohammad Shoeybi and Mostofa Patwary and Raul Puri and Patrick LeGresley and Jared Casper and Bryan Catanzaro},
+  title     = {Megatron-{LM}: Training Multi-Billion Parameter Language Models Using Model Parallelism},
+  journal   = {arXiv preprint arXiv:1909.08053},
+  year      = {2019}
+}
+
+@inproceedings{narayanan2021virtual,
+  author    = {Deepak Narayanan and Mohammad Shoeybi and Jared Casper and Patrick LeGresley and Mostofa Patwary and Vijay Korthikanti and Dmitri Vainbrand and Prethvi Kashinkunti and Julie Bernauer and Bryan Catanzaro and Amar Phanishayee and Matei Zaharia},
+  title     = {Efficient Large-Scale Language Model Training on {GPU} Clusters Using {Megatron-LM}},
+  booktitle = {Proceedings of the International Conference for High Performance Computing, Networking, Storage and Analysis (SC)},
+  year      = {2021}
+}
+
+@article{korthikanti2023megatronsp,
+  author    = {Vijay Korthikanti and Jared Casper and Sangkug Lym and Lawrence McAfee and Michael Andersch and Mohammad Shoeybi and Bryan Catanzaro},
+  title     = {Reducing Activation Recomputation in Large Transformer Models},
+  journal   = {Proceedings of Machine Learning and Systems (MLSys)},
+  volume    = {5},
+  year      = {2023}
+}
+
+@article{dao2022flashattention,
+  author    = {Tri Dao and Daniel Y. Fu and Stefano Ermon and Atri Rudra and Christopher R\'{e}},
+  title     = {{FlashAttention}: Fast and Memory-Efficient Exact Attention with {IO}-Awareness},
+  journal   = {Advances in Neural Information Processing Systems (NeurIPS)},
+  volume    = {35},
+  year      = {2022}
+}
+
+@article{dao2023flashattention2,
+  author    = {Tri Dao},
+  title     = {{FlashAttention-2}: Faster Attention with Better Parallelism and Work Partitioning},
+  journal   = {arXiv preprint arXiv:2307.08691},
+  year      = {2023}
+}
+
+@article{schulman2017ppo,
+  author    = {John Schulman and Filip Wolski and Prafulla Dhariwal and Alec Radford and Oleg Klimov},
+  title     = {Proximal Policy Optimization Algorithms},
+  journal   = {arXiv preprint arXiv:1707.06347},
+  year      = {2017}
+}
+
+@article{shao2024deepseekmath,
+  author    = {Zhihong Shao and Peiyi Wang and Qihao Zhu and Runxin Xu and Junxiao Song and Xiao Bi and Haowei Zhang and Mingchuan Zhang and Y. K. Li and Y. Wu and Daya Guo},
+  title     = {{DeepSeekMath}: Pushing the Limits of Mathematical Reasoning in Open Language Models},
+  journal   = {arXiv preprint arXiv:2402.03300},
+  year      = {2024}
+}
+
+@article{lehmer1951lcg,
+  author    = {Derrick H. Lehmer},
+  title     = {Mathematical Methods in Large-Scale Computing Units},
+  journal   = {Annals of the Computation Laboratory of Harvard University},
+  volume    = {26},
+  pages     = {141--146},
+  year      = {1951}
+}
+
+@misc{semianalysis2024trainium2,
+  author    = {Dylan Patel and Daniel Nishball},
+  title     = {Amazon's {AI} Self-Sufficiency --- {Trainium2} Architecture, Networking},
+  howpublished = {SemiAnalysis Newsletter},
+  year      = {2024},
+  url       = {https://newsletter.semianalysis.com/p/amazons-ai-self-sufficiency-trainium2-architecture-networking}
+}
+
+@misc{awsneuron2025nki,
+  author    = {{AWS Neuron Team}},
+  title     = {Neuron Kernel Interface ({NKI}) Programming Guide},
+  howpublished = {AWS Documentation},
+  year      = {2025},
+  url       = {https://awsdocs-neuron.readthedocs-hosted.com/en/latest/general/nki/index.html}
+}
+
+% --- Additional references needed by the text but not yet cited ---
+
+@inproceedings{sheng2023grpo,
+  author    = {Zhihong Shao and Peiyi Wang and Qihao Zhu and Runxin Xu and Junxiao Song and Mingchuan Zhang and Y. K. Li and Y. Wu and Daya Guo},
+  title     = {Group Relative Policy Optimization ({GRPO})},
+  booktitle = {DeepSeekMath Technical Report},
+  year      = {2024},
+  note      = {GRPO is the primary RL algorithm in Agent Lightning's VERL backend}
+}
+
+@inproceedings{kwon2023vllm,
+  author    = {Woosuk Kwon and Zhuohan Li and Siyuan Zhuang and Ying Sheng and Lianmin Zheng and Chhavi P. Yadav and Luke Zettlemoyer and Ion Stoica},
+  title     = {Efficient Memory Management for Large Language Model Serving with {PagedAttention}},
+  booktitle = {Proceedings of the ACM SIGOPS 29th Symposium on Operating Systems Principles (SOSP)},
+  year      = {2023}
+}
+
+@misc{nvidia2024cccl,
+  author    = {{NVIDIA Corporation}},
+  title     = {{CUDA} {C}++ Core Libraries ({CCCL})},
+  howpublished = {GitHub: \url{https://github.com/NVIDIA/cccl}},
+  year      = {2024},
+  note      = {DIA project board: \url{https://github.com/orgs/NVIDIA/projects/6}}
+}
+
+@misc{aws2025nxd,
+  author    = {{AWS Neuron Team}},
+  title     = {{neuronx-distributed} ({NxD}): Distributed Training on {Trainium}},
+  howpublished = {GitHub: \url{https://github.com/aws-neuron/neuronx-distributed}},
+  year      = {2025}
+}
+
+@misc{agentlightning2025,
+  author    = {{Microsoft Research}},
+  title     = {Agent Lightning: A Framework for Training {LLM} Agents with Reinforcement Learning},
+  howpublished = {GitHub: \url{https://github.com/microsoft/agent-lightning}},
+  year      = {2025}
+}
+
+@misc{operatorrl2025,
+  author    = {{OperatorRL Contributors}},
+  title     = {Operator {RL}: Agent Operating System with Kernel-Level Governance},
+  howpublished = {GitHub: \url{https://github.com/dylanyunlon/operatorRL}},
+  year      = {2025}
+}
+
+@article{brent1980cycle,
+  author    = {Richard P. Brent},
+  title     = {An Improved {Monte Carlo} Factorization Algorithm},
+  journal   = {BIT Numerical Mathematics},
+  volume    = {20},
+  number    = {2},
+  pages     = {176--184},
+  year      = {1980},
+  note      = {Contains the cycle detection algorithm referenced in \S3.1 Exercise~7}
+}
+
+@article{hull1962lcg,
+  author    = {T. E. Hull and A. R. Dobell},
+  title     = {Random Number Generators},
+  journal   = {SIAM Review},
+  volume    = {4},
+  number    = {3},
+  pages     = {230--254},
+  year      = {1962}
+}
+
+@article{greenberger1961lcg,
+  author    = {Martin Greenberger},
+  title     = {An A Priori Determination of Serial Correlation in Computer Generated Random Numbers},
+  journal   = {Mathematics of Computation},
+  volume    = {15},
+  number    = {76},
+  pages     = {383--389},
+  year      = {1961}
+}
