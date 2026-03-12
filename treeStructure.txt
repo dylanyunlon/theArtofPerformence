@@ -1,0 +1,653 @@
+(base) jiacheng@ags1:/data/jiacheng/system/cache/temp/anthropics/agent-lightning$ tree
+.
+├── agentlightning
+│   ├── adapter
+│   │   ├── base.py
+│   │   ├── __init__.py
+│   │   ├── messages.py
+│   │   └── triplet.py
+│   ├── algorithm
+│   │   ├── apo
+│   │   │   ├── apo.py
+│   │   │   ├── __init__.py
+│   │   │   └── prompts
+│   │   │       ├── apply_edit_variant01.poml
+│   │   │       ├── apply_edit_variant02.poml
+│   │   │       ├── text_gradient_variant01.poml
+│   │   │       ├── text_gradient_variant02.poml
+│   │   │       └── text_gradient_variant03.poml
+│   │   ├── base.py
+│   │   ├── decorator.py
+│   │   ├── fast.py
+│   │   ├── __init__.py
+│   │   ├── utils.py
+│   │   └── verl
+│   │       ├── __init__.py
+│   │       └── interface.py
+│   ├── cli
+│   │   ├── __init__.py
+│   │   ├── prometheus.py
+│   │   ├── store.py
+│   │   └── vllm.py
+│   ├── client.py
+│   ├── config.py
+│   ├── emitter
+│   │   ├── annotation.py
+│   │   ├── exception.py
+│   │   ├── __init__.py
+│   │   ├── message.py
+│   │   ├── object.py
+│   │   └── reward.py
+│   ├── env_var.py
+│   ├── execution
+│   │   ├── base.py
+│   │   ├── client_server.py
+│   │   ├── events.py
+│   │   ├── __init__.py
+│   │   ├── inter_process.py
+│   │   └── shared_memory.py
+│   ├── __init__.py
+│   ├── instrumentation
+│   │   ├── agentops_langchain.py
+│   │   ├── agentops.py
+│   │   ├── __init__.py
+│   │   ├── litellm.py
+│   │   ├── vllm.py
+│   │   └── weave.py
+│   ├── litagent
+│   │   ├── decorator.py
+│   │   ├── __init__.py
+│   │   └── litagent.py
+│   ├── llm_proxy.py
+│   ├── logging.py
+│   ├── reward.py
+│   ├── runner
+│   │   ├── agent.py
+│   │   ├── base.py
+│   │   ├── __init__.py
+│   │   └── legacy.py
+│   ├── semconv.py
+│   ├── server.py
+│   ├── store
+│   │   ├── base.py
+│   │   ├── client_server.py
+│   │   ├── collection
+│   │   │   ├── base.py
+│   │   │   ├── __init__.py
+│   │   │   ├── memory.py
+│   │   │   └── mongo.py
+│   │   ├── collection_based.py
+│   │   ├── __init__.py
+│   │   ├── memory.py
+│   │   ├── mongo.py
+│   │   ├── sqlite.py
+│   │   ├── threading.py
+│   │   └── utils.py
+│   ├── tracer
+│   │   ├── agentops.py
+│   │   ├── base.py
+│   │   ├── dummy.py
+│   │   ├── __init__.py
+│   │   ├── otel.py
+│   │   └── weave.py
+│   ├── trainer
+│   │   ├── __init__.py
+│   │   ├── init_utils.py
+│   │   ├── legacy.py
+│   │   ├── registry.py
+│   │   └── trainer.py
+│   ├── types
+│   │   ├── core.py
+│   │   ├── __init__.py
+│   │   ├── resources.py
+│   │   └── tracer.py
+│   ├── utils
+│   │   ├── id.py
+│   │   ├── __init__.py
+│   │   ├── metrics.py
+│   │   ├── otel.py
+│   │   ├── otlp.py
+│   │   ├── server_launcher.py
+│   │   └── system_snapshot.py
+│   └── verl
+│       ├── async_server.py
+│       ├── config.yaml
+│       ├── daemon.py
+│       ├── dataset.py
+│       ├── entrypoint.py
+│       ├── __init__.py
+│       ├── __main__.py
+│       └── trainer.py
+├── AGENTS.md
+├── CLAUDE.md -> AGENTS.md
+├── contrib
+│   ├── agentlightning
+│   │   └── contrib
+│   │       ├── adapter
+│   │       │   ├── agentos.py
+│   │       │   ├── __init__.py
+│   │       │   └── triplet_group.py
+│   │       ├── agent
+│   │       │   └── env_agent.py
+│   │       ├── algorithm
+│   │       │   └── env_verl
+│   │       │       ├── daemon.py
+│   │       │       └── trainer.py
+│   │       ├── __init__.py
+│   │       ├── reward
+│   │       │   ├── agentos.py
+│   │       │   └── __init__.py
+│   │       └── runner
+│   │           ├── agentos.py
+│   │           └── __init__.py
+│   ├── CODEOWNERS
+│   ├── README.md
+│   └── recipes
+│       ├── agentos
+│       │   ├── demo_governed_training.py
+│       │   └── README.md
+│       ├── envs
+│       │   ├── add_instruction.py
+│       │   ├── assets
+│       │   │   └── prompt_type.png
+│       │   ├── config_env
+│       │   │   ├── alfworld.yaml
+│       │   │   └── scienceworld.yaml
+│       │   ├── config_verl
+│       │   │   ├── alfworld
+│       │   │   │   └── grpo.yaml
+│       │   │   └── scienceworld
+│       │   │       └── grpo.yaml
+│       │   ├── install_agl.sh
+│       │   ├── prompt_builder.py
+│       │   ├── README.md
+│       │   └── train_env_agent.py
+│       ├── search_r1
+│       │   ├── data_process.sh
+│       │   ├── qa_em.py
+│       │   ├── README.md
+│       │   ├── retrieval_launch.sh
+│       │   ├── retrieval_server.py
+│       │   ├── search_r1_agent.py
+│       │   └── train_search_r1_agent.py
+│       └── webshop
+│           ├── agl
+│           │   ├── config.py
+│           │   ├── generate_tasks.py
+│           │   ├── __init__.py
+│           │   ├── requirements.txt
+│           │   ├── run_training.py
+│           │   ├── sample_tasks.json
+│           │   ├── tasks.py
+│           │   └── webshop_tasks.json
+│           ├── aml
+│           │   ├── compute.yml
+│           │   ├── jobs
+│           │   │   └── webshop-qwen.yml
+│           │   └── run_webshop_aml.sh
+│           ├── Dockerfile
+│           ├── Makefile
+│           ├── package.json
+│           ├── pnpm-lock.yaml
+│           ├── README.md
+│           ├── scripts
+│           │   ├── headless-runner.ts
+│           │   └── run_stack.sh
+│           ├── server
+│           │   ├── requirements.txt
+│           │   └── webshop_server.py
+│           ├── src
+│           │   ├── agent
+│           │   │   ├── prompts.ts
+│           │   │   └── webshop-agent.ts
+│           │   ├── data
+│           │   │   └── sample-tasks.ts
+│           │   ├── environment
+│           │   │   ├── index.ts
+│           │   │   ├── types.ts
+│           │   │   └── webshop-server.ts
+│           │   └── utils
+│           │       └── agentlightning
+│           │           ├── index.ts
+│           │           ├── otel.ts
+│           │           ├── proxy-llm.ts
+│           │           ├── store-client.ts
+│           │           └── types.ts
+│           ├── tests
+│           │   ├── conftest.py
+│           │   ├── __init__.py
+│           │   ├── test_span_adapter.py
+│           │   └── test_store_integration.py
+│           ├── tsconfig.json
+│           └── tsup.config.ts
+├── dashboard
+│   ├── eslint.config.js
+│   ├── package.json
+│   ├── package-lock.json
+│   ├── postcss.config.cjs
+│   ├── public
+│   │   ├── index.html
+│   │   └── main.tsx
+│   ├── README.md
+│   ├── src
+│   │   ├── App.tsx
+│   │   ├── components
+│   │   │   ├── AppAlertBanner.story.tsx
+│   │   │   ├── AppAlertBanner.tsx
+│   │   │   ├── AppDrawer.component.tsx
+│   │   │   ├── AppDrawer.story.tsx
+│   │   │   ├── ResourcesTable.component.tsx
+│   │   │   ├── ResourcesTable.story.tsx
+│   │   │   ├── ResourcesTree.component.tsx
+│   │   │   ├── ResourcesTree.story.tsx
+│   │   │   ├── RolloutTable.component.tsx
+│   │   │   ├── RolloutTable.story.tsx
+│   │   │   ├── TracesTable.component.tsx
+│   │   │   ├── TracesTable.story.tsx
+│   │   │   ├── WorkersTable.component.tsx
+│   │   │   └── WorkersTable.story.tsx
+│   │   ├── cssVariableResolver.ts
+│   │   ├── favicon.svg
+│   │   ├── features
+│   │   │   ├── config
+│   │   │   │   ├── index.ts
+│   │   │   │   ├── selectors.ts
+│   │   │   │   └── slice.ts
+│   │   │   ├── resources
+│   │   │   │   ├── index.ts
+│   │   │   │   ├── resources.test.ts
+│   │   │   │   ├── selectors.ts
+│   │   │   │   └── slice.ts
+│   │   │   ├── rollouts
+│   │   │   │   ├── api.ts
+│   │   │   │   ├── index.ts
+│   │   │   │   ├── rollouts.test.ts
+│   │   │   │   ├── selectors.ts
+│   │   │   │   └── slice.ts
+│   │   │   ├── traces
+│   │   │   │   ├── index.ts
+│   │   │   │   ├── selectors.ts
+│   │   │   │   ├── slice.ts
+│   │   │   │   └── traces.test.ts
+│   │   │   ├── ui
+│   │   │   │   ├── alert
+│   │   │   │   │   ├── index.ts
+│   │   │   │   │   ├── selectors.ts
+│   │   │   │   │   └── slice.ts
+│   │   │   │   └── drawer
+│   │   │   │       ├── index.ts
+│   │   │   │       ├── selectors.ts
+│   │   │   │       └── slice.ts
+│   │   │   └── workers
+│   │   │       ├── index.ts
+│   │   │       ├── selectors.ts
+│   │   │       ├── slice.ts
+│   │   │       └── workers.test.ts
+│   │   ├── layouts
+│   │   │   ├── AppLayout.story.tsx
+│   │   │   ├── AppLayout.tsx
+│   │   │   └── helper.ts
+│   │   ├── main.tsx
+│   │   ├── pages
+│   │   │   ├── Resources.page.story.tsx
+│   │   │   ├── Resources.page.tsx
+│   │   │   ├── Rollouts.page.story.tsx
+│   │   │   ├── Rollouts.page.tsx
+│   │   │   ├── Settings.page.story.tsx
+│   │   │   ├── Settings.page.tsx
+│   │   │   ├── Traces.page.story.tsx
+│   │   │   ├── Traces.page.tsx
+│   │   │   ├── Workers.page.story.tsx
+│   │   │   └── Workers.page.tsx
+│   │   ├── Router.tsx
+│   │   ├── store
+│   │   │   ├── hooks.ts
+│   │   │   └── index.ts
+│   │   ├── styles
+│   │   │   ├── app.css
+│   │   │   └── theme.css
+│   │   ├── theme.ts
+│   │   ├── types.ts
+│   │   ├── utils
+│   │   │   ├── error.ts
+│   │   │   ├── format.ts
+│   │   │   ├── mock.test.ts
+│   │   │   ├── mock.ts
+│   │   │   └── table.ts
+│   │   └── vite-env.d.ts
+│   ├── static
+│   │   └── mockServiceWorker.js
+│   ├── test-utils
+│   │   ├── index.ts
+│   │   ├── python-server.py
+│   │   ├── render.tsx
+│   │   └── server.ts
+│   ├── tsconfig.json
+│   ├── vite.config.mjs
+│   ├── vitest.global-setup.mjs
+│   ├── vitest.setup.mjs
+│   └── vitest.shims.d.ts
+├── docker
+│   ├── compose.grafana.yml
+│   ├── compose.mongo.yml
+│   ├── compose.prometheus-memory-store.yml
+│   ├── compose.prometheus-mongo-store.yml
+│   ├── compose.store.yml
+│   ├── Dockerfile.dev
+│   ├── grafana
+│   │   ├── dashboard-provider.yml
+│   │   ├── dashboards
+│   │   │   ├── 1860_rev42.json
+│   │   │   ├── 20192_rev1.json
+│   │   │   └── agentlightning.json
+│   │   └── datasource.yml
+│   ├── prometheus
+│   │   ├── prometheus.base.yml
+│   │   └── prometheus.mongo.yml
+│   └── setup.sh
+├── docs
+│   ├── algorithm-zoo
+│   │   ├── apo.md
+│   │   ├── index.md
+│   │   └── verl.md
+│   ├── assets
+│   │   ├── agentops-waterfall-visualization.jpg
+│   │   ├── dashboard-page-rollouts.png
+│   │   ├── dashboard-page-traces.png
+│   │   ├── execution-bundles.svg
+│   │   ├── favicon-2x.png
+│   │   ├── favicon-4x.png
+│   │   ├── favicon-black.svg
+│   │   ├── favicon.png
+│   │   ├── favicon.svg
+│   │   ├── favicon-white.svg
+│   │   ├── logo-dark.png
+│   │   ├── logo-light.png
+│   │   ├── opentelemetry-trace.jpg
+│   │   ├── readme-architecture.svg
+│   │   ├── readme-banner.svg
+│   │   ├── readme-diff.svg
+│   │   ├── sql-agent-diff.png
+│   │   ├── sql-agent-val-reward-curve.png
+│   │   ├── store-api-visualized.svg
+│   │   ├── store-openapi.json
+│   │   └── tasks-spans-loop.svg
+│   ├── changelog.md
+│   ├── community
+│   │   ├── contributing.md
+│   │   └── maintainers.md
+│   ├── deep-dive
+│   │   ├── birds-eye-view.md
+│   │   ├── serving-llm.md
+│   │   └── store.md
+│   ├── how-to
+│   │   ├── examples-catalog.md
+│   │   ├── train-first-agent.md
+│   │   ├── train-sql-agent.md
+│   │   ├── unsloth-sft.md
+│   │   └── write-first-algorithm.md
+│   ├── index.md
+│   ├── javascripts
+│   │   ├── charts.js
+│   │   ├── katex.js
+│   │   └── move-source-file.js
+│   ├── macros
+│   │   └── source_links.py
+│   ├── overrides
+│   │   ├── main.html
+│   │   └── partials
+│   │       └── content.html
+│   ├── reference
+│   │   ├── agent.md
+│   │   ├── algorithm.md
+│   │   ├── cli.md
+│   │   ├── instrumentation.md
+│   │   ├── internal.md
+│   │   ├── restful.md
+│   │   ├── runner.md
+│   │   ├── semconv.md
+│   │   ├── store.md
+│   │   ├── trainer.md
+│   │   ├── types.md
+│   │   └── utilities.md
+│   ├── stylesheets
+│   │   └── extra.css
+│   └── tutorials
+│       ├── debug.md
+│       ├── emitter.md
+│       ├── installation.md
+│       ├── parallelize.md
+│       ├── traces.md
+│       └── write-agents.md
+├── examples
+│   ├── apo
+│   │   ├── apo_custom_algorithm.py
+│   │   ├── apo_custom_algorithm_trainer.py
+│   │   ├── apo_debug.py
+│   │   ├── legacy_apo_client.py
+│   │   ├── legacy_apo_server.py
+│   │   ├── README.md
+│   │   ├── room_selector_apo.py
+│   │   ├── room_selector.py
+│   │   └── room_tasks.jsonl
+│   ├── azure
+│   │   ├── aoai_finetune.py
+│   │   ├── assets
+│   │   │   └── aoai_finetune.svg
+│   │   ├── capital_agent.py
+│   │   ├── capital_samples.csv
+│   │   ├── README.md
+│   │   ├── tests
+│   │   │   └── test_deployment.py
+│   │   └── train_capital_agent.py
+│   ├── calc_x
+│   │   ├── calc_agent.py
+│   │   ├── eval_utils.py
+│   │   ├── legacy_calc_agent_debug.py
+│   │   ├── legacy_calc_agent.py
+│   │   ├── legacy_train.sh
+│   │   ├── README.md
+│   │   ├── tests
+│   │   │   ├── test_agentops.py
+│   │   │   └── test_mcp_calculator.py
+│   │   └── train_calc_agent.py
+│   ├── chartqa
+│   │   ├── chartqa_agent.py
+│   │   ├── debug_chartqa_agent.py
+│   │   ├── env_var.py
+│   │   ├── multimodal_utils.py
+│   │   ├── prepare_data.py
+│   │   ├── prompts.py
+│   │   ├── README.md
+│   │   └── train_chartqa_agent.py
+│   ├── claude_code
+│   │   ├── claude_code_agent.py
+│   │   ├── claude_code_controller.py
+│   │   ├── extended_adapter.py
+│   │   ├── README.md
+│   │   ├── swebench_samples.jsonl
+│   │   ├── swebench_utils
+│   │   │   ├── docker_runtime.py
+│   │   │   ├── evaluation.py
+│   │   │   ├── __init__.py
+│   │   │   └── logging.py
+│   │   └── templates
+│   │       ├── handle_hook.template.sh
+│   │       └── settings.template.json
+│   ├── minimal
+│   │   ├── llm_proxy.py
+│   │   ├── README.md
+│   │   ├── vllm_server.py
+│   │   ├── write_metrics.py
+│   │   └── write_traces.py
+│   ├── rag
+│   │   ├── metric_utils.py
+│   │   ├── rag_agent.py
+│   │   ├── README.md
+│   │   ├── train_rag.py
+│   │   └── wiki_retriever_mcp.py
+│   ├── README.md
+│   ├── spider
+│   │   ├── README.md
+│   │   ├── spider_eval
+│   │   │   ├── async_utils.py
+│   │   │   ├── convert_dataset.py
+│   │   │   ├── evaluation.py
+│   │   │   ├── exec_eval.py
+│   │   │   ├── __init__.py
+│   │   │   ├── parse.py
+│   │   │   └── process_sql.py
+│   │   ├── sql_agent.py
+│   │   └── train_sql_agent.py
+│   ├── tinker
+│   │   ├── agl_tinker
+│   │   │   ├── algo.py
+│   │   │   ├── env.py
+│   │   │   ├── __init__.py
+│   │   │   ├── llm.py
+│   │   │   ├── rollout.py
+│   │   │   └── train.py
+│   │   ├── hello.py
+│   │   ├── q20_agent.py
+│   │   ├── q20_evaluate.py
+│   │   ├── q20_nouns.csv
+│   │   ├── q20_train.py
+│   │   ├── README.md
+│   │   └── tests
+│   │       ├── __init__.py
+│   │       └── test_tinker_llm.py
+│   └── unsloth
+│       ├── data_gsmhard.jsonl
+│       ├── math_agent.py
+│       ├── README.md
+│       ├── sft_algorithm.py
+│       ├── sft_allinone.py
+│       ├── sft_rollout_runners.py
+│       └── unsloth_helper.py
+├── LICENSE
+├── mkdocs.yml
+├── pyproject.toml
+├── pyrightconfig.fast.json
+├── pyrightconfig.json
+├── RAI_README.md
+├── README.md
+├── scripts
+│   ├── badge_aggregation.js
+│   ├── base.Dockerfile
+│   ├── build_vm_image.sh
+│   ├── bump_version.sh
+│   ├── check_headers.py
+│   ├── cleanup_aoai.py
+│   ├── cleanup.sh
+│   ├── export_openapi.py
+│   ├── litellm_ci.yaml
+│   ├── litellm_run.sh
+│   ├── litellm_sanity_check.py
+│   ├── mongodb_docker_run.sh
+│   ├── mongodb_init_rs_host.js
+│   ├── mongodb_init_rs_profiling.js
+│   ├── restart_ray.sh
+│   ├── setup_latest_gpu.sh
+│   ├── setup_latest.sh
+│   ├── setup_stable_gpu.sh
+│   ├── setup_stable.sh
+│   ├── setup_type_checking.sh
+│   ├── validate_example_wandb.py
+│   └── wandb_download_result.py
+├── SECURITY.md
+├── tests
+│   ├── adapter
+│   │   ├── __init__.py
+│   │   ├── test_llm_proxy.py
+│   │   ├── test_messages_adapter.py
+│   │   └── test_triplet_trace_tree.py
+│   ├── algorithm
+│   │   ├── __init__.py
+│   │   ├── test_apo.py
+│   │   ├── test_baseline.py
+│   │   ├── test_decorator.py
+│   │   └── test_utils.py
+│   ├── assets
+│   │   ├── chinook.db
+│   │   └── prompt_caches.jsonl
+│   ├── benchmark
+│   │   ├── analysis.py
+│   │   ├── benchmark_store.py
+│   │   ├── collection_benchmark.py
+│   │   ├── micro_benchmark.py
+│   │   └── utils.py
+│   ├── common
+│   │   ├── __init__.py
+│   │   ├── network.py
+│   │   ├── prometheus_stub.py
+│   │   ├── tracer.py
+│   │   └── vllm.py
+│   ├── emitter
+│   │   ├── __init__.py
+│   │   ├── test_annotation.py
+│   │   ├── test_exception.py
+│   │   ├── test_message.py
+│   │   ├── test_object.py
+│   │   ├── test_operation.py
+│   │   └── test_reward.py
+│   ├── execution
+│   │   ├── __init__.py
+│   │   ├── test_client_server.py
+│   │   └── test_shared_memory.py
+│   ├── __init__.py
+│   ├── instrumentation
+│   │   └── test_agentops.py
+│   ├── litagent
+│   │   ├── __init__.py
+│   │   ├── test_decorator.py
+│   │   └── test_resources.py
+│   ├── llm_proxy
+│   │   ├── __init__.py
+│   │   ├── test_llm_proxy_cpu.py
+│   │   ├── test_llm_proxy_gpu.py
+│   │   └── test_stream.py
+│   ├── runner
+│   │   ├── __init__.py
+│   │   ├── test_agent_integration.py
+│   │   ├── test_agent_runner.py
+│   │   └── test_runner_context.py
+│   ├── store
+│   │   ├── conftest.py
+│   │   ├── dummy_store.py
+│   │   ├── __init__.py
+│   │   ├── test_client_server.py
+│   │   ├── test_collection.py
+│   │   ├── test_core.py
+│   │   ├── test_restful.py
+│   │   ├── test_threading.py
+│   │   └── test_utils.py
+│   ├── test_client.py
+│   ├── test_config.py
+│   ├── test_env_var.py
+│   ├── test_logging.py
+│   ├── tracer
+│   │   ├── __init__.py
+│   │   ├── test_agentops.py
+│   │   ├── test_dummy.py
+│   │   ├── test_integration.py
+│   │   ├── test_otel.py
+│   │   └── test_weave.py
+│   ├── trainer
+│   │   ├── __init__.py
+│   │   ├── sample_components.py
+│   │   ├── test_init_utils.py
+│   │   ├── test_trainer_dev.py
+│   │   └── test_trainer_init.py
+│   ├── types
+│   │   └── __init__.py
+│   └── utils
+│       ├── __init__.py
+│       ├── test_metrics.py
+│       ├── test_otel.py
+│       ├── test_otlp.py
+│       ├── test_server_launcher.py
+│       └── test_system_snapshot.py
+└── uv.lock
+
+124 directories, 524 files
+(base) jiacheng@ags1:/data/jiacheng/system/cache/temp/anthropics/agent-lightning$ 

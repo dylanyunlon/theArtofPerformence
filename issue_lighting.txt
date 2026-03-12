@@ -1,0 +1,1081 @@
+
+microsoft
+agent-lightning
+Repository navigation
+Code
+Issues
+87
+ (87)
+Pull requests
+51
+ (51)
+Agents
+Actions
+Models
+Security
+Insights
+👋 Want to contribute to microsoft/agent-lightning?
+If you have a bug or an idea, read the contributing guidelines before opening an issue.
+Agent Lightning WeChat Discuss Group
+#236 · lunaqiu opened on Oct 29, 2025
+4
+Agent Lightning Backlog Tracker
+#71 · lunaqiu opened on Aug 25, 2025
+3
+Issues
+Search Issues
+is:issue state:open 
+Search results
+Open
+87
+ (87)
+Closed
+60
+ (60)
+calc-x example fails on next
+bug
+Something isn't working
+Status: Open.
+#498 In microsoft/agent-lightning;· ultmaster opened last week
+ultmaster
+pyright on lint next fails
+bug
+Something isn't working
+Status: Open.
+#496 In microsoft/agent-lightning;· ultmaster opened last week
+ultmaster
+Release EMPO2 checkpoints on Hugging Face
+examples
+question
+Question about a feature or some usage
+Status: Open.
+#495 In microsoft/agent-lightning;· NielsRogge opened last week
+RayPPOTrainer._dump_generations() missing gts argument in _train_step call
+bug
+Something isn't working
+verl
+Status: Open.
+#492 In microsoft/agent-lightning;· yunkai-yyk opened 3 weeks ago
+Exploration collapse: agents converge to fixed policies, losing novel behavior discovery
+enhancement
+New feature or request
+Status: Open.
+#490 In microsoft/agent-lightning;· Finanzgoblin opened 3 weeks ago
+GRPO grouping in multi-turn agent RL: is it valid to mix samples with different prompts in the same group?
+question
+Question about a feature or some usage
+verl
+Status: Open.
+#489 In microsoft/agent-lightning;· yangdongdong2000 opened 3 weeks ago
+1
+comment
+Encountered a problem "Unclosed client session"
+bug
+Something isn't working
+examples
+topic/rag
+Status: Open.
+#471 In microsoft/agent-lightning;· wolf-yang opened on Feb 1
+1
+comment
+Any examples using local models/OpenRouter?
+question
+Question about a feature or some usage
+Status: Open.
+#470 In microsoft/agent-lightning;· asmith26 opened on Jan 30
+1
+comment
+Which hyper-parameters in the standard VERL configuration do not take effect?
+documentation
+Improvements or additions to documentation
+enhancement
+New feature or request
+help wanted
+Extra hands from community will be appreciated
+Status: Open.
+#464 In microsoft/agent-lightning;· dalek-who opened on Jan 23
+1
+comment
+about llm endpoint
+proxy
+question
+Question about a feature or some usage
+verl
+Status: Open.
+#456 In microsoft/agent-lightning;· kyk666123 opened on Jan 20
+2
+comments
+how to use verl-recipe
+examples
+question
+Question about a feature or some usage
+verl
+Status: Open.
+#455 In microsoft/agent-lightning;· ZaymeShaw opened on Jan 19
+1
+comment
+The reward on the validation set of the CALX example has been staying around 0.5 and is unable to improve or increase.
+examples
+question
+Question about a feature or some usage
+Status: Open.
+#454 In microsoft/agent-lightning;· johnson7788 opened on Jan 19
+1
+comment
+RFC: Integrate Slime RL backend into Agent Lightning (tinker-style service vs native integration)
+enhancement
+New feature or request
+help wanted
+Extra hands from community will be appreciated
+Status: Open.
+#453 In microsoft/agent-lightning;· syeehyn opened on Jan 17
+1
+comment
+aboue "Cannot log to store."
+tracer
+waiting for reply
+Status: Open.
+#449 In microsoft/agent-lightning;· kyk666123 opened on Jan 14
+5
+comments
+How to deal with failed rollouts?
+documentation
+Improvements or additions to documentation
+help wanted
+Extra hands from community will be appreciated
+question
+Question about a feature or some usage
+Status: Open.
+#448 In microsoft/agent-lightning;· dalek-who opened on Jan 13
+6
+comments
+Why Tinker
+question
+Question about a feature or some usage
+tinker
+Status: Open.
+#447 In microsoft/agent-lightning;· zyy07 opened on Jan 12
+1
+comment
+RuntimeError: max(): Expected reduction dim to be specified for input.numel() == 0. Specify the reduction dim with the 'dim' argument.
+verl
+waiting for reply
+Status: Open.
+#446 In microsoft/agent-lightning;· Fulin-Gao opened on Jan 12
+1
+comment
+When training Qwen2.5-VL-3B, an error occurred in get_rope_index: RuntimeError: shape mismatch (mRoPE position_ids / attention_mask lengths do not match).
+need investigation
+topic/multimodality
+Status: Open.
+#441 In microsoft/agent-lightning;· WGowi opened on Dec 31, 2025
+3
+comments
+Would it be possible to allow custom text gradient computation and editing templates for APO in the form of SDK usage?
+apo
+enhancement
+New feature or request
+Status: Open.
+#439 In microsoft/agent-lightning;· li2zhi opened on Dec 31, 2025
+1
+comment
+[BUG] Potential Memory Leak Issue
+out-of-memory
+verl
+waiting for reply
+Status: Open.
+#438 In microsoft/agent-lightning;· dalek-who opened on Dec 29, 2025
+12
+comments
+Solution: No module named 'vllm.lora.models'
+blocked by upstream
+verl
+Status: Open.
+#437 In microsoft/agent-lightning;· Elfsong opened on Dec 27, 2025
+2
+comments
+Regarding the server's lifecycle
+question
+Question about a feature or some usage
+store
+Status: Open.
+#436 In microsoft/agent-lightning;· kyk666123 opened on Dec 27, 2025
+1
+comment
+multi-node multi-GPU training
+duplicate
+This issue or pull request already exists
+verl
+Status: Open.
+#434 In microsoft/agent-lightning;· WGowi opened on Dec 25, 2025
+2
+comments
+What is the expected behavior of the adapter TracerTraceToTriplet?
+adapter
+question
+Question about a feature or some usage
+Status: Open.
+#432 In microsoft/agent-lightning;· dalek-who opened on Dec 24, 2025
+2
+comments
+APO's TraceToMessages adapter fails with multi-turn agent rollouts (KeyError: 'role')
+adapter
+apo
+bug
+Something isn't working
+need investigation
+Status: Open.
+#425 In microsoft/agent-lightning;· 1venki opened on Dec 17, 2025
+13
+comments
+
+Open
+87
+ (87)
+Closed
+60
+ (60)
+agentops tracer
+examples
+tracer
+Status: Open.
+#424 In microsoft/agent-lightning;· doraemonlove opened on Dec 17, 2025
+1
+comment
+How can agent built with Java (Spring AI) integrate with agent lightning?
+help wanted
+Extra hands from community will be appreciated
+Status: Open.
+#419 In microsoft/agent-lightning;· chickenlj opened on Dec 17, 2025
+2
+comments
+Is that reward must be a float between 0~1?
+waiting for reply
+Status: Open.
+#405 In microsoft/agent-lightning;· onebula opened on Dec 11, 2025
+1
+comment
+ValueError: Extracted completion from trace is not a list
+waiting for reply
+Status: Open.
+#404 In microsoft/agent-lightning;· onebula opened on Dec 11, 2025
+2
+comments
+How to save val_data predictions during each evaluation of trainer.fit?
+enhancement
+New feature or request
+question
+Question about a feature or some usage
+verl
+Status: Open.
+#401 In microsoft/agent-lightning;· dalek-who opened on Dec 11, 2025
+14
+comments
+Cleaner termination
+help wanted
+Extra hands from community will be appreciated
+store
+Status: Open.
+#397 In microsoft/agent-lightning;· ultmaster opened on Dec 11, 2025
+2
+comments
+RuntimeError: Server failed to start within the 10 seconds.
+store
+waiting for reply
+Status: Open.
+#395 In microsoft/agent-lightning;· onebula opened on Dec 10, 2025
+6
+comments
+Question: What is the linking rule between intermediate rewards and the triplet?
+credit assignment
+examples
+question
+Question about a feature or some usage
+Status: Open.
+#392 In microsoft/agent-lightning;· kyk666123 opened on Dec 10, 2025
+7
+comments
+Question: How will intermediate rewards be used?
+credit assignment
+question
+Question about a feature or some usage
+verl
+Status: Open.
+#390 In microsoft/agent-lightning;· chenhr18thu opened on Dec 10, 2025
+5
+comments
+Question: Any way to reduce memory for spider example
+examples
+question
+Question about a feature or some usage
+verl
+Status: Open.
+#389 In microsoft/agent-lightning;· hkvision opened on Dec 10, 2025
+3
+comments
+How to Integrate Process Rewards in LangGraph Agents and Handle Node Execution Failures?
+examples
+question
+Question about a feature or some usage
+Status: Open.
+#387 In microsoft/agent-lightning;· dalek-who opened on Dec 9, 2025
+4
+comments
+Redundant logic after using aiologic
+enhancement
+New feature or request
+store
+Status: Open.
+#372 In microsoft/agent-lightning;· ultmaster opened on Dec 5, 2025
+10
+comments
+Clarify the recommended value and impact of n_workers when instantiating Trainer
+documentation
+Improvements or additions to documentation
+enhancement
+New feature or request
+Status: Open.
+#366 In microsoft/agent-lightning;· flyflypeng opened on Dec 4, 2025
+1
+comment
+How to assign different LoRA to different sub-agents?
+help wanted
+Extra hands from community will be appreciated
+verl
+Status: Open.
+#365 In microsoft/agent-lightning;· dalek-who opened on Dec 4, 2025
+3
+comments
+Can I use https://github.com/microsoft/llm-as-judge as the search reward for GRPO training by combining it in?
+question
+Question about a feature or some usage
+topic/rag
+Status: Open.
+#362 In microsoft/agent-lightning;· johnson7788 opened on Dec 4, 2025
+2
+comments
+[feature request] OneStepOff Trainer
+enhancement
+New feature or request
+verl
+Status: Open.
+#360 In microsoft/agent-lightning;· syeehyn opened on Dec 4, 2025
+2
+comments
+Completed rollouts > total_tasks_queued
+help wanted
+Extra hands from community will be appreciated
+verl
+Status: Open.
+#355 In microsoft/agent-lightning;· chenhr18thu opened on Dec 3, 2025
+1
+comment
+Error with vllm
+help wanted
+Extra hands from community will be appreciated
+out-of-memory
+verl
+vllm
+Status: Open.
+#352 In microsoft/agent-lightning;· chenhr18thu opened on Dec 3, 2025
+11
+comments
+How can I use Agent Lightning for fine-tuning an agent’s system prompt using OpenAI models (gpt-4o)? Can VERL be used for this?
+apo
+question
+Question about a feature or some usage
+Status: Open.
+#351 In microsoft/agent-lightning;· rutvik-jaiswal-deeplearning opened on Dec 2, 2025
+1
+comment
+How to turn off the thinking mode
+question
+Question about a feature or some usage
+verl
+Status: Open.
+#347 In microsoft/agent-lightning;· ccp123456789 opened on Dec 1, 2025
+3
+comments
+Verl Rollout is just blocked, GPU utils is always 0
+examples
+topic/rag
+verl
+Status: Open.
+#339 In microsoft/agent-lightning;· reallm opened on Nov 27, 2025
+3
+comments
+🚀 Refactoring Proposal: Adopt Ruff for Integrated Linting and Formatting
+need discussion
+Status: Open.
+#337 In microsoft/agent-lightning;· Borda opened on Nov 26, 2025
+11
+comments
+Question; Handling of Errors during APO rollouts
+apo
+Status: Open.
+#335 In microsoft/agent-lightning;· nariaki3551 opened on Nov 25, 2025
+3
+comments
+ValueError: position_ids should be a 3D tensor of shape (4, batch_size, seq_length) when using agent-lightning 0.2.1 + Qwen2.5-VL
+help wanted
+Extra hands from community will be appreciated
+topic/multimodality
+Status: Open.
+#334 In microsoft/agent-lightning;· WGowi opened on Nov 24, 2025
+1
+comment
+AgentOps incorrect message capture causes KeyError in convert_to_openai_messages
+adapter
+help wanted
+Extra hands from community will be appreciated
+need investigation
+Status: Open.
+#311 In microsoft/agent-lightning;· lib4x opened on Nov 14, 2025
+5
+comments
+
+Open
+87
+ (87)
+Closed
+60
+ (60)
+Empty triplets when using with_structured_output in a langchain agent
+adapter
+tracer
+Status: Open.
+#308 In microsoft/agent-lightning;· xavier-owkin opened on Nov 13, 2025
+5
+comments
+verl框架不可用
+need investigation
+out-of-memory
+tracer
+verl
+Status: Open.
+#294 In microsoft/agent-lightning;· linzi687 opened on Nov 11, 2025
+7
+comments
+[Feature] Keep transitions from the same rollout into one mini batch
+verl
+Status: Open.
+#287 In microsoft/agent-lightning;· hzy46 opened on Nov 10, 2025
+3
+comments
+hzy46
+rag train
+out-of-memory
+topic/rag
+waiting for reply
+Status: Open.
+#284 In microsoft/agent-lightning;· cicijohn1983 opened on Nov 7, 2025
+1
+comment
+about credit assignment
+credit assignment
+question
+Question about a feature or some usage
+verl
+Status: Open.
+#282 In microsoft/agent-lightning;· Kenwwww opened on Nov 6, 2025
+1
+comment
+Please make it support claude code CLI
+examples
+Status: Open.
+#267 In microsoft/agent-lightning;· hemangjoshi37a opened on Nov 4, 2025
+8
+comments
+I dont understand how it works under the hood.
+question
+Question about a feature or some usage
+Status: Open.
+#266 In microsoft/agent-lightning;· hemangjoshi37a opened on Nov 4, 2025
+2
+comments
+LLMProxy doesn't support stream
+blocked by upstream
+proxy
+Status: Open.
+#262 In microsoft/agent-lightning;· ultmaster opened on Nov 3, 2025
+1
+comment
+Support for TS/JS based agent frameworks?
+help wanted
+Extra hands from community will be appreciated
+Status: Open.
+#258 In microsoft/agent-lightning;· jordanparker6 opened on Nov 2, 2025
+8
+comments
+Agent Lightning WeChat Discuss Group
+Status: Open.
+#236 In microsoft/agent-lightning;· lunaqiu opened on Oct 29, 2025
+4
+comments
+lunaqiu
+Can you provide a search_r1 example for agent-linghting v2?
+examples
+topic/rag
+Status: Open.
+#220 In microsoft/agent-lightning;· hzy312 opened on Oct 27, 2025
+6
+comments
+SiyunZhao
+[Rollout timeout] Loss rollout while training
+verl
+Status: Open.
+#218 In microsoft/agent-lightning;· XianglongTan opened on Oct 27, 2025
+4
+comments
+Env-styled Rollout
+need discussion
+Status: Open.
+#209 In microsoft/agent-lightning;· ultmaster opened on Oct 24, 2025
+I think dont put compute_response_mask in trainer.py, otherwise response_mask may not contiguous, put it in deamon.py?
+out-of-memory
+sglang
+verl
+Status: Open.
+#119 In microsoft/agent-lightning;· af-74413592 opened on Sep 30, 2025
+13
+comments
+Based on the rag project, there are several questions
+question
+Question about a feature or some usage
+tracer
+Status: Open.
+#116 In microsoft/agent-lightning;· LY-today opened on Sep 30, 2025
+26
+comments
+agent and training must be in the same environment?
+question
+Question about a feature or some usage
+Status: Open.
+#114 In microsoft/agent-lightning;· ZaymeShaw opened on Sep 29, 2025
+1
+comment
+trnasition-level reward design
+credit assignment
+question
+Question about a feature or some usage
+verl
+Status: Open.
+#111 In microsoft/agent-lightning;· boardman0 opened on Sep 26, 2025
+3
+comments
+How to train a multi-agent video understanding task
+question
+Question about a feature or some usage
+topic/multimodality
+Status: Open.
+#110 In microsoft/agent-lightning;· 64327069 opened on Sep 24, 2025
+6
+comments
+The server training ran out of memory (OOM) and crashed.
+need investigation
+out-of-memory
+verl
+Status: Open.
+#107 In microsoft/agent-lightning;· ccp123456789 opened on Sep 23, 2025
+1
+comment
+How to run agentic rl with agent lightning in the distributed training environment with multi-nodes and multi-gpus ?
+examples
+help wanted
+Extra hands from community will be appreciated
+question
+Question about a feature or some usage
+verl
+Status: Open.
+#106 In microsoft/agent-lightning;· wendongbi opened on Sep 22, 2025
+4
+comments
+Multimodal support?
+topic/multimodality
+Status: Open.
+#105 In microsoft/agent-lightning;· Osilly opened on Sep 22, 2025
+7
+comments
+Is the training on-policy?
+question
+Question about a feature or some usage
+verl
+Status: Open.
+#98 In microsoft/agent-lightning;· XianglongTan opened on Sep 19, 2025
+4
+comments
+Will trajectory modifications that bypass the LLM API be lost from the trajectory and thus unavailable for RL training?
+question
+Question about a feature or some usage
+tracer
+Status: Open.
+#94 In microsoft/agent-lightning;· GitMonkey0 opened on Sep 15, 2025
+2
+comments
+multi-agent system
+question
+Question about a feature or some usage
+verl
+Status: Open.
+#92 In microsoft/agent-lightning;· boardman0 opened on Sep 14, 2025
+1
+comment
+XufangLuo
+Is is possible to support Google Agent Development Kit (ADK) in the future?
+examples
+help wanted
+Extra hands from community will be appreciated
+Status: Open.
+#89 In microsoft/agent-lightning;· jiaxi-xu-fsx opened on Sep 12, 2025
+15
+comments
+
+Open
+87
+ (87)
+Closed
+60
+ (60)
+Rollout phase takes lots of time, and I find that only 1 of 8 GPU is working when rollout.
+verl
+waiting for reply
+Status: Open.
+#82 In microsoft/agent-lightning;· XianglongTan opened on Sep 4, 2025
+1
+comment
+Is is possible to run training task on an agent built by Golang?
+help wanted
+Extra hands from community will be appreciated
+Status: Open.
+#80 In microsoft/agent-lightning;· XianglongTan opened on Sep 2, 2025
+4
+comments
+Rollout contains empty response
+waiting for reply
+Status: Open.
+#76 In microsoft/agent-lightning;· chenran0522 opened on Aug 29, 2025
+1
+comment
+Warning: Length of triplets is 0 for rollout
+waiting for reply
+Status: Open.
+#74 In microsoft/agent-lightning;· MYXjason opened on Aug 27, 2025
+5
+comments
+Agent Lightning Backlog Tracker
+Status: Open.
+#71 In microsoft/agent-lightning;· lunaqiu opened on Aug 25, 2025
+3
+comments
+lunaqiu
+Could you please add the recently released ARPO reinforcement learning algorithm?
+need investigation
+Status: Open.
+#70 In microsoft/agent-lightning;· EngineerChao opened on Aug 25, 2025
+1
+comment
+How to evaluate the trained model?
+help wanted
+Extra hands from community will be appreciated
+question
+Question about a feature or some usage
+verl
+Status: Open.
+#69 In microsoft/agent-lightning;· happened opened on Aug 21, 2025
+2
+comments
+Do you support agentic RL?
+examples
+low priority
+Status: Open.
+#65 In microsoft/agent-lightning;· ccp123456789 opened on Aug 19, 2025
+3
+comments
+XufangLuo
+Transformers issue when invoking the model via curl
+vllm
+waiting for reply
+Status: Open.
+#57 In microsoft/agent-lightning;· ghost opened on Aug 14, 2025
+3
+comments
+AgentOps: [OPENAI WRAPPER] Error in async_chat_completion_stream_wrapper: Error code: 503
+tracer
+waiting for reply
+Status: Open.
+#56 In microsoft/agent-lightning;· 450586509 opened on Aug 14, 2025
+7
+comments
+ultmaster
+[Over-long prompt/response length] cannot reshape tensor of 0 elements into shape [1, 0, -1, 128] because the unspecified dimension size -1 can be any value and is ambiguous
+help wanted
+Extra hands from community will be appreciated
+verl
+Status: Open.
+#50 In microsoft/agent-lightning;· IsaacGHX opened on Aug 13, 2025
+10
+comments
+XufangLuo
+[About Credit Assignment] How to implement an action-dependent reward function?
+credit assignment
+enhancement
+New feature or request
+question
+Question about a feature or some usage
+verl
+Status: Open.
+#31 In microsoft/agent-lightning;· Kwen-Chen opened on Aug 8, 2025
+1
+comment
+
+
+Open
+87
+ (87)
+Closed
+60
+ (60)
+Update Agent-OS integration URLs (migrated to microsoft/agent-governance-toolkit)
+Status: Closed (completed).
+#501 In microsoft/agent-lightning;· by imran-siddique was closed yesterday
+Highwater
+Status: Closed (completed).
+#477 In microsoft/agent-lightning;· by arminhah73-jpg was closed last month
+Valentines
+Status: Closed (completed).
+#474 In microsoft/agent-lightning;· by 5ts2wtvzch-bit was closed on Feb 2
+你好，首先感谢你们在智能体和强化学习这方面的工作，开发了agent-lightning。我在使用agent-lightning运行代码中/exmaples/spider这个例子,出现了在微调模型时输入数据全为0的问题
+Status: Closed (completed).
+#442 In microsoft/agent-lightning;· by RNGlichuang was closed on Jan 6
+[Feature] Add data validation steps to trainer.dev for early error detection
+enhancement
+New feature or request
+help wanted
+Extra hands from community will be appreciated
+verl
+Status: Closed (completed).
+#385 In microsoft/agent-lightning;· by dalek-who was closed on Dec 25, 2025
+7
+comments
+BUG: Compatibility with verl 0.6.0 and LoRA
+bug
+Something isn't working
+help wanted
+Extra hands from community will be appreciated
+verl
+Status: Closed (completed).
+#383 In microsoft/agent-lightning;· by dalek-who was closed on Dec 10, 2025
+2
+comments
+UnicodeDecodeError: 'gbk' codec can't decode byte 0x80 in position 1170
+Status: Closed (completed).
+#381 In microsoft/agent-lightning;· by aceliuchanghong was closed on Dec 8, 2025
+1
+comment
+How to get the optimized prompt after APO?
+apo
+question
+Question about a feature or some usage
+Status: Closed (completed).
+#373 In microsoft/agent-lightning;· by hkvision was closed on Dec 5, 2025
+2
+comments
+Sequence ID in dashboard won't sort properly
+dashboard
+help wanted
+Extra hands from community will be appreciated
+Status: Closed (completed).
+#369 In microsoft/agent-lightning;· by ultmaster was closed on Dec 6, 2025
+1
+comment
+AttributeError: module 'agentlightning' has no attribute 'setup_logging'
+examples
+question
+Question about a feature or some usage
+Status: Closed (completed).
+#354 In microsoft/agent-lightning;· by dalek-who was closed on Dec 4, 2025
+2
+comments
+Hitting KeyboardInterrupt produces too many error logs
+help wanted
+Extra hands from community will be appreciated
+Status: Closed (completed).
+#343 In microsoft/agent-lightning;· by ultmaster was closed on Dec 8, 2025
+3
+comments
+langchain 1.0 needed update
+help wanted
+Extra hands from community will be appreciated
+Status: Closed (completed).
+#333 In microsoft/agent-lightning;· by mytk2012 was closed on Dec 5, 2025
+7
+comments
+[Bug]: Mac can't develop cause linked to linux
+Status: Not planned (skipped).
+#329 In microsoft/agent-lightning;· by JasonHonKL was closed on Nov 24, 2025
+1
+comment
+[Bug] tracer returns incorrect token_ids
+blocked by upstream
+Status: Closed (completed).
+#326 In microsoft/agent-lightning;· by Peng-YM was closed on Dec 5, 2025
+2
+comments
+How to use agentlighning with azureopenai
+Status: Closed (completed).
+#320 In microsoft/agent-lightning;· by copilot-gpt396 was closed on Nov 19, 2025
+2
+comments
+[Feature] recipe interface
+Status: Closed (completed).
+#312 In microsoft/agent-lightning;· by syeehyn was closed on Nov 14, 2025
+3
+comments
+Is .strip() not applied to result.content in query parsing fallback?
+Status: Closed (completed).
+#295 In microsoft/agent-lightning;· by genji970 was closed on Nov 12, 2025
+2
+comments
+No deployments available for selected model
+Status: Closed (completed).
+#290 In microsoft/agent-lightning;· by Hlcnn was closed on Nov 12, 2025
+4
+comments
+Agent
+Status: Closed (completed).
+#281 In microsoft/agent-lightning;· by Saimani94 was closed on Nov 10, 2025
+1
+comment
+Native support for non OpenAI compatible APIs
+Status: Closed (completed).
+#261 In microsoft/agent-lightning;· by cptnm3 was closed on Nov 3, 2025
+2
+comments
+Typos/Fixes in how-to/train-first-agent.md
+Status: Closed (completed).
+#257 In microsoft/agent-lightning;· by cptnm3 was closed on Nov 2, 2025
+i write a custom agent base on qwen-agent, can i use it in my project?
+Status: Closed (completed).
+#249 In microsoft/agent-lightning;· by doublnt was closed on Nov 9, 2025
+1
+comment
+Wrong Discord Chat link
+Status: Closed (completed).
+#242 In microsoft/agent-lightning;· by Franky1 was closed on Nov 29, 2025
+1
+comment
+Meta conciencia
+Status: Closed (completed).
+#232 In microsoft/agent-lightning;· by yairsantis31-dot was closed on Nov 29, 2025
+Weird behavior when two trainers use the same port
+Status: Closed (completed).
+#221 In microsoft/agent-lightning;· by ultmaster was closed on Oct 29, 2025
+Open
+87
+ (87)
+Closed
+60
+ (60)
+Support for VERL 0.6 and vllm 0.11
+Status: Closed (completed).
+#208 In microsoft/agent-lightning;· by ultmaster was closed on Nov 29, 2025
+4
+comments
+ValueError: Multiple or zero models found in model_list
+Status: Closed (completed).
+#196 In microsoft/agent-lightning;· by beanie00 was closed on Oct 24, 2025
+3
+comments
+Spec-Driven AI-Assisted Development Enablement
+Status: Closed (completed).
+#186 In microsoft/agent-lightning;· by Gwayaboy was closed on Nov 5, 2025
+1
+comment
+Synthetic Monitoring Gaps
+Status: Closed (completed).
+#185 In microsoft/agent-lightning;· by Gwayaboy was closed on Nov 5, 2025
+1
+comment
+Explore/Showcase Azure App Testing Capabilities
+Status: Closed (completed).
+#184 In microsoft/agent-lightning;· by Gwayaboy was closed on Nov 5, 2025
+1
+comment
+qwen3 moe lora error
+Status: Closed (completed).
+#156 In microsoft/agent-lightning;· by reallm was closed on Nov 29, 2025
+6
+comments
+<body> class"" pace-done light
+Status: Closed (completed).
+#117 In microsoft/agent-lightning;· by masbin387-sys was closed on Oct 23, 2025
+A case study of agent RL training for the Chinese Werewolf game based on AgentScope and agent-lightning
+Status: Closed (completed).
+#109 In microsoft/agent-lightning;· by af-74413592 was closed on Sep 28, 2025
+4
+comments
+Does this project have plans to support Ascend NPU?
+Status: Closed (completed).
+#108 In microsoft/agent-lightning;· by SolarWindRider was closed on Nov 29, 2025
+7
+comments
+I find agent lightning only use 1 actor during rollout, can we launch multiple actors?
+help wanted
+Extra hands from community will be appreciated
+question
+Question about a feature or some usage
+verl
+Status: Closed (completed).
+#104 In microsoft/agent-lightning;· by Thisislegit was closed on Jan 13
+3
+comments
+Question: RAG Agent Inference
+Status: Closed (completed).
+#93 In microsoft/agent-lightning;· by GitMonkey0 was closed on Sep 23, 2025
+1
+comment
+wizardlancet
+Error occurred while executing spider task
+Status: Closed (completed).
+#87 In microsoft/agent-lightning;· by ccp123456789 was closed on Sep 12, 2025
+RAG example provided, cannot configure the agents library
+Status: Closed (completed).
+#81 In microsoft/agent-lightning;· by deeplearning-LI was closed on Sep 3, 2025
+why training_rollout_async without a return value?
+Status: Closed (completed).
+#77 In microsoft/agent-lightning;· by yangdongdong2000 was closed on Sep 1, 2025
+1
+comment
+More Detailed Evaluation Scores on Text2SQL Benchmark
+Status: Closed (completed).
+#73 In microsoft/agent-lightning;· by MPX0222 was closed on Sep 1, 2025
+5
+comments
+Selective Tracing in Multi-LLM Call in training_rollout
+Status: Closed (completed).
+#72 In microsoft/agent-lightning;· by beanie00 was closed on Aug 26, 2025
+2
+comments
+ultmaster
+Training script hangs after connecting to Ray in a single-GPU, offline environment
+Status: Closed (completed).
+#68 In microsoft/agent-lightning;· by happened was closed on Aug 21, 2025
+2
+comments
+Difference between agent-lightning and verl-agent in multi-turn data handling?
+Status: Closed (completed).
+#67 In microsoft/agent-lightning;· by q-degrader was closed on Aug 24, 2025
+6
+comments
+Can you provide a exampling using only navie agent?
+examples
+Status: Closed (completed).
+#64 In microsoft/agent-lightning;· by hzy312 was closed on Nov 30, 2025
+5
+comments
+Local path not found; 404 error
+Status: Closed (completed).
+#63 In microsoft/agent-lightning;· by ArthurZhang02 was closed on Sep 1, 2025
+12
+comments
+hzy46
+[Question] Can agent-lighning use the multi-gpu training property of verl
+Status: Closed (completed).
+#61 In microsoft/agent-lightning;· by yangysc was closed on Aug 18, 2025
+1
+comment
+When will the nq_list.pkl and nq_hnsw_faiss_n32e40.index files from the RAG example be provided?
+Status: Closed (completed).
+#60 In microsoft/agent-lightning;· by yiyibooks was closed on Aug 27, 2025
+6
+comments
+wizardlancet
+[BUG] Error uploading logfile: POST request failed: HTTPConnectionPool(host='localhost', port=RANDOM PORT)
+Status: Closed (completed).
+#51 In microsoft/agent-lightning;· by IsaacGHX was closed on Nov 30, 2025
+3
+comments
+[BUG] AgentOps: [OPENAI WRAPPER] Error in chat_completion_stream_wrapper: Connection error.
+Status: Closed (completed).
+#49 In microsoft/agent-lightning;· by Zhuofeng-Li was closed on Nov 30, 2025
+3
+comments
+AttributeError: 'RAGAgent' object has no attribute 'trained_agents'
+Status: Closed (completed).
+#48 In microsoft/agent-lightning;· by johnson7788 was closed on Oct 31, 2025
+2
+comments
+wizardlancet
+
+Open
+87
+ (87)
+Closed
+60
+ (60)
+AgentOps: Authentication failed: Authentication failed: 504
+need investigation
+Status: Closed (completed).
+#47 In microsoft/agent-lightning;· by yangdongdong2000 was closed on Nov 30, 2025
+7
+comments
+SiyunZhao
+How does client send reward and repones to server?
+question
+Question about a feature or some usage
+Status: Closed (completed).
+#46 In microsoft/agent-lightning;· by Zhuofeng-Li was closed on Aug 13, 2025
+1
+comment
+[bug] AgentOps fails to capture the input/output token ids of a local SGLang server
+enhancement
+New feature or request
+question
+Question about a feature or some usage
+Status: Closed (completed).
+#44 In microsoft/agent-lightning;· by garrett4wade was closed on Aug 12, 2025
+3
+comments
+Thank you for your work. Do you provide a web UI to showcase the entire interaction process? For example, can I visualize chatting with different agents and generate a report, or do I need to implement these myself and currently only provide methods?
+enhancement
+New feature or request
+question
+Question about a feature or some usage
+Status: Closed (completed).
+#43 In microsoft/agent-lightning;· by libai-lab was closed on Nov 30, 2025
+2
+comments
+mydmdm
+How to set trained agent?
+question
+Question about a feature or some usage
+Status: Closed (completed).
+#39 In microsoft/agent-lightning;· by Zhuofeng-Li was closed on Aug 13, 2025
+1
+comment
+Local path in actor_rollout_ref.model.path causes vLLM model name mismatch and 404 errors
+question
+Question about a feature or some usage
+Status: Closed (completed).
+#37 In microsoft/agent-lightning;· by RuiqiTu was closed on Aug 28, 2025
+17
+comments
+hzy46
+[BUG] IndexError: argmax(): Expected reduction dim 0 to have non-zero size.
+Status: Closed (completed).
+#32 In microsoft/agent-lightning;· by Zhuofeng-Li was closed on Aug 12, 2025
+2
+comments
+"Retrieval-Augmented Generation via OpenAI Agents SDK " Will there be examples of this experiment in the paper?
+question
+Question about a feature or some usage
+Status: Closed (completed).
+#28 In microsoft/agent-lightning;· by Kwen-Chen was closed on Aug 11, 2025
+2
+comments
+This repo is missing important files
+Status: Closed (completed).
+#3 In microsoft/agent-lightning;· by microsoft-github-policy-service was closed on Jul 17, 2025
+This repo is missing a LICENSE file
+Status: Closed (completed).
+#1 In microsoft/agent-lightning;· by microsoft-github-policy-service was closed on Jul 17, 2025

@@ -1,0 +1,1454 @@
+(base) jiacheng@ags1:/data/jiacheng/system/cache/temp/nips2026/agent-os$ tree
+.
+├── AGENTS.md
+├── ARCHITECTURE.md
+├── assets
+│   └── demo-terminal.svg
+├── benchmarks
+│   ├── bench_adapters.py
+│   ├── bench_audit.py
+│   ├── bench_kernel.py
+│   ├── bench_policy.py
+│   ├── __init__.py
+│   ├── injection_benchmark.py
+│   ├── results
+│   │   ├── BENCHMARKS.md
+│   │   └── injection_benchmark_results.md
+│   └── run_all.py
+├── CHANGELOG.md
+├── charts
+│   └── agent-os
+│       ├── Chart.yaml
+│       ├── README.md
+│       ├── templates
+│       │   ├── configmap.yaml
+│       │   ├── deployment-audit-collector.yaml
+│       │   ├── deployment-kernel.yaml
+│       │   ├── deployment-policy-server.yaml
+│       │   ├── _helpers.tpl
+│       │   ├── hpa.yaml
+│       │   ├── networkpolicy.yaml
+│       │   ├── NOTES.txt
+│       │   ├── pdb.yaml
+│       │   ├── secret.yaml
+│       │   ├── serviceaccount.yaml
+│       │   ├── service-audit-collector.yaml
+│       │   ├── service-kernel.yaml
+│       │   └── service-policy-server.yaml
+│       └── values.yaml
+├── CODE_OF_CONDUCT.md
+├── CONTRIBUTING.md
+├── demo.py
+├── docker-compose.yml
+├── Dockerfile
+├── docs
+│   ├── AIOS_COMPARISON.md
+│   ├── api-reference.md
+│   ├── case-studies
+│   │   └── cmvk-carbon-fraud.md
+│   ├── cheatsheet.md
+│   ├── ci-cd-examples.md
+│   ├── comparison-guide.md
+│   ├── comparison.md
+│   ├── comparison-with-alternatives.md
+│   ├── dependencies.md
+│   ├── faq.md
+│   ├── index.md
+│   ├── INDUSTRY-FORUMS.md
+│   ├── integrations.md
+│   ├── kernel-internals.md
+│   ├── mcp-tools.md
+│   ├── migration-guide.md
+│   ├── owasp-agentic-top10-mapping.md
+│   ├── policy-schema.md
+│   ├── quickstart.md
+│   ├── roadmap.md
+│   ├── security-spec.md
+│   ├── signal-handling.md
+│   ├── troubleshooting.md
+│   ├── tutorials
+│   │   ├── 30-minute-deep-dive.md
+│   │   ├── 5-minute-quickstart.md
+│   │   ├── copilot-governance.md
+│   │   ├── custom-tools.md
+│   │   ├── first-governed-agent.md
+│   │   ├── getting-started.md
+│   │   ├── message-bus-adapters.md
+│   │   └── vscode-extension.md
+│   ├── unified-vision.md
+│   └── use-cases.md
+├── examples
+│   ├── agent_config.yaml
+│   ├── agent-lightning-training
+│   │   ├── README.md
+│   │   └── sql_agent.py
+│   ├── aml-fraud-detection
+│   │   ├── aml_audit_trail.csv
+│   │   ├── aml_audit_trail.json
+│   │   ├── demo.py
+│   │   └── README.md
+│   ├── carbon-auditor
+│   │   ├── data
+│   │   │   ├── projects
+│   │   │   │   └── sample-projects.yaml
+│   │   │   ├── sample_projects.json
+│   │   │   └── satellite
+│   │   │       └── README.md
+│   │   ├── demo_audit.py
+│   │   ├── demo.py
+│   │   ├── docker-compose.yml
+│   │   ├── Dockerfile
+│   │   ├── docs
+│   │   │   └── PRD-Dependency-Gaps.md
+│   │   ├── observability
+│   │   │   ├── grafana
+│   │   │   │   ├── dashboards
+│   │   │   │   │   └── carbon-auditor-live.json
+│   │   │   │   └── provisioning
+│   │   │   │       ├── dashboards
+│   │   │   │       │   └── dashboards.yml
+│   │   │   │       └── datasources
+│   │   │   │           └── datasources.yml
+│   │   │   └── prometheus.yml
+│   │   ├── pyproject.toml
+│   │   ├── README.md
+│   │   ├── src
+│   │   │   ├── agents
+│   │   │   │   ├── auditor_agent.py
+│   │   │   │   ├── base.py
+│   │   │   │   ├── claims_agent.py
+│   │   │   │   ├── geo_agent.py
+│   │   │   │   ├── __init__.py
+│   │   │   │   └── __pycache__
+│   │   │   │       ├── auditor_agent.cpython-313.pyc
+│   │   │   │       ├── base.cpython-313.pyc
+│   │   │   │       ├── claims_agent.cpython-313.pyc
+│   │   │   │       ├── geo_agent.cpython-313.pyc
+│   │   │   │       └── __init__.cpython-313.pyc
+│   │   │   ├── carbon_auditor_swarm.egg-info
+│   │   │   │   ├── dependency_links.txt
+│   │   │   │   ├── PKG-INFO
+│   │   │   │   ├── requires.txt
+│   │   │   │   ├── SOURCES.txt
+│   │   │   │   └── top_level.txt
+│   │   │   ├── __init__.py
+│   │   │   ├── __pycache__
+│   │   │   │   └── tools.cpython-313.pyc
+│   │   │   └── tools.py
+│   │   └── tests
+│   │       ├── data
+│   │       │   ├── project_design.txt
+│   │       │   └── sentinel_data.json
+│   │       ├── __init__.py
+│   │       └── test_carbon_auditor.py
+│   ├── chat-agent
+│   │   ├── chat.py
+│   │   ├── memory.py
+│   │   ├── policies.yaml
+│   │   └── README.md
+│   ├── copilot_governed.py
+│   ├── crewai-governance
+│   │   ├── demo.py
+│   │   ├── policies.yaml
+│   │   └── README.md
+│   ├── crewai-safe-mode
+│   │   ├── crewai_safe_mode.py
+│   │   ├── demo.svg
+│   │   ├── demo.tape
+│   │   ├── langchain_safe_mode.py
+│   │   └── README.md
+│   ├── cross-project
+│   │   ├── cross_project_example.py
+│   │   └── README.md
+│   ├── customer-service
+│   │   ├── main.py
+│   │   ├── README.md
+│   │   └── requirements.txt
+│   ├── defi-sentinel
+│   │   ├── demo.py
+│   │   ├── docker-compose.yml
+│   │   ├── Dockerfile
+│   │   ├── observability
+│   │   │   ├── grafana
+│   │   │   │   ├── dashboards
+│   │   │   │   │   └── defi-sentinel-live.json
+│   │   │   │   └── provisioning
+│   │   │   │       ├── dashboards
+│   │   │   │       │   └── dashboards.yml
+│   │   │   │       └── datasources
+│   │   │   │           └── datasources.yml
+│   │   │   └── prometheus.yml
+│   │   ├── pyproject.toml
+│   │   └── README.md
+│   ├── demo-app
+│   │   └── agent.py
+│   ├── devops-safe
+│   │   ├── main.py
+│   │   └── README.md
+│   ├── ecommerce-support
+│   │   ├── main.py
+│   │   └── README.md
+│   ├── finance-soc2
+│   │   ├── main.py
+│   │   ├── README.md
+│   │   ├── soc2_audit_trail.csv
+│   │   └── soc2_audit_trail.json
+│   ├── financial-sox
+│   │   ├── demo.py
+│   │   └── README.md
+│   ├── github-reviewer
+│   │   ├── main.py
+│   │   ├── README.md
+│   │   └── requirements.txt
+│   ├── governed-chatbot
+│   │   ├── chatbot.py
+│   │   └── README.md
+│   ├── grid-balancing
+│   │   ├── demo.py
+│   │   ├── docker-compose.yml
+│   │   ├── Dockerfile
+│   │   ├── observability
+│   │   │   ├── grafana
+│   │   │   │   ├── dashboards
+│   │   │   │   │   └── grid-balancing-live.json
+│   │   │   │   └── provisioning
+│   │   │   │       ├── dashboards
+│   │   │   │       │   └── dashboards.yml
+│   │   │   │       └── datasources
+│   │   │   │           └── datasources.yml
+│   │   │   └── prometheus.yml
+│   │   ├── pyproject.toml
+│   │   └── README.md
+│   ├── healthcare-hipaa
+│   │   ├── main.py
+│   │   ├── README.md
+│   │   └── requirements.txt
+│   ├── hello-world
+│   │   ├── agent.py
+│   │   └── README.md
+│   ├── hr-recruiting
+│   │   ├── main.py
+│   │   └── README.md
+│   ├── integrations
+│   │   ├── governance_quickstart.py
+│   │   ├── policy_violations_demo.py
+│   │   └── signal_handling_demo.py
+│   ├── iot-smart-home
+│   │   ├── main.py
+│   │   └── README.md
+│   ├── legal-review
+│   │   ├── main.py
+│   │   ├── README.md
+│   │   └── requirements.txt
+│   ├── multi-agent-support
+│   │   ├── demo.py
+│   │   └── README.md
+│   ├── pharma-compliance
+│   │   ├── demo.py
+│   │   ├── docker-compose.yml
+│   │   ├── Dockerfile
+│   │   ├── observability
+│   │   │   ├── grafana
+│   │   │   │   ├── dashboards
+│   │   │   │   │   └── pharma-compliance-live.json
+│   │   │   │   └── provisioning
+│   │   │   │       ├── dashboards
+│   │   │   │       │   └── dashboards.yml
+│   │   │   │       └── datasources
+│   │   │   │           └── datasources.yml
+│   │   │   └── prometheus.yml
+│   │   ├── pyproject.toml
+│   │   └── README.md
+│   ├── policies
+│   │   ├── default.yaml
+│   │   ├── development.yaml
+│   │   └── strict.yaml
+│   ├── quickstart
+│   │   ├── my_first_agent.py
+│   │   └── README.md
+│   ├── README.md
+│   ├── run-demo.sh
+│   ├── self-evaluating
+│   │   ├── behavior_model.json
+│   │   ├── docs
+│   │   │   ├── AGENT_BROKERAGE.md
+│   │   │   ├── ARCHITECTURE_DECOUPLED.md
+│   │   │   ├── ARCHITECTURE.md
+│   │   │   ├── CIRCUIT_BREAKER.md
+│   │   │   ├── CONSTRAINT_ENGINEERING.md
+│   │   │   ├── EVALUATION_ENGINEERING.md
+│   │   │   ├── GETTING_STARTED.md
+│   │   │   ├── GHOST_MODE.md
+│   │   │   ├── IMPLEMENTATION_SUMMARY_AGENT_BROKERAGE.md
+│   │   │   ├── IMPLEMENTATION_SUMMARY_CONSTRAINT_ENGINEERING.md
+│   │   │   ├── IMPLEMENTATION_SUMMARY_EVALUATION_ENGINEERING.md
+│   │   │   ├── IMPLEMENTATION_SUMMARY_GHOST_MODE.md
+│   │   │   ├── IMPLEMENTATION_SUMMARY_INTENT_DETECTION.md
+│   │   │   ├── IMPLEMENTATION_SUMMARY.md
+│   │   │   ├── IMPLEMENTATION_SUMMARY_OAD.md
+│   │   │   ├── IMPLEMENTATION_SUMMARY_ORCHESTRATION.md
+│   │   │   ├── IMPLEMENTATION_SUMMARY_POLYMORPHIC_OUTPUT.md
+│   │   │   ├── IMPLEMENTATION_SUMMARY_PRIORITIZATION.md
+│   │   │   ├── IMPLEMENTATION_SUMMARY_UNIVERSAL_SIGNAL_BUS.md
+│   │   │   ├── IMPLEMENTATION_SUMMARY_WISDOM_CURATOR.md
+│   │   │   ├── INTENT_DETECTION.md
+│   │   │   ├── OPENAGENT_DEFINITION.md
+│   │   │   ├── ORCHESTRATION.md
+│   │   │   ├── POLYMORPHIC_OUTPUT.md
+│   │   │   ├── PRIORITIZATION_FRAMEWORK.md
+│   │   │   ├── SILENT_SIGNALS.md
+│   │   │   ├── UNIVERSAL_SIGNAL_BUS.md
+│   │   │   ├── UPGRADE_PURGE.md
+│   │   │   └── WISDOM_CURATOR.md
+│   │   ├── examples
+│   │   │   ├── example_agent_brokerage.py
+│   │   │   ├── example_agent_metadata.py
+│   │   │   ├── example_circuit_breaker.py
+│   │   │   ├── example_constraint_engineering.py
+│   │   │   ├── example_decoupled.py
+│   │   │   ├── example_evaluation_engineering.py
+│   │   │   ├── example_ghost_mode.py
+│   │   │   ├── example_intent_detection.py
+│   │   │   ├── example_omnichannel_integration.py
+│   │   │   ├── example_orchestration_ai.py
+│   │   │   ├── example_orchestration.py
+│   │   │   ├── example_polymorphic_output.py
+│   │   │   ├── example_prioritization.py
+│   │   │   ├── example.py
+│   │   │   ├── example_silent_signals.py
+│   │   │   ├── example_universal_signal_bus.py
+│   │   │   ├── example_upgrade_purge.py
+│   │   │   ├── example_wisdom_curator.py
+│   │   │   ├── sample_full_stack_agent.py
+│   │   │   ├── sample_monitoring_agent.py
+│   │   │   └── verify_architecture.py
+│   │   ├── README.md
+│   │   ├── REFACTORING_SUMMARY.md
+│   │   ├── requirements.txt
+│   │   ├── setup.py
+│   │   ├── src
+│   │   │   ├── agent_brokerage.py
+│   │   │   ├── agent_metadata.py
+│   │   │   ├── agent.py
+│   │   │   ├── circuit_breaker.py
+│   │   │   ├── constraint_engine.py
+│   │   │   ├── evaluation_engineering.py
+│   │   │   ├── generative_ui_engine.py
+│   │   │   ├── ghost_mode.py
+│   │   │   ├── __init__.py
+│   │   │   ├── intent_detection.py
+│   │   │   ├── model_upgrade.py
+│   │   │   ├── observer.py
+│   │   │   ├── orchestrator.py
+│   │   │   ├── polymorphic_output.py
+│   │   │   ├── prioritization.py
+│   │   │   ├── telemetry.py
+│   │   │   ├── universal_signal_bus.py
+│   │   │   └── wisdom_curator.py
+│   │   ├── system_instructions.json
+│   │   └── tests
+│   │       ├── test_agent_brokerage.py
+│   │       ├── test_agent_metadata.py
+│   │       ├── test_agent.py
+│   │       ├── test_circuit_breaker.py
+│   │       ├── test_constraint_engineering.py
+│   │       ├── test_decoupled.py
+│   │       ├── test_evaluation_engineering.py
+│   │       ├── test_ghost_mode.py
+│   │       ├── test_intent_detection.py
+│   │       ├── test_model_upgrade.py
+│   │       ├── test_orchestration.py
+│   │       ├── test_polymorphic_output.py
+│   │       ├── test_prioritization.py
+│   │       ├── test_silent_signals.py
+│   │       ├── test_telemetry.py
+│   │       ├── test_universal_signal_bus.py
+│   │       ├── test_wisdom_curator_integration.py
+│   │       └── test_wisdom_curator.py
+│   ├── shared-policies
+│   │   ├── no-pii.yaml
+│   │   ├── rate-limited-tools.yaml
+│   │   └── trust-handoff.yaml
+│   ├── slack-compliance
+│   │   ├── main.py
+│   │   ├── README.md
+│   │   └── requirements.txt
+│   ├── sql-agent
+│   │   ├── main.py
+│   │   ├── README.md
+│   │   └── requirements.txt
+│   ├── test_policy_enforcement.py
+│   ├── tool-using-agent
+│   │   ├── agent.py
+│   │   └── README.md
+│   └── trading-governance
+│       ├── demo.py
+│       ├── README.md
+│       └── trading_audit_trail.json
+├── experiments
+│   └── results.json
+├── extensions
+│   ├── chrome
+│   │   ├── background.js
+│   │   ├── content.js
+│   │   ├── devtools
+│   │   │   ├── devtools.html
+│   │   │   ├── devtools.js
+│   │   │   ├── panel.html
+│   │   │   └── panel.js
+│   │   ├── injected.js
+│   │   ├── manifest.json
+│   │   ├── package.json
+│   │   ├── package-lock.json
+│   │   ├── README.md
+│   │   ├── src
+│   │   │   ├── background
+│   │   │   │   └── service-worker.ts
+│   │   │   ├── content
+│   │   │   │   ├── aws.ts
+│   │   │   │   ├── github.ts
+│   │   │   │   └── jira.ts
+│   │   │   ├── options
+│   │   │   │   ├── index.tsx
+│   │   │   │   ├── options.html
+│   │   │   │   ├── Settings.tsx
+│   │   │   │   └── styles.css
+│   │   │   ├── popup
+│   │   │   │   ├── App.tsx
+│   │   │   │   ├── components
+│   │   │   │   │   ├── AgentList.tsx
+│   │   │   │   │   ├── CurrentPage.tsx
+│   │   │   │   │   ├── Footer.tsx
+│   │   │   │   │   ├── Header.tsx
+│   │   │   │   │   ├── StatusBanner.tsx
+│   │   │   │   │   └── SuggestedAgent.tsx
+│   │   │   │   ├── index.tsx
+│   │   │   │   ├── popup.html
+│   │   │   │   └── styles.css
+│   │   │   └── shared
+│   │   │       ├── api.ts
+│   │   │       ├── storage.ts
+│   │   │       └── types.ts
+│   │   ├── tsconfig.json
+│   │   └── webpack.config.js
+│   ├── copilot
+│   │   ├── api
+│   │   │   └── index.js
+│   │   ├── assets
+│   │   │   ├── feature-card.svg
+│   │   │   └── logo.svg
+│   │   ├── deploy.js
+│   │   ├── Dockerfile
+│   │   ├── github-app-manifest.json
+│   │   ├── package.json
+│   │   ├── package-lock.json
+│   │   ├── PUBLISHING.md
+│   │   ├── README.md
+│   │   ├── smoke-test.js
+│   │   ├── src
+│   │   │   ├── agentGenerator.ts
+│   │   │   ├── auditLogger.ts
+│   │   │   ├── cmvkClient.ts
+│   │   │   ├── copilotExtension.ts
+│   │   │   ├── debugHelper.ts
+│   │   │   ├── githubIntegration.ts
+│   │   │   ├── index.ts
+│   │   │   ├── logger.ts
+│   │   │   ├── policyEngine.ts
+│   │   │   ├── policyLibrary.ts
+│   │   │   ├── templateGallery.ts
+│   │   │   └── testSimulator.ts
+│   │   ├── tsconfig.json
+│   │   └── vercel.json
+│   ├── cursor
+│   │   ├── CHANGELOG.md
+│   │   ├── LICENSE
+│   │   ├── package.json
+│   │   ├── package-lock.json
+│   │   ├── README.md
+│   │   ├── src
+│   │   │   ├── auditLogger.ts
+│   │   │   ├── cmvkClient.ts
+│   │   │   ├── extension.ts
+│   │   │   ├── policyEngine.ts
+│   │   │   ├── statusBar.ts
+│   │   │   └── views
+│   │   │       ├── auditLogView.ts
+│   │   │       ├── policiesView.ts
+│   │   │       └── statsView.ts
+│   │   └── tsconfig.json
+│   ├── github-cli
+│   │   ├── gh-agent-os
+│   │   └── README.md
+│   ├── jetbrains
+│   │   ├── build.gradle.kts
+│   │   ├── gradle
+│   │   │   └── wrapper
+│   │   │       ├── gradle-wrapper.jar
+│   │   │       └── gradle-wrapper.properties
+│   │   ├── gradlew.bat
+│   │   ├── README.md
+│   │   └── src
+│   │       └── main
+│   │           ├── kotlin
+│   │           │   └── com
+│   │           │       └── agentos
+│   │           │           └── plugin
+│   │           │               ├── actions
+│   │           │               │   └── Actions.kt
+│   │           │               ├── AgentOSStartupActivity.kt
+│   │           │               ├── agents
+│   │           │               │   ├── AgentModel.kt
+│   │           │               │   ├── AgentService.kt
+│   │           │               │   └── AgentWizardDialog.kt
+│   │           │               ├── config
+│   │           │               │   └── AgentOSConfigParser.kt
+│   │           │               ├── inspections
+│   │           │               │   └── Inspections.kt
+│   │           │               ├── runconfig
+│   │           │               │   └── AgentRunConfiguration.kt
+│   │           │               ├── services
+│   │           │               │   └── AgentOSApiService.kt
+│   │           │               ├── settings
+│   │           │               │   └── AgentOSSettings.kt
+│   │           │               ├── statusbar
+│   │           │               │   └── AgentOSStatusBarWidget.kt
+│   │           │               └── toolwindow
+│   │           │                   └── AgentOSToolWindowFactory.kt
+│   │           └── resources
+│   │               └── META-INF
+│   │                   └── plugin.xml
+│   ├── mcp-server
+│   │   ├── CHANGELOG.md
+│   │   ├── Dockerfile
+│   │   ├── package.json
+│   │   ├── package-lock.json
+│   │   ├── PUBLISHING.md
+│   │   ├── README.md
+│   │   ├── server.json
+│   │   ├── src
+│   │   │   ├── cli.ts
+│   │   │   ├── index.ts
+│   │   │   ├── prompts
+│   │   │   │   └── index.ts
+│   │   │   ├── server.ts
+│   │   │   ├── services
+│   │   │   │   ├── agent-manager.ts
+│   │   │   │   ├── approval-workflow.ts
+│   │   │   │   ├── audit-logger.ts
+│   │   │   │   ├── policy-engine.ts
+│   │   │   │   └── template-library.ts
+│   │   │   ├── tools
+│   │   │   │   ├── attach-policy.ts
+│   │   │   │   ├── audit-log.ts
+│   │   │   │   ├── check-compliance.ts
+│   │   │   │   ├── create-agent.ts
+│   │   │   │   ├── create-policy.ts
+│   │   │   │   ├── deploy-agent.ts
+│   │   │   │   ├── get-agent-status.ts
+│   │   │   │   ├── index.ts
+│   │   │   │   ├── list-templates.ts
+│   │   │   │   ├── request-approval.ts
+│   │   │   │   └── test-agent.ts
+│   │   │   └── types
+│   │   │       └── index.ts
+│   │   └── tsconfig.json
+│   └── vscode
+│       ├── CHANGELOG.md
+│       ├── images
+│       │   ├── icon.png
+│       │   └── icon.svg
+│       ├── LICENSE
+│       ├── package.json
+│       ├── package-lock.json
+│       ├── PUBLISHING.md
+│       ├── README.md
+│       ├── snippets
+│       │   └── agent-os.code-snippets
+│       ├── src
+│       │   ├── auditLogger.ts
+│       │   ├── cmvkClient.ts
+│       │   ├── enterprise
+│       │   │   ├── auth
+│       │   │   │   ├── rbacManager.ts
+│       │   │   │   └── ssoProvider.ts
+│       │   │   ├── compliance
+│       │   │   │   └── frameworkLoader.ts
+│       │   │   └── integration
+│       │   │       └── cicdIntegration.ts
+│       │   ├── extension.ts
+│       │   ├── language
+│       │   │   ├── completionProvider.ts
+│       │   │   └── diagnosticProvider.ts
+│       │   ├── policyCompletion.ts
+│       │   ├── policyEngine.ts
+│       │   ├── statusBar.ts
+│       │   ├── views
+│       │   │   ├── auditLogView.ts
+│       │   │   ├── kernelDebuggerView.ts
+│       │   │   ├── policiesView.ts
+│       │   │   └── statsView.ts
+│       │   └── webviews
+│       │       ├── metricsDashboard
+│       │       │   └── MetricsDashboardPanel.ts
+│       │       ├── onboarding
+│       │       │   └── OnboardingPanel.ts
+│       │       ├── policyEditor
+│       │       │   └── PolicyEditorPanel.ts
+│       │       └── workflowDesigner
+│       │           └── WorkflowDesignerPanel.ts
+│       └── tsconfig.json
+├── github-app
+│   ├── app.py
+│   ├── app.yml
+│   ├── azure-function
+│   │   ├── function_app.py
+│   │   ├── host.json
+│   │   └── requirements.txt
+│   ├── README.md
+│   ├── requirements.txt
+│   ├── tests
+│   │   ├── conftest.py
+│   │   ├── __init__.py
+│   │   ├── test_app.py
+│   │   └── test_webhook.py
+│   └── webhook.py
+├── glama.json
+├── GOVERNANCE.md
+├── LICENSE
+├── modules
+│   ├── amb
+│   │   ├── amb_core
+│   │   │   ├── adapters
+│   │   │   │   ├── aws_sqs_broker.py
+│   │   │   │   ├── azure_servicebus_broker.py
+│   │   │   │   ├── __init__.py
+│   │   │   │   ├── kafka_broker.py
+│   │   │   │   ├── nats_broker.py
+│   │   │   │   ├── rabbitmq_broker.py
+│   │   │   │   └── redis_broker.py
+│   │   │   ├── broker.py
+│   │   │   ├── bus.py
+│   │   │   ├── cloudevents.py
+│   │   │   ├── dlq.py
+│   │   │   ├── hf_utils.py
+│   │   │   ├── __init__.py
+│   │   │   ├── memory_broker.py
+│   │   │   ├── models.py
+│   │   │   ├── persistence.py
+│   │   │   ├── schema.py
+│   │   │   └── tracing.py
+│   │   ├── CHANGELOG.md
+│   │   ├── CONTRIBUTING.md
+│   │   ├── examples
+│   │   │   ├── advanced_features.py
+│   │   │   ├── backpressure_demo.py
+│   │   │   ├── basic_usage.py
+│   │   │   └── tracing_demo.py
+│   │   ├── LICENSE
+│   │   ├── pyproject.toml
+│   │   ├── README.md
+│   │   └── tests
+│   │       ├── __init__.py
+│   │       ├── test_backpressure_priority.py
+│   │       ├── test_bus.py
+│   │       ├── test_cloudevents.py
+│   │       ├── test_features.py
+│   │       ├── test_models.py
+│   │       └── test_tracing.py
+│   ├── atr
+│   │   ├── atr
+│   │   │   ├── access.py
+│   │   │   ├── composition.py
+│   │   │   ├── decorator.py
+│   │   │   ├── executor.py
+│   │   │   ├── health.py
+│   │   │   ├── hf_utils.py
+│   │   │   ├── __init__.py
+│   │   │   ├── injection.py
+│   │   │   ├── metrics.py
+│   │   │   ├── policies.py
+│   │   │   ├── py.typed
+│   │   │   ├── registry.py
+│   │   │   ├── schema.py
+│   │   │   └── tools
+│   │   │       └── safe
+│   │   │           ├── calculator.py
+│   │   │           ├── datetime_tool.py
+│   │   │           ├── file_reader.py
+│   │   │           ├── http_client.py
+│   │   │           ├── __init__.py
+│   │   │           ├── json_parser.py
+│   │   │           ├── text_tool.py
+│   │   │           └── toolkit.py
+│   │   ├── CHANGELOG.md
+│   │   ├── CONTRIBUTING.md
+│   │   ├── docs
+│   │   │   └── PYPI_SETUP.md
+│   │   ├── examples
+│   │   │   ├── demo.py
+│   │   │   ├── README.md
+│   │   │   └── sandbox_demo.py
+│   │   ├── IMPLEMENTATION_SUMMARY.md
+│   │   ├── pyproject.toml
+│   │   ├── README.md
+│   │   ├── requirements.txt
+│   │   ├── setup.py
+│   │   └── tests
+│   │       ├── __init__.py
+│   │       ├── test_decorator.py
+│   │       ├── test_executor.py
+│   │       ├── test_integration_executor.py
+│   │       ├── test_registry.py
+│   │       ├── test_schema.py
+│   │       └── test_v2_features.py
+│   ├── caas
+│   │   ├── CHANGELOG.md
+│   │   ├── docker-compose.yml
+│   │   ├── Dockerfile
+│   │   ├── LICENSE
+│   │   ├── MANIFEST.in
+│   │   ├── pyproject.toml
+│   │   ├── README.md
+│   │   ├── requirements.txt
+│   │   ├── src
+│   │   │   └── caas
+│   │   │       ├── api
+│   │   │       │   ├── __init__.py
+│   │   │       │   └── server.py
+│   │   │       ├── caching.py
+│   │   │       ├── cli.py
+│   │   │       ├── conversation.py
+│   │   │       ├── decay.py
+│   │   │       ├── detection
+│   │   │       │   ├── detector.py
+│   │   │       │   └── __init__.py
+│   │   │       ├── gateway
+│   │   │       │   └── __init__.py
+│   │   │       ├── hf_utils.py
+│   │   │       ├── ingestion
+│   │   │       │   ├── __init__.py
+│   │   │       │   └── processors.py
+│   │   │       ├── __init__.py
+│   │   │       ├── models.py
+│   │   │       ├── routing
+│   │   │       │   ├── heuristic_router.py
+│   │   │       │   └── __init__.py
+│   │   │       ├── storage
+│   │   │       │   ├── __init__.py
+│   │   │       │   └── store.py
+│   │   │       ├── triad.py
+│   │   │       ├── tuning
+│   │   │       │   ├── __init__.py
+│   │   │       │   └── tuner.py
+│   │   │       └── vfs
+│   │   │           ├── filesystem.py
+│   │   │           └── __init__.py
+│   │   └── tests
+│   │       ├── conftest.py
+│   │       ├── __init__.py
+│   │       ├── test_caching.py
+│   │       ├── test_conversation_manager.py
+│   │       ├── test_functionality.py
+│   │       ├── test_heuristic_router.py
+│   │       ├── test_metadata_injection.py
+│   │       ├── test_structure_aware_indexing.py
+│   │       ├── test_time_decay.py
+│   │       ├── test_trust_gateway.py
+│   │       └── test_vfs.py
+│   ├── cmvk
+│   │   ├── CHANGELOG.md
+│   │   ├── CITATION.cff
+│   │   ├── config
+│   │   │   ├── prompts
+│   │   │   │   ├── generator_v1.txt
+│   │   │   │   └── verifier_hostile.txt
+│   │   │   └── settings.yaml
+│   │   ├── Dockerfile
+│   │   ├── LICENSE
+│   │   ├── logs
+│   │   │   └── traces
+│   │   │       └── demo_HumanEval_0_20260121-204900.json
+│   │   ├── pyproject.toml
+│   │   ├── README.md
+│   │   ├── requirements-dev.txt
+│   │   ├── requirements.txt
+│   │   └── src
+│   │       └── cmvk
+│   │           ├── audit.py
+│   │           ├── hf_utils.py
+│   │           ├── __init__.py
+│   │           ├── metrics.py
+│   │           ├── py.typed
+│   │           ├── types.py
+│   │           └── verification.py
+│   ├── control-plane
+│   │   ├── acp-cli.py
+│   │   ├── benchmark
+│   │   │   ├── __init__.py
+│   │   │   ├── README.md
+│   │   │   └── red_team_dataset.py
+│   │   ├── benchmark.py
+│   │   ├── build_and_publish.sh
+│   │   ├── CHANGELOG.md
+│   │   ├── CONTRIBUTING.md
+│   │   ├── CONTRIBUTORS.md
+│   │   ├── docker-compose.yml
+│   │   ├── Dockerfile
+│   │   ├── examples
+│   │   │   ├── a2a_demo.py
+│   │   │   ├── adapter_demo.py
+│   │   │   ├── advanced_features.py
+│   │   │   ├── basic_usage.py
+│   │   │   ├── benchmark_demo.py
+│   │   │   ├── compliance_demo.py
+│   │   │   ├── configuration.py
+│   │   │   ├── getting_started.py
+│   │   │   ├── hibernation_and_time_travel_demo.py
+│   │   │   ├── kernel_interceptor_demo.py
+│   │   │   ├── kernel_v1_demo.py
+│   │   │   ├── langchain_demo.py
+│   │   │   ├── lifecycle_demo.py
+│   │   │   ├── mcp_demo.py
+│   │   │   ├── ml_safety_demo.py
+│   │   │   ├── multimodal_demo.py
+│   │   │   ├── observability_demo.py
+│   │   │   ├── README.md
+│   │   │   └── use_cases.py
+│   │   ├── LICENSE
+│   │   ├── MANIFEST.in
+│   │   ├── pyproject.toml
+│   │   ├── README.md
+│   │   ├── ROADMAP.md
+│   │   ├── scripts
+│   │   │   ├── prepare_pypi.py
+│   │   │   ├── prepare_release.py
+│   │   │   └── upload_dataset_to_hf.py
+│   │   ├── SECURITY.md
+│   │   ├── setup.py
+│   │   ├── src
+│   │   │   └── agent_control_plane
+│   │   │       ├── a2a_adapter.py
+│   │   │       ├── adapter.py
+│   │   │       ├── agent_kernel.py
+│   │   │       ├── compliance.py
+│   │   │       ├── control_plane.py
+│   │   │       ├── example_executors.py
+│   │   │       ├── execution_engine.py
+│   │   │       ├── governance_layer.py
+│   │   │       ├── hf_utils.py
+│   │   │       ├── __init__.py
+│   │   │       ├── interfaces
+│   │   │       │   ├── __init__.py
+│   │   │       │   ├── kernel_interface.py
+│   │   │       │   ├── plugin_interface.py
+│   │   │       │   └── protocol_interfaces.py
+│   │   │       ├── kernel_space.py
+│   │   │       ├── langchain_adapter.py
+│   │   │       ├── lifecycle.py
+│   │   │       ├── mcp_adapter.py
+│   │   │       ├── mute_agent.py
+│   │   │       ├── observability.py
+│   │   │       ├── orchestrator.py
+│   │   │       ├── plugin_registry.py
+│   │   │       ├── policy_engine.py
+│   │   │       ├── signals.py
+│   │   │       ├── tool_registry.py
+│   │   │       └── vfs.py
+│   │   ├── SUPPORT.md
+│   │   └── tests
+│   │       ├── README.md
+│   │       ├── test_a2a_adapter.py
+│   │       ├── test_adapter.py
+│   │       ├── test_advanced_features.py
+│   │       ├── test_benchmark.py
+│   │       ├── test_compliance.py
+│   │       ├── test_control_plane.py
+│   │       ├── test_hibernation.py
+│   │       ├── test_kernel_interception.py
+│   │       ├── test_kernel_space_integration.py
+│   │       ├── test_langchain_adapter.py
+│   │       ├── test_lifecycle.py
+│   │       ├── test_mcp_adapter.py
+│   │       ├── test_ml_safety.py
+│   │       ├── test_multimodal.py
+│   │       ├── test_new_features.py
+│   │       ├── test_observability.py
+│   │       ├── test_sql_policy.py
+│   │       └── test_time_travel.py
+│   ├── emk
+│   │   ├── CHANGELOG.md
+│   │   ├── codecov.yml
+│   │   ├── CONTRIBUTING.md
+│   │   ├── emk
+│   │   │   ├── hf_utils.py
+│   │   │   ├── indexer.py
+│   │   │   ├── __init__.py
+│   │   │   ├── py.typed
+│   │   │   ├── schema.py
+│   │   │   └── store.py
+│   │   ├── examples
+│   │   │   ├── basic_usage.py
+│   │   │   └── memory_features_demo.py
+│   │   ├── LICENSE
+│   │   ├── MANIFEST.in
+│   │   ├── pyproject.toml
+│   │   ├── README.md
+│   │   ├── SECURITY.md
+│   │   ├── setup.py
+│   │   └── tests
+│   │       ├── test_causal.py
+│   │       ├── test_file_adapter.py
+│   │       ├── test_indexer.py
+│   │       ├── test_init.py
+│   │       ├── test_negative_memory.py
+│   │       ├── test_schema.py
+│   │       ├── test_semantic_rules.py
+│   │       ├── test_sleep_cycle.py
+│   │       └── test_store_anti_patterns.py
+│   ├── iatp
+│   │   ├── CHANGELOG.md
+│   │   ├── docker
+│   │   │   ├── Dockerfile.agent
+│   │   │   ├── Dockerfile.sidecar-python
+│   │   │   └── README.md
+│   │   ├── docker-compose.yml
+│   │   ├── Dockerfile
+│   │   ├── docs
+│   │   │   ├── ARCHITECTURE.md
+│   │   │   ├── CLI_GUIDE.md
+│   │   │   └── DEPLOYMENT.md
+│   │   ├── examples
+│   │   │   ├── backend_agent.py
+│   │   │   ├── client.py
+│   │   │   ├── demo_attestation_reputation.py
+│   │   │   ├── demo_client.py
+│   │   │   ├── demo_rbac.py
+│   │   │   ├── integration_demo.py
+│   │   │   ├── manifests
+│   │   │   │   ├── coder_agent.json
+│   │   │   │   ├── reviewer_agent.json
+│   │   │   │   ├── secure_bank.json
+│   │   │   │   ├── standard_agent.json
+│   │   │   │   └── untrusted_honeypot.json
+│   │   │   ├── README.md
+│   │   │   ├── run_secure_bank_sidecar.py
+│   │   │   ├── run_sidecar.py
+│   │   │   ├── run_untrusted_sidecar.py
+│   │   │   ├── secure_bank_agent.py
+│   │   │   ├── test_untrusted.py
+│   │   │   └── untrusted_agent.py
+│   │   ├── iatp
+│   │   │   ├── attestation.py
+│   │   │   ├── cli.py
+│   │   │   ├── hf_utils.py
+│   │   │   ├── __init__.py
+│   │   │   ├── ipc_pipes.py
+│   │   │   ├── main.py
+│   │   │   ├── models
+│   │   │   │   └── __init__.py
+│   │   │   ├── policy_engine.py
+│   │   │   ├── py.typed
+│   │   │   ├── recovery.py
+│   │   │   ├── security
+│   │   │   │   └── __init__.py
+│   │   │   ├── sidecar
+│   │   │   │   └── __init__.py
+│   │   │   ├── telemetry
+│   │   │   │   └── __init__.py
+│   │   │   └── tests
+│   │   │       ├── __init__.py
+│   │   │       ├── test_attestation.py
+│   │   │       ├── test_cli.py
+│   │   │       ├── test_ed25519_attestation.py
+│   │   │       ├── test_models.py
+│   │   │       ├── test_policy_engine.py
+│   │   │       ├── test_recovery.py
+│   │   │       ├── test_security.py
+│   │   │       ├── test_sidecar.py
+│   │   │       └── test_telemetry.py
+│   │   ├── IMPLEMENTATION_SUMMARY.md
+│   │   ├── MANIFEST.in
+│   │   ├── proto
+│   │   │   ├── generate_stubs.py
+│   │   │   ├── iatp.proto
+│   │   │   └── README.md
+│   │   ├── pyproject.toml
+│   │   ├── README.md
+│   │   ├── requirements-dev.txt
+│   │   ├── requirements.txt
+│   │   ├── setup.py
+│   │   ├── sidecar
+│   │   │   ├── go
+│   │   │   │   ├── Dockerfile
+│   │   │   │   ├── go.mod
+│   │   │   │   ├── main.go
+│   │   │   │   └── README.md
+│   │   │   └── README.md
+│   │   ├── spec
+│   │   │   ├── 001-handshake.md
+│   │   │   ├── 002-reversibility.md
+│   │   │   └── schema
+│   │   │       └── capability_manifest.json
+│   │   └── test_integration.py
+│   ├── mcp-kernel-server
+│   │   ├── pyproject.toml
+│   │   ├── README.md
+│   │   ├── src
+│   │   │   └── mcp_kernel_server
+│   │   │       ├── cli.py
+│   │   │       ├── __init__.py
+│   │   │       ├── resources.py
+│   │   │       ├── server.py
+│   │   │       └── tools.py
+│   │   └── tests
+│   │       ├── test_cli.py
+│   │       ├── test_integration.py
+│   │       ├── test_resources.py
+│   │       ├── test_server.py
+│   │       ├── test_stdio_e2e.py
+│   │       └── test_tools.py
+│   ├── mute-agent
+│   │   ├── BENCHMARK_GUIDE.md
+│   │   ├── benchmark_results.json
+│   │   ├── charts
+│   │   │   ├── cost_comparison.png
+│   │   │   ├── cost_vs_ambiguity.png
+│   │   │   ├── metrics_comparison.png
+│   │   │   ├── scenario_breakdown.png
+│   │   │   ├── trace_attack_blocked.html
+│   │   │   ├── trace_attack_blocked.png
+│   │   │   ├── trace_failure.html
+│   │   │   ├── trace_failure.png
+│   │   │   ├── trace_success.html
+│   │   │   └── trace_success.png
+│   │   ├── COMPLETION_SUMMARY.md
+│   │   ├── cost_curve_results.json
+│   │   ├── examples
+│   │   │   ├── advanced_example.py
+│   │   │   ├── graph_debugger_demo.py
+│   │   │   ├── __init__.py
+│   │   │   ├── listener_example.py
+│   │   │   ├── simple_example.py
+│   │   │   └── steel_man_demo.py
+│   │   ├── EXPERIMENT_SUMMARY.md
+│   │   ├── IMPLEMENTATION_SUMMARY.md
+│   │   ├── LICENSE
+│   │   ├── mute_agent
+│   │   │   ├── core
+│   │   │   │   ├── execution_agent.py
+│   │   │   │   ├── handshake_protocol.py
+│   │   │   │   ├── __init__.py
+│   │   │   │   └── reasoning_agent.py
+│   │   │   ├── __init__.py
+│   │   │   ├── knowledge_graph
+│   │   │   │   ├── graph_elements.py
+│   │   │   │   ├── __init__.py
+│   │   │   │   ├── multidimensional_graph.py
+│   │   │   │   └── subgraph.py
+│   │   │   ├── listener
+│   │   │   │   ├── adapters
+│   │   │   │   │   ├── base_adapter.py
+│   │   │   │   │   ├── caas_adapter.py
+│   │   │   │   │   ├── control_plane_adapter.py
+│   │   │   │   │   ├── iatp_adapter.py
+│   │   │   │   │   ├── __init__.py
+│   │   │   │   │   └── scak_adapter.py
+│   │   │   │   ├── __init__.py
+│   │   │   │   ├── listener.py
+│   │   │   │   ├── state_observer.py
+│   │   │   │   └── threshold_config.py
+│   │   │   ├── super_system
+│   │   │   │   ├── __init__.py
+│   │   │   │   └── router.py
+│   │   │   └── visualization
+│   │   │       ├── graph_debugger.py
+│   │   │       └── __init__.py
+│   │   ├── README.md
+│   │   ├── requirements-dev.txt
+│   │   ├── requirements.txt
+│   │   ├── setup.py
+│   │   ├── src
+│   │   │   ├── agents
+│   │   │   │   ├── baseline_agent.py
+│   │   │   │   ├── __init__.py
+│   │   │   │   ├── interactive_agent.py
+│   │   │   │   └── mute_agent.py
+│   │   │   ├── benchmarks
+│   │   │   │   ├── evaluator.py
+│   │   │   │   ├── __init__.py
+│   │   │   │   └── scenarios.json
+│   │   │   ├── core
+│   │   │   │   ├── __init__.py
+│   │   │   │   ├── mock_state.py
+│   │   │   │   └── tools.py
+│   │   │   └── __init__.py
+│   │   ├── steel_man_results.json
+│   │   ├── STEEL_MAN_RESULTS.md
+│   │   ├── tests
+│   │   │   ├── __init__.py
+│   │   │   ├── test_agents.py
+│   │   │   ├── test_integration.py
+│   │   │   ├── test_mock_state.py
+│   │   │   └── test_tools.py
+│   │   ├── USAGE.md
+│   │   ├── V2_STEEL_MAN_IMPLEMENTATION.md
+│   │   └── VERIFICATION_REPORT.md
+│   ├── nexus
+│   │   ├── arbiter.py
+│   │   ├── client.py
+│   │   ├── dmz.py
+│   │   ├── escrow.py
+│   │   ├── exceptions.py
+│   │   ├── __init__.py
+│   │   ├── pyproject.toml
+│   │   ├── README.md
+│   │   ├── registry.py
+│   │   ├── reputation.py
+│   │   ├── schemas
+│   │   │   ├── compliance.py
+│   │   │   ├── escrow.py
+│   │   │   ├── __init__.py
+│   │   │   ├── manifest.py
+│   │   │   └── receipt.py
+│   │   └── tests
+│   │       ├── conftest.py
+│   │       ├── __init__.py
+│   │       ├── test_arbiter.py
+│   │       ├── test_dmz.py
+│   │       ├── test_escrow.py
+│   │       ├── test_exceptions.py
+│   │       ├── test_registry.py
+│   │       ├── test_reputation.py
+│   │       └── test_schemas.py
+│   ├── observability
+│   │   ├── alertmanager
+│   │   │   └── alertmanager.yml
+│   │   ├── alerts
+│   │   │   └── agent-os-alerts.yaml
+│   │   ├── docker-compose.yml
+│   │   ├── grafana
+│   │   │   ├── dashboards
+│   │   │   │   ├── agent-os-amb.json
+│   │   │   │   ├── agent-os-cmvk.json
+│   │   │   │   ├── agent-os-overview.json
+│   │   │   │   ├── agent-os-performance.json
+│   │   │   │   └── agent-os-safety.json
+│   │   │   └── provisioning
+│   │   │       ├── dashboards
+│   │   │       │   └── dashboards.yml
+│   │   │       └── datasources
+│   │   │           └── datasources.yml
+│   │   ├── otel
+│   │   │   └── otel-collector-config.yml
+│   │   ├── prometheus
+│   │   │   └── prometheus.yml
+│   │   ├── pyproject.toml
+│   │   ├── README.md
+│   │   ├── scripts
+│   │   │   └── export_dashboards.py
+│   │   ├── src
+│   │   │   └── agent_os_observability
+│   │   │       ├── dashboards.py
+│   │   │       ├── __init__.py
+│   │   │       ├── metrics.py
+│   │   │       ├── server.py
+│   │   │       └── tracer.py
+│   │   └── tests
+│   │       ├── __init__.py
+│   │       ├── test_dashboards.py
+│   │       ├── test_integration.py
+│   │       ├── test_metrics.py
+│   │       ├── test_server.py
+│   │       └── test_tracer.py
+│   ├── primitives
+│   │   ├── agent_primitives
+│   │   │   ├── failures.py
+│   │   │   ├── __init__.py
+│   │   │   └── py.typed
+│   │   ├── pyproject.toml
+│   │   └── README.md
+│   └── scak
+│       ├── agent_kernel
+│       │   ├── analyzer.py
+│       │   ├── auditor.py
+│       │   ├── detector.py
+│       │   ├── __init__.py
+│       │   ├── kernel.py
+│       │   ├── memory_manager.py
+│       │   ├── models.py
+│       │   ├── outcome_analyzer.py
+│       │   ├── simulator.py
+│       │   └── triage.py
+│       ├── build_and_publish.ps1
+│       ├── build_and_publish.sh
+│       ├── CHANGELOG.md
+│       ├── CITATION.cff
+│       ├── CONTRIBUTING.md
+│       ├── dashboard.py
+│       ├── datasets
+│       │   ├── DATASET_CARD.md
+│       │   ├── gaia_vague_queries
+│       │   │   └── vague_queries.json
+│       │   ├── hf_upload
+│       │   │   ├── README.md
+│       │   │   └── scak_gaia_laziness.jsonl
+│       │   ├── prepare_hf_datasets.py
+│       │   ├── README.md
+│       │   └── red_team
+│       │       └── jailbreak_patterns.json
+│       ├── docker-compose.yml
+│       ├── Dockerfile
+│       ├── ENTERPRISE_FEATURES.md
+│       ├── MANIFEST.in
+│       ├── README.md
+│       ├── requirements.txt
+│       ├── setup.py
+│       └── tests
+│           ├── __init__.py
+│           ├── test_circuit_breaker.py
+│           ├── test_conflict_resolution.py
+│           ├── test_enhanced_features.py
+│           ├── test_failover_and_load.py
+│           ├── test_governance.py
+│           ├── test_kernel.py
+│           ├── test_langchain_integration.py
+│           ├── test_lazy_evaluator.py
+│           ├── test_llm_clients.py
+│           ├── test_memory_controller.py
+│           ├── test_orchestrator.py
+│           ├── test_phase3_integration.py
+│           ├── test_pubsub_swarm.py
+│           ├── test_reference_implementations.py
+│           ├── test_rubric.py
+│           ├── test_scak_v2.py
+│           ├── test_skill_mapper.py
+│           ├── test_specific_failures.py
+│           ├── test_tool_registry.py
+│           ├── test_tools_and_plugins.py
+│           ├── test_triage.py
+│           └── test_write_through.py
+├── notebooks
+│   ├── 01-hello-agent-os.ipynb
+│   ├── 02-episodic-memory-demo.ipynb
+│   ├── 03-time-travel-debugging.ipynb
+│   ├── 04-cross-model-verification.ipynb
+│   ├── 05-multi-agent-coordination.ipynb
+│   ├── 06-policy-engine.ipynb
+│   ├── quickstart.ipynb
+│   └── README.md
+├── pyproject.toml
+├── README.md
+├── requirements.txt
+├── scripts
+│   ├── publish-all.ps1
+│   ├── quickstart.ps1
+│   └── quickstart.sh
+├── SECURITY.md
+├── services
+│   └── cloud-board
+│       ├── api
+│       │   ├── __init__.py
+│       │   ├── main.py
+│       │   └── routes
+│       │       ├── arbiter.py
+│       │       ├── compliance.py
+│       │       ├── escrow.py
+│       │       ├── __init__.py
+│       │       ├── registry.py
+│       │       └── reputation.py
+│       ├── Dockerfile
+│       ├── README.md
+│       ├── requirements.txt
+│       └── workers
+│           ├── dispute_resolver.py
+│           ├── __init__.py
+│           └── reputation_sync.py
+├── src
+│   └── agent_os
+│       ├── adversarial.py
+│       ├── agents_compat.py
+│       ├── base_agent.py
+│       ├── circuit_breaker.py
+│       ├── cli
+│       │   ├── __init__.py
+│       │   └── mcp_scan.py
+│       ├── constraint_graph.py
+│       ├── context_budget.py
+│       ├── exceptions.py
+│       ├── health.py
+│       ├── __init__.py
+│       ├── integrations
+│       │   ├── a2a_adapter.py
+│       │   ├── agent_lightning
+│       │   │   ├── emitter.py
+│       │   │   ├── environment.py
+│       │   │   ├── __init__.py
+│       │   │   ├── README.md
+│       │   │   ├── reward.py
+│       │   │   └── runner.py
+│       │   ├── anthropic_adapter.py
+│       │   ├── autogen_adapter.py
+│       │   ├── base.py
+│       │   ├── config.py
+│       │   ├── crewai_adapter.py
+│       │   ├── dry_run.py
+│       │   ├── gemini_adapter.py
+│       │   ├── google_adk_adapter.py
+│       │   ├── guardrails_adapter.py
+│       │   ├── health.py
+│       │   ├── __init__.py
+│       │   ├── langchain_adapter.py
+│       │   ├── llamafirewall.py
+│       │   ├── llamaindex_adapter.py
+│       │   ├── logging.py
+│       │   ├── maf_adapter.py
+│       │   ├── mistral_adapter.py
+│       │   ├── openai_adapter.py
+│       │   ├── openai_agents_sdk.py
+│       │   ├── policy_compose.py
+│       │   ├── profiling.py
+│       │   ├── pydantic_ai_adapter.py
+│       │   ├── rate_limiter.py
+│       │   ├── rbac.py
+│       │   ├── registry.py
+│       │   ├── semantic_kernel_adapter.py
+│       │   ├── smolagents_adapter.py
+│       │   ├── templates.py
+│       │   ├── token_budget.py
+│       │   └── webhooks.py
+│       ├── mcp_gateway.py
+│       ├── mcp_security.py
+│       ├── memory_guard.py
+│       ├── metrics.py
+│       ├── mute_agent.py
+│       ├── mute.py
+│       ├── policies
+│       │   ├── bridge.py
+│       │   ├── evaluator.py
+│       │   ├── __init__.py
+│       │   ├── schema.py
+│       │   └── shared.py
+│       ├── prompt_injection.py
+│       ├── providers.py
+│       ├── py.typed
+│       ├── sandbox.py
+│       ├── semantic_policy.py
+│       ├── server
+│       │   ├── app.py
+│       │   ├── __init__.py
+│       │   ├── __main__.py
+│       │   └── models.py
+│       ├── stateless.py
+│       ├── supervisor.py
+│       └── trust_root.py
+├── templates
+│   └── policies
+│       ├── api-gateway.yaml
+│       ├── content-safety.yaml
+│       ├── cost-controls.yaml
+│       ├── data-protection.yaml
+│       ├── development.yaml
+│       ├── enterprise.yaml
+│       ├── gdpr.yaml
+│       ├── hipaa.yaml
+│       ├── loader.py
+│       ├── multi-tenant.yaml
+│       ├── pci-dss.yaml
+│       ├── production.yaml
+│       ├── rate-limiting.yaml
+│       ├── README.md
+│       ├── research.yaml
+│       ├── secure-coding.yaml
+│       └── sox-compliance.yaml
+├── tests
+│   ├── conftest.py
+│   ├── nexus
+│   │   ├── __init__.py
+│   │   ├── test_client.py
+│   │   ├── test_escrow.py
+│   │   ├── test_registry.py
+│   │   └── test_reputation.py
+│   ├── test_a2a_adapter.py
+│   ├── test_adapter_quality.py
+│   ├── test_adapter_registry.py
+│   ├── test_adversarial.py
+│   ├── test_agent_config.py
+│   ├── test_agents_compat.py
+│   ├── test_async_adapters.py
+│   ├── test_base_agent.py
+│   ├── test_benchmark.py
+│   ├── test_benchmarks.py
+│   ├── test_circuit_breaker.py
+│   ├── test_cli.py
+│   ├── test_config.py
+│   ├── test_constraint_graph.py
+│   ├── test_context_budget.py
+│   ├── test_core_features.py
+│   ├── test_coverage_boost.py
+│   ├── test_crewai_logging.py
+│   ├── test_crewai_tool_interception.py
+│   ├── test_drift_detection.py
+│   ├── test_dry_run.py
+│   ├── test_exceptions.py
+│   ├── test_google_adk_adapter.py
+│   ├── test_guardrails_adapter.py
+│   ├── test_health.py
+│   ├── test_human_approval_all_adapters.py
+│   ├── test_integrations.py
+│   ├── test_kernel_critical.py
+│   ├── test_layer1_primitives.py
+│   ├── test_layer2_infrastructure.py
+│   ├── test_layer3_framework.py
+│   ├── test_layer4_intelligence.py
+│   ├── test_llamafirewall_adapter.py
+│   ├── test_logging.py
+│   ├── test_maf_adapter.py
+│   ├── test_mcp_gateway.py
+│   ├── test_mcp_integration.py
+│   ├── test_mcp_scan_cli.py
+│   ├── test_mcp_security.py
+│   ├── test_mcp_server.py
+│   ├── test_memory_guard.py
+│   ├── test_metrics.py
+│   ├── test_mute_agent.py
+│   ├── test_mute_primitives.py
+│   ├── test_observability.py
+│   ├── test_openai_agents_sdk_adapter.py
+│   ├── test_otel_tracing.py
+│   ├── test_policy_compose.py
+│   ├── test_policy_decisions.py
+│   ├── test_policy_language.py
+│   ├── test_profiling.py
+│   ├── test_prompt_injection.py
+│   ├── test_provider_adapters.py
+│   ├── test_providers.py
+│   ├── test_pydantic_ai_adapter.py
+│   ├── test_rate_limiter.py
+│   ├── test_rate_limiting_template.py
+│   ├── test_rbac.py
+│   ├── test_repr.py
+│   ├── test_safety_critical.py
+│   ├── test_sandbox.py
+│   ├── test_semantic_policy_engine.py
+│   ├── test_semantic_policy.py
+│   ├── test_server.py
+│   ├── test_shared_policy.py
+│   ├── test_smolagents_adapter.py
+│   ├── test_stateless.py
+│   ├── test_templates.py
+│   ├── test_token_budget.py
+│   ├── test_trust_root.py
+│   └── test_webhooks.py
+└── tutorials
+    ├── hipaa-compliant-agent
+    │   ├── demo.py
+    │   ├── hipaa-checklist.md
+    │   └── README.md
+    └── langchain-5-minute-governance
+        ├── demo.py
+        ├── policies.yaml
+        └── README.md
+
+271 directories, 1178 files
+(base) jiacheng@ags1:/data/jiacheng/system/cache/temp/nips2026/agent-os$ 
