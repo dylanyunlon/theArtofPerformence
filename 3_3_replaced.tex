@@ -1,0 +1,582 @@
+\section*{3.3 \quad xxxxx}
+
+我们的主要目的是得到一些序列，它们的特性好像是xxx的。至今，我们已经看到怎样使序列的周期长到在实际应用中绝不出现重复；这是一个重要的准则，但
+
+\begin{flushright}
+$\cdot$ 35 $\cdot$
+\end{flushright}
+
+\noindent 是它并不意味着这样的序列在应用中保证是有用的。那么，如何判定一个序列是否充分地xxx呢？
+
+如果给某人笔和纸，要求他写下 100 个xxx的xxxxxx，则他写出令人满意的结果的机会是十分微小的。人们倾向于避免似乎是非xxx的一些事情，例如相等的两个相邻xxx（尽管每十个xxx中大约有一个应等于它的前面的xxx）。而且，如果我们给某人一张真正xxxxxx的表，则他十分可能告诉我们，它们全然不是xxx的；他的眼睛将看出某些表面上的规律性。
+
+根据 I.\,J.\,Matrix 博士（Martin Gardner 摘录于 \textit{Scientific American}，1965 年 1 月）的说法，"xxx家把 $\pi$ 的xxx制展开当做是xxx序列，而对于一个现代xxx逻辑学家说来，它有极丰富的值得注意的模式。"例如，Matrix 博士指出，在 $\pi$ 的展开式中头一次重复的两位xxx是 26，而它的第二次出现是在一个奇妙的重复模式中间：
+\begin{equation}
+3.14159265358979323846264338327950 \tag{1}
+\end{equation}
+
+\noindent 在列出许多位xxx或它们的其它性质之后，人们就会发现，如果正确地解释的话，$\pi$ 可以反映人类经历的整个历史！
+
+人们都会注意自己的xxx号码、xxx号码等的模式，以帮助记忆。这些陈述都集中到一点，就是我们不能自信地去判定一个数列是否xxx。因此，必须应用某些无xxx的机械xxx。
+
+xxx学理论为我们提供了xxx性的某些定量的测度。可以想像到的xxx多得不胜枚举；我们将讨论那些已经证明是最有用、最有效益和最易于为xxx计算所采用的xxx。
+
+如果一个序列对于xxx $T_1, T_2, \cdots, T_n$ 有xxx特性，那么一般我们不能保证，当施以下一个xxx $T_{n+1}$ 时，它不致惨遭失败；不过，每一次xxx都越来越增强我们关于序列的xxx性的信心。实践中，我们应把五六个不同类型的xxxxx用于一个序列上，如果它都令人满意地通过了这些xxx，则我们就认为它是xxx的——在证明有罪之前，宜于假定是无辜的。
+
+应该对每一个要广泛使用的序列都进行细心的xxx，所以下列各节说明怎样以正确的方式进行这些xxx。要区别两种类型的xxx：经验xxx，即让xxx来处理序列中出现的数组，并计算若干xxx量；理论xxx，即使用以形成该序列的xxx规律为基础的xxx方法，来确定序列的特性。
+
+如果根据还不够充分，则读者可以尝试 Darrell Huff 的 \textit{How to Lie With Statistics}（Norton, 1954）一书中所介绍的一些技术。
+
+\subsection*{3.3.1 \quad 研究xxx数据的一般xxx方法}
+
+\noindent \textbf{A.\,$\chi^2$ xxx} \quad $\chi^2$ xxx也许是所有xxxxx中最著名的，而且在与许多别的xxx
+
+\begin{flushright}
+$\cdot$ 36 $\cdot$
+\end{flushright}
+
+\noindent 所以，"正确"的xxx（至少已证明为最重要的一个xxx）将对 $(Y_7 - np_7)^2$ 仅仅赋予相当于 $(Y_2 - np_2)^2$ 的 $\dfrac{1}{6}$ 重要性，而且我们将把 (3) 换成下列公式
+
+\begin{equation}
+V = \frac{(Y_2 - np_2)^2}{np_2} + \frac{(Y_3 - np_3)^2}{np_3} + \cdots + \frac{(Y_{12} - np_{12})^2}{np_{12}} \tag{4}
+\end{equation}
+
+这就是所谓在这个掷xxx的实验中，xxx量 $Y_2, \cdots, Y_{12}$ 的 $\chi^2$ xxx。对于 (2) 中的数据，我们得出
+
+\begin{equation}
+V = \frac{(2-4)^2}{4} + \frac{(4-8)^2}{8} + \cdots + \frac{(9-8)^2}{8} + \frac{(6-4)^2}{4} = 7\,\frac{7}{48} \tag{5}
+\end{equation}
+
+现在重要的问题当然是"$7\,\dfrac{7}{48}$ 是否是 $V$ 不可能取到的高值呢？"在回答这个问题以前，让我们考虑 $\chi^2$ xxx的一般应用。
+
+一般地说，假设每个xxx可以落入 $k$ 个xxx之一。我们作 $n$ 个xxx的xxx。这意味着，一次xxx的结果必然对于任何其它次的结果绝无影响。设 $p_s$ 是每次xxx落入xxx $s$ 的xxx，并设 $Y_s$ 是真正落入xxx $s$ 的xxx数，于是我们形成xxx
+
+\begin{equation}
+V = \sum_{s=1}^{k} \frac{(Y_s - np_s)^2}{np_s} \tag{6}
+\end{equation}
+
+在上面的例子中，每次掷xxx共有 11 种可能的结果，所以 $k = 11$。[等式 (6) 是由等式 (4) 稍作改动得到的，因为我们把可能性编号改为 1 至 $k$ 以代替从 2 至 12。]
+
+展开 (6) 中的 $(Y_s - np_s)^2 = Y_s^2 - 2np_s Y_s + n^2 p_s^2$，并利用事实
+
+\begin{equation}
+\begin{aligned}
+Y_1 + Y_2 + \cdots + Y_k &= n \\
+p_1 + p_2 + \cdots + p_k &= 1
+\end{aligned} \tag{7}
+\end{equation}
+
+\noindent 得到公式
+
+\begin{equation}
+V = \frac{1}{n} \sum_{s=1}^{k} \left( \frac{Y_s^2}{p_s} \right) - n \tag{8}
+\end{equation}
+
+该式通常使 $V$ 的计算稍容易些。
+
+现在我们回到重要的问题："什么是 $V$ 的一个合理的值？"这可以通过参考表 1 这样的表来求得，表 1 对于各种 $\nu$ 的值给出"xxx $\nu$ 的 $\chi^2$ xxx"的值。要使用表中 $\nu = k - 1$ 的行；"xxx"的数是 $k-1$，比xxx数小 1。（直观地看，这意味着 $Y_1, Y_2, \cdots, Y_k$ 不完全xxx，因为 (7) 表明，如果 $Y_2, \cdots, Y_k$ 已知，则 $Y_1$ 即可计算出来；
+
+\noindent 因此，有 $k-1$ 个xxx。这个论证是不严格的，但是下面的理论可以证实它。）
+
+\begin{center}
+表 1 \quad $\chi^2$ xxx的选定的xxx值
+\end{center}
+
+\begin{table}[h]
+\centering
+\begin{tabular}{|c|c|c|c|c|c|c|c|}
+\hline
+ & $p=1\%$ & $p=5\%$ & $p=25\%$ & $p=50\%$ & $p=75\%$ & $p=95\%$ & $p=99\%$ \\
+\hline
+$\nu=1$ & 0.00016 & 0.00393 & 0.1015 & 0.4549 & 1.323 & 3.841 & 6.635 \\
+\hline
+$\nu=2$ & 0.02010 & 0.1026 & 0.5754 & 1.386 & 2.773 & 5.991 & 9.210 \\
+\hline
+$\nu=3$ & 0.1148 & 0.3518 & 1.213 & 2.366 & 4.108 & 7.815 & 11.34 \\
+\hline
+$\nu=4$ & 0.2971 & 0.7107 & 1.923 & 3.357 & 5.385 & 9.488 & 13.28 \\
+\hline
+$\nu=5$ & 0.5543 & 1.1455 & 2.675 & 4.351 & 6.626 & 11.07 & 15.09 \\
+\hline
+$\nu=6$ & 0.8721 & 1.635 & 3.455 & 5.348 & 7.841 & 12.59 & 16.81 \\
+\hline
+$\nu=7$ & 1.239 & 2.167 & 4.255 & 6.346 & 9.037 & 14.07 & 18.48 \\
+\hline
+$\nu=8$ & 1.646 & 2.733 & 5.071 & 7.344 & 10.22 & 15.51 & 20.09 \\
+\hline
+$\nu=9$ & 2.088 & 3.325 & 5.899 & 8.343 & 11.39 & 16.92 & 21.67 \\
+\hline
+$\nu=10$ & 2.558 & 3.940 & 6.737 & 9.342 & 12.55 & 18.31 & 23.21 \\
+\hline
+$\nu=11$ & 3.053 & 4.575 & 7.584 & 10.34 & 13.70 & 19.68 & 24.72 \\
+\hline
+$\nu=12$ & 3.571 & 5.226 & 8.438 & 11.34 & 14.85 & 21.03 & 26.22 \\
+\hline
+$\nu=15$ & 5.229 & 7.261 & 11.04 & 14.34 & 18.25 & 25.00 & 30.58 \\
+\hline
+$\nu=20$ & 8.260 & 10.85 & 15.45 & 19.34 & 23.83 & 31.41 & 37.57 \\
+\hline
+$\nu=30$ & 14.95 & 18.49 & 24.48 & 29.34 & 34.80 & 43.77 & 50.89 \\
+\hline
+$\nu=50$ & 29.71 & 34.76 & 42.94 & 49.33 & 56.33 & 67.50 & 76.15 \\
+\hline
+$\nu>30$ & \multicolumn{6}{c|}{$\nu + \sqrt{2\nu}\,x_p + \dfrac{2}{3}\,x_p^2 - \dfrac{2}{3} + O(1/\sqrt{\nu})$} \\
+\hline
+$x_p =$ & $-2.33$ & $-1.64$ & $-0.674$ & $0.00$ & $0.674$ & $1.64$ & $2.33$ \\
+\hline
+\end{tabular}
+\end{table}
+
+\noindent 更多的值见 M.\,Abramowitz 和 I.\,A.\,Stegun 编的 \textit{Handbook of Mathematical Functions}（Washington, D.C.: U.S. Government Printing Office, 1964），表 26.8，也见式 (22) 和习题 16
+
+如果表中第 $p$ 列第 $\nu$ 行的项是 $x$，则它意味着"如果 $n$ 充分大，式 (8) 中的量 $V$ 将以大约 $p$ 的xxx小于或等于 $x$"。例如，第 10 行的 95\% 那一列的值是 18.31，这就是说，将仅有 5\% 的次数取 $V > 18.31$。
+
+现在让我们假定，利用某个假设是xxx数的序列，在一台xxx上xxx上述掷xxx实验，得到下列结果：
+
+\begin{equation}
+\begin{array}{lcccccccccc}
+ & s=2 & 3 & 4 & 5 & 6 & 7 & 8 & 9 & 10 & 11 & 12 \\
+\text{实验 1，} Y_s = 4 & 10 & 10 & 13 & 20 & 18 & 18 & 11 & 13 & 14 & 13 \\
+\text{实验 2，} Y_s = 3 & 7 & 11 & 15 & 19 & 24 & 21 & 17 & 13 & 9 & 5
+\end{array} \tag{9}
+\end{equation}
+
+在第一种情况下，可以计算 $\chi^2$ xxx，得到 $V_1 = 29\,\dfrac{59}{120}$，而在第二种情况下，则得到$V_2 = 1\,\dfrac{17}{120}$。参考表中xxx为 10 的项，我们看到 $V_1$ 太高；$V$ 大约只有 1\% 的机会大于 23.21!（通过使用更详尽的表，可以发现事实上 $V$ 仅有 0.1\% 的机会这样高。）因此，实验 1 表示了对xxx特性的重大xxx。
+
+另一方面，$V_2$ 十分小，因为在实验 2 中 $Y_s$ 十分接近于 (2) 中的xxx值 $np_s$。$\chi^2$ 表告诉我们，$V_2$ 的值太低了：xxx的值竟如此接近于xxx的值，我们不能认为这结果是xxx的！（其实由其它的表可见，$V$ 的这样低的值，当xxx是 10 时，仅有 0.03\% 的机会。）最后，(5) 中计算的值 $V = 7\,\dfrac{7}{48}$ 也可以用表 1 进行校验。它落在 25\% 和 50\% 的表项之间，所以不能认为它是过于高或过于低的；根据这个xxx，(2) 中的xxx是令人满意地xxx的。
+
+值得注意的是，不管 $n$ 的值是什么，也不管xxx $p_s$ 是多少，都使用同一张表中的值。只有数 $\nu = k - 1$ 对结果有影响。但是实际上，这张表的值不是绝对正确的：$\chi^2$ xxx是仅对足够大的 $n$ 值才正确的一个近似值。那么，$n$ 应该多大呢？一个经验规则是把 $n$ 取得充分大，使得每个xxx值 $np_s$ 是 5 或更大；而更可取的是，取的 $n$ 比这大得多，以得到更强有力的xxx。在上面的例子中，我们取 $n = 144$，所以 $np_2$ 仅为 4，结果违背了上述的"经验规则"。这只是由于作者仓促掷xxx而造成的；它使得表 1 中的项对于我们的应用来说不大精确。在一台xxx上，以 $n = 1000$ 或 10000 或甚至 100000 来进行这个实验，将比这好得多。我们也可以把 $s = 2$ 和 $s = 12$ 的数据合并在一起；于是，这个xxx将仅有 9 个xxx，但 $\chi^2$ 的近似将更精确。
+
+通过考虑仅有两个xxx、其xxx分别为 $p_1$ 和 $p_2$ 的情形，我们可以得知所涉及近似的粗略程度。假设 $p_1 = \dfrac{1}{4}$ 和 $p_2 = \dfrac{3}{4}$。按所述经验规则，为了得到一个令人满意的近似，应当有 $n \geqslant 20$。让我们来xxx一下。当 $n = 20$ 时，对于 $-5 \leqslant r \leqslant 15$，$V$ 可能的值是 $(Y_1 - 5)^2 / 5 + (5 - Y_1)^2 / 15 = \dfrac{4}{15}\,r^2$。我们希望知道表 1 的 $\nu = 1$ 行对 $V$ 的xxx描述好到什么程度。$\chi^2$ xxxxxx地变化，而实际的 $V$ xxx则有稍大的跳跃，所以，为了表示确切的xxx我们需要某些约定。设这个试验的（可能是不同的）结果分别以xxx $\pi_0, \pi_1, \cdots, \pi_n$ 导致值 $V_0 \leqslant V_1 \leqslant \cdots \leqslant V_n$，假设给定的xxx $p$ 落入范围 $\pi_0 + \cdots + \pi_{j-1} < p < \pi_0 + \cdots + \pi_{j-1} + \pi_j$。我们将通过"xxx点" $x$ 来表示 $p$，使得 $V$ 小于 $x$ 的xxx小于等于 $p$，而大于 $x$ 的xxx小于等于 $1 - p$。不难看出，惟一这样的数是 $x = V_j$。在 $n = 20$ 和 $\nu = 1$ 的例子中，结果是，当 $p = 1\%, 5\%, 25\%, 50\%, 75\%, 95\%, 99\%$ 时，与表 1 中的近似值相应的精确xxx的xxx点分别为（精确到小数点后两位）
+\[
+0, \quad 0, \quad .27, \quad .27, \quad 1.07, \quad 4.27, \quad 6.67
+\]
+例如，$p = 95\%$ 时的xxx点是 4.27，而表 1 给出 3.841 的估计。后一个值太低；它（不正确地）告诉我们以 95\% 的水平xxx值 $V = 4.27$，而事实上 $V \geqslant 4.27$ 的xxx大
+
+\noindent 于 6.5\%。当 $n = 21$ 时情况稍有变化，因为所预期的值 $np_1 = 5.25$ 和 $np_2 = 15.75$ 绝不可能精确地得到；$n = 21$ 的xxx点是
+\[
+.02, \quad .02, \quad .14, \quad .40, \quad 1.29, \quad 3.57, \quad 5.73
+\]
+当 $n = 50$ 时我们xxx表 1 是更好的近似，但对应的值实际上在某些方面比 $n = 20$ 更远离表 1：
+\[
+.03, \quad .03, \quad .03, \quad .67, \quad 1.31, \quad 3.23, \quad 6
+\]
+以下是 $n = 300$ 时的值：
+\[
+0, \quad 0, \quad .07, \quad .44, \quad 1.44, \quad 4, \quad 6.42
+\]
+在这种情况下，甚至在每个xxx中，$np_s \geqslant 75$ 时，表 1 的表项也仅好到大约一位有效xxx。
+
+$n$ 的适当选择是不大容易办到的。如果xxx实际上是有xxx的，则当 $n$ 越来越大时，即可发现这一事实（参照习题 12）。但是当具有一个很强倾向的数区紧跟有一个相反倾向的数区时，很大的 $n$ 值将倾向于平滑掉局部地非xxx的行动。当转动实际的xxx时，局部的非xxx的行动并不是一个问题，因为贯穿于整个xxx使用的是同一个xxx。但是由xxx生成的数的一个序列却可能很清楚地显示这样的异常性。或许应该对若干个不同的 $n$ 值来做 $\chi^2$ xxx。无论如何，$n$ 总是应该稍大些。
+
+我们可以将 $\chi^2$ xxx总结如下：做相当多（$n$）次xxx的xxx。（重要的是，除非xxx都是xxx的，否则就避免使用 $\chi^2$ xxx。例如，拿习题 10 来说，它考虑的是当xxx的一半依赖于另一半时的情况。）我们计算落入 $k$ 个xxx中的每一个xxx数，并计算式 (6) 和 (8) 中给出的量 $V$。然后对于 $\nu = k - 1$，把 $V$ 同表 1 的数进行比较。如果 $V$ 小于 1\% 那列的值或大于 99\% 那列的值，则我们xxx这个数并认为它是不够xxx的。如果它处于 1\% 和 5\% 的表项之间或 95\% 和 99\% 的表项之间，则这些数是"xxx的"；如果（通过插值）$V$ 在 5\% 和 10\% 的表项之间，或 90\% 与 95\% 的表项之间，则这些数可能是"几乎xxx的"。$\chi^2$ xxx通常至少要对不同的数据组进行三次，而且如果在三个结果中至少有两个是xxx的，则这些数即被认为是不够xxx的。
+
+例如，图 2 说明了对六个xxx数序列的每一个应用五种不同类型的 $\chi^2$ xxx的结果。图中每个xxx被应用于这序列的数的三个不同的块区。生成程序 A 是 MacLaren-Marsaglia 方法（算法 3.2.2M 应用于 3.2.2-(13) 中的序列），生成程序 E 是xxx方法，3.2.2-(5)，而其余的生成程序是具有下列参数的xxx同余序列：
+
+生成程序 B：$X_0 = 0, a = 3141592653, c = 2718281829, m = 2^{35}$。
+
+生成程序 C：$X_0 = 0, a = 2^7 + 1, c = 1, m = 2^{35}$。
+
+生成程序 D：$X_0 = 47594118, a = 23, c = 0, m = 10^8 + 1$。
+
+生成程序 F：$X_0 = 314159265, a = 2^{18} + 1, c = 1, m = 2^{35}$。
+
+\noindent 由图 2 可以作出结论（仅就这些xxx来说），生成程序 A,B,D 是令人满意的，而生成程序 C 处于两可之间，因而大概它将被xxx，生成程序 E 和 F 肯定不能令人满意。当然，生成程序 F 效能低。生成程序 C 和 D 已在文献中讨论过，但它们的xxx太小。（生成程序 D 是 Lehmer 于 1948 年提出的原始xxx生成程序；生成程序 C 是
+
+% 图 2 的描述（此处省略图示内容）
+\begin{center}
+图 2 \quad 在 90 个 $\chi^2$ xxx中的"显著"xxx的图示（参看图 5）
+\end{center}
+
+\noindent Rotenberg 于 1960 年提出的 $c \neq 0$ 的原始xxx同余生成程序。）
+
+除了用"xxx"、"几乎xxx"等等作为判断 $\chi^2$ xxx结果的原则外，还有一个不那么专用的方法可资利用，我们将在这一节的稍后部分来讨论它。
+
+\textbf{B.\,Kolmogorov-Smirnov xxx} \quad 我们已经看到，当xxx可以落入有限的 $k$ 个xxx时，即可应用 $\chi^2$ xxx。然而，考虑可以取无限多个值的xxx变量，例如xxx分数（即 0 和 1 之间的一个xxx实数）的情况也不鲜见。尽管在xxx里只能表示有限多个实数，但我们希望xxx值本质上具有 $[0, 1)$ 中的xxx实数的特性。
+
+不论xxxxxx是有限的还是无限的，有一种统一的描述方法普遍地用于xxx和xxx的研究中。假设要描述一个xxx量 $X$ 的值的xxx，我们可以借助xxx函数 $F(x)$ 来做，其中
+\[
+F(x) = \Pr(X \leqslant x) = (X \leqslant x) \text{ 的xxx}
+\]
+图 3 示出了三个例子。首先，我们看到一个xxx二进位的xxx函数，即在 $X$ 仅取两个值 0 和 1 的情况下，每一个有xxx $\dfrac{1}{2}$。图 3(b) 部分显示了在 0 与 1 之间一致地xxx的xxx实数的xxx函数；这里当 $0 \leqslant x \leqslant 1$ 时，$X \leqslant x$ 的xxx简单地就等于 $x$，例如 $X \leqslant \dfrac{2}{3}$ 的xxx自然为 $\dfrac{2}{3}$。而图 3(c) 显示了在 $\chi^2$ xxx中值 $V$ 的极限xxx（这里以 10 个xxx来表示）；我们已经看到这个xxx在表 1 中以另一种方式表示。注意，当 $x$ 从 $-\infty$ 变到 $+\infty$ 时，$F(x)$ 总是从 0 增加到 1。
+
+如果我们对xxx量 $X$ 做 $n$ 次xxxxxx，由此得到 $X_1, X_2, \cdots, X_n$ 的值，则可形成xxxxx函数 $F_n(x)$，即
+\begin{equation}
+F_n(x) = \frac{\text{小于或等于 } x \text{ 的 } X_1, X_2, \cdots, X_n \text{ 的数目}}{n} \tag{10}
+\end{equation}
+图 4 示出了三个xxxxx函数（呈锯齿形，尽管严格说来垂直线并不是 $F_n(x)$ 图的
+
+% 图 3 和图 4 的描述（此处省略图示内容）
+\begin{center}
+图 3 \quad xxx函数的例子
+\end{center}
+
+\begin{center}
+图 4 \quad xxxxx的例子
+\end{center}
+
+\noindent 一部分），叠印在假定的实际xxx函数 $F(x)$ 的图上的情况。当 $n$ 充分大时，$F_n(x)$ 将越来越好地近似于 $F(x)$。
+
+当 $F(x)$ 没有跳跃时，可以使用 Kolmogorov-Smirnov xxx（KS xxx）。该xxx是以 $F(x)$ 与 $F_n(x)$ 之间的差为基础的。坏的xxx数生成程序给出不太近似于 $F(x)$ 的xxxxx函数。在图 4(b) 的例子中 $X_i$ 一直太高，所以xxxxx函数就太低。图 4(c) 给出了一个甚至更坏的例子；很明显，$F_n(x)$ 和 $F(x)$ 之间这样大的xxx是极不可能的，KS xxx能告诉我们这种不可能性的程度。
+
+为进行 KS xxx，我们构造下面的xxx：
+
+\begin{equation}
+\begin{aligned}
+K_n^+ &= \sqrt{n} \max_{-\infty < x < +\infty} (F_n(x) - F(x)) \\
+K_n^- &= \sqrt{n} \max_{-\infty < x < +\infty} (F(x) - F_n(x))
+\end{aligned} \tag{11}
+\end{equation}
+
+这里 $K_n^+$ 度量当 $F_n$ 大于 $F$ 时的最大xxx量，而 $K_n^-$ 度量当 $F_n$ 小于 $F$ 时的极大xxx。对于图 4 的例子的xxx是
+
+\begin{equation}
+\begin{array}{lccc}
+ & \text{图 4(a)} & \text{图 4(b)} & \text{图 4(c)} \\
+K_{20}^+ & 0.492 & 0.134 & 0.313 \\
+K_{20}^- & 0.536 & 1.027 & 2.101
+\end{array} \tag{12}
+\end{equation}
+
+（注：出现于式 (11) 中的因子 $\sqrt{n}$ 最初可能使人感到莫名其妙。习题 6 说明，对于固定的 $x$，$F_n(x)$ 对 $F(x)$ 的xxxxxx与 $1/\sqrt{n}$ 成比例；因此，$\sqrt{n}$ 的作用是放大xxx量 $K_n^+$ 与 $K_n^-$，以使这个xxxxxx与 $n$ 无关。）
+
+和在 $\chi^2$ xxx中一样，我们现在可以通过在"xxx"表中考察 $K_n^+$ 和 $K_n^-$，来确定它们是否特别高或特别低。对于 $K_n^+$ 和 $K_n^-$，表 2 均可用于这个目的。例如，$K_{20}$ 小于或等于 0.7975 的xxx是 75\%。与 $\chi^2$ xxx不同，这个表中的项不仅仅是 $n$ 充分大时的近似值；表 2 给出了精确值（当然含入误差除外），因而对于任意的 $n$ 值 KS xxx都能可靠地使用。
+
+\begin{center}
+表 2 \quad xxx $K_n^+$ 和 $K_n^-$ 的部分xxx点
+\end{center}
+
+\begin{table}[h]
+\centering
+\begin{tabular}{|c|c|c|c|c|c|c|c|}
+\hline
+ & $p=1\%$ & $p=5\%$ & $p=25\%$ & $p=50\%$ & $p=75\%$ & $p=95\%$ & $p=99\%$ \\
+\hline
+$n=1$ & 0.01000 & 0.05000 & 0.2500 & 0.5000 & 0.7500 & 0.9500 & 0.9900 \\
+\hline
+$n=2$ & 0.01400 & 0.06749 & 0.2929 & 0.5176 & 0.7071 & 1.0980 & 1.2728 \\
+\hline
+$n=3$ & 0.01699 & 0.07919 & 0.3112 & 0.5147 & 0.7539 & 1.1017 & 1.3589 \\
+\hline
+$n=4$ & 0.01943 & 0.08789 & 0.3202 & 0.5110 & 0.7642 & 1.1304 & 1.3777 \\
+\hline
+$n=5$ & 0.02152 & 0.09471 & 0.3249 & 0.5245 & 0.7674 & 1.1392 & 1.4024 \\
+\hline
+$n=6$ & 0.02336 & 0.1002 & 0.3272 & 0.5319 & 0.7703 & 1.1463 & 1.4144 \\
+\hline
+$n=7$ & 0.02501 & 0.1048 & 0.3280 & 0.5364 & 0.7755 & 1.1537 & 1.4246 \\
+\hline
+$n=8$ & 0.02650 & 0.1086 & 0.3280 & 0.5392 & 0.7797 & 1.1586 & 1.4327 \\
+\hline
+$n=9$ & 0.02786 & 0.1119 & 0.3274 & 0.5411 & 0.7825 & 1.1624 & 1.4388 \\
+\hline
+$n=10$ & 0.02912 & 0.1147 & 0.3297 & 0.5426 & 0.7845 & 1.1658 & 1.4440 \\
+\hline
+$n=11$ & 0.03028 & 0.1172 & 0.3330 & 0.5439 & 0.7863 & 1.1688 & 1.4484 \\
+\hline
+$n=12$ & 0.03137 & 0.1193 & 0.3357 & 0.5453 & 0.7880 & 1.1714 & 1.4521 \\
+\hline
+$n=15$ & 0.03424 & 0.1244 & 0.3412 & 0.5500 & 0.7926 & 1.1773 & 1.4606 \\
+\hline
+$n=20$ & 0.03807 & 0.1298 & 0.3461 & 0.5547 & 0.7975 & 1.1839 & 1.4698 \\
+\hline
+$n=30$ & 0.04354 & 0.1351 & 0.3509 & 0.5605 & 0.8036 & 1.1916 & 1.4801 \\
+\hline
+$n>30$ & \multicolumn{6}{c|}{$y_p - 1/(6\sqrt{n}) + O(1/n)$，其中 $y_p^2 = \dfrac{1}{2}\ln(1/(1-p))$} \\
+\hline
+$y_p =$ & 0.07089 & 0.1601 & 0.3793 & 0.5887 & 0.8326 & 1.2239 & 1.5174 \\
+\hline
+\multicolumn{8}{|l|}{为扩充这个表，请见式 (25) 和 (26) 以及习题 20 的答案} \\
+\hline
+\end{tabular}
+\end{table}
+就其本身而言，式 (11) 不易于用xxx计算，因为我们要求无限多个 $x$ 值的极大值。然而 $F(x)$ 是递增的且 $F_n(x)$ 只在有限步中增长，由此可以导出求xxx量 $K_n^+$ 和 $K_n^+$ 值的简单步骤：
+
+\textbf{步骤 1.} 获取xxx的xxx量 $X_1, X_2, \cdots, X_n$。
+
+\textbf{步骤 2.} 重新排列这些xxx量，使它们排成递增的次序，即使得 $X_1 \leqslant X_2 \leqslant \cdots \leqslant X_n$（有效的xxx算法是第 5 章的课题，但如同习题 23 中所示，在这种情况下有可能避免xxx）。
+
+\textbf{步骤 3.} 通过下列公式得出所求的xxx量：
+
+\begin{equation}
+\begin{aligned}
+K_n^+ &= \sqrt{n} \max_{1 \leqslant j \leqslant n} \left( \frac{j}{n} - F(X_j) \right) \\
+K_n^- &= \sqrt{n} \max_{1 \leqslant j \leqslant n} \left( F(X_j) - \frac{j-1}{n} \right)
+\end{aligned} \tag{13}
+\end{equation}
+
+xxx次数 $n$ 的适当选择，对于这个xxx来说，比 $\chi^2$ xxx稍容易些，尽管某些考虑是类似的。如果诸xxx变量 $X_j$ 实际上属于xxxxxx $G(x)$，而却被假定属于由 $F(x)$ 所给出的xxx，则为否定 $G(x) = F(x)$ 的假设将须取相当大的 $n$ 值；因为我们需要 $n$ 充分大，以xxxxxxxx $G_n(x)$ 和 $F_n(x)$ xxx起来不同。另一方面，$n$ 的充分大值趋向于把局部非xxx的特性修平，而这样不合要求的特性在xxx数的大多数xxx应用中具有相当大的危险；这又要求我们取较小的 $n$ 值。一个好的折中是取 $n$ 等于（比方说）1000，并且在一个xxx序列的不同部分上，来进行对于 $K_{1000}^+$ 的大量计算，由此得到值
+\begin{equation}
+K_{1000}^+(1), \quad K_{1000}^+(2), \quad \cdots, \quad K_{1000}^+(r) \tag{14}
+\end{equation}
+我们也可以再次对这些结果应用 KS xxx：这里设 $F(x)$ 是 $K_{1000}$ 的xxx函数，并确定根据式 (14) 中xxx的值得到的xxxxx $F_r(x)$。很幸运，这种情况下的 $F(x)$ 是很简单的；对于像 $n = 1000$ 这样充分大的 $n$ 值，$K_n^+$ 的xxx由
+
+\begin{equation}
+F_\infty(x) = 1 - \mathrm{e}^{-2x^2}, \quad x \geqslant 0 \tag{15}
+\end{equation}
+
+\noindent 充分逼近。同样的论述也可以应用于 $K_n^-$，因为 $K_n^+$ 和 $K_n^-$ 有着相同的xxx特性。\textit{对于适当大小的 $n$ 做若干次xxx，然后在另一个 KS xxx中组合这些xxx量，这种方法将趋向于检测局部和全局两者的非xxx特性。}
+
+例如，当编写这一章时，作者做了以下简单的试验：把下一小节中所述的"5 的极大值"xxx用于一组 1000 个一致的xxx数上，得到 200 个xxx量 $X_1, X_2, \cdots, X_{200}$，假设对于 $0 \leqslant x \leqslant 1$ 它们属于xxx $F(x) = x^5$。把这些xxx量分成 20 组，每组 10 个，计算每组的xxx量 $K_{10}^+$。如此得到 20 个 $K_{10}^+$ 的值，导致了图 4 所示的xxxxx。图 4 的每一个图形中所示的光滑曲线，是 $K_{10}^+$ 应有的真正的xxx。图 4(a) 示出了由序列
+
+\noindent $Y_{n+1} = (3141592653\,Y_n + 2718281829) \bmod 2^{35}$，$U_n = Y_n / 2^{35}$
+
+\noindent 得出的 $K_{10}^+$ 的xxxxx，而且它是令人满意地xxx的。图 4(b) 是由xxx方法得到的，这个序列有全局非xxx的特性，即，可以证明，在"5 的极大值"xxx中，诸xxx量 $X_n$ 不具有正确的xxx $F(x) = x^5$。图 4(c) 来自口碑不好且无效的xxx同余序列 $Y_{n+1} = ((2^{18} + 1)\,Y_n + 1) \bmod 2^{35}$，$U_n = Y_n / 2^{35}$。
+
+应用 KS xxx于图 4 中的数据，就得出了 (12) 中所示的结果。就 $n = 20$ 参照表 2，我们看到对于图 4(b)，$K_{20}^+$ 和 $K_{20}^-$ 的值是几乎xxx的（它们处于大约 5\% 和 88\% 的水平），但还没有坏到要立即xxx它的程度。当然，图 4(c) 的 $K_{20}^-$ 完全不协调，所以"5 的极大值"的xxx揭示了该xxx数生成程序肯定通不过。
+
+我们预料，在这个实验中的 KS xxx在确定全局非xxx性方面比确定局部非xxx性要更困难，因为图 4 的基本xxx所用的xxx中，每个xxx仅包括 10 个xxx量。如果我们取 20 个组，每组 1000 个xxx量，则图 4(b) 将显示一个更加显著的xxx。为了说明这点，应用单个的 KS xxx于导致图 4 的所有 200 个xxx量，得到下列结果：
+
+\begin{equation}
+\begin{array}{lccc}
+ & \text{图 4(a)} & \text{图 4(b)} & \text{图 4(c)} \\
+K_{200}^+ & 0.477 & 1.537 & 2.819 \\
+K_{200}^- & 0.817 & 0.194 & 0.058
+\end{array} \tag{16}
+\end{equation}
+
+\noindent 这里已经确定地检测出xxx生成程序的全局非xxx性。
+
+我们可以总结 KS xxx如下：给出 $n$ 个xxx的xxx量 $X_1, \cdots, X_n$，它们取自某个由一个xxx函数 $F(x)$ 所确定的xxx，即，$F(x)$ 必须像图 3(b) 和 (c) 所示的函数那样，没有图 3(a) 中那样的跳跃。把紧接在等式 (13) 之前说明的步骤用于这些xxx量上，就得到xxx量 $K_n^+$ 和 $K_n^-$。这些xxx量应当按照表 2 来xxx。
+
+现在可对 KS xxx与 $\chi^2$ xxx作某些比较。首先，我们应注意到，KS xxx可以与 $\chi^2$ xxx一起使用，以给出一个比我们在总结 $\chi^2$ xxx时提到的特殊方法更好的过程（即，比起进行三次xxx并考虑这些结果有多少是"xxx的"来，有一个更好的方法可以使用）。假设我们对于一个xxx数序列的不同部分，已经做了比如说 10 次xxx的 $\chi^2$ xxx，并得到值 $V_1, V_2, \cdots, V_{10}$。简单地计算有多少个 $V$ 是xxx地大或小并不是一个好策略。这个方法在一些极端情形下是有效的，而非常大和非常小的值可能意味着序列有过多的局部非xxx性；但更好且更一般的方法是画出这 10 个值的xxxxx函数，并把它同正确xxx（可以从表 1 得到）进行比较。这将给出 $\chi^2$ xxx结果的更清晰的写照，而且事实上xxx量 $K_{10}^+$ 和 $K_{10}^-$ 可作为成功或失败的标志来确定。如果仅有 10 个值或甚至多到 100 个值，这些都能通过手算和利用图形的方法容易地完成；对于更大量的 $V$，就需要有计算 $\chi^2$ xxx的xxxxxx了。注意，图 4(c) 中所有 20 个xxx量落入 5\% 和 95\% 水平之间，所以我们在个体上并未认为它们中任何一个是xxx的；但在总体上看，xxxxx却表明这些xxx量是不正常的。
+
+KS xxx和 $\chi^2$ xxx之间的一个重要差别在于，KS xxx应用于没有跳跃的xxx $F(x)$，而 $\chi^2$ xxx应用于只是跳跃的xxx（因为所有xxx都分成 $k$ 个xxx）。因此这两个xxx是为不同种类的应用而设置的。然而甚至当 $F(x)$ xxx时，如果把 $F(x)$ 的区域分成 $k$ 部分，并忽略在每个部分内的变化，则也有可能应用 $\chi^2$ xxx。例如，如果我们要来xxx $U_1, U_2, \cdots, U_n$ 是否可认为是 0 与 1 之间的一致xxx，则可以xxx它们对于 $0 \leqslant x \leqslant 1$，是否有 $F(x) = x$ xxx。这是 KS xxx的一个很自然的应用。但是我们也可以把从 0 到 1 的区间分成 100 个相等部分，计算有多少个 $U$ 落到每个部分，并且以xxx 99 来应用 $\chi^2$ xxx。对于比较 KS xxx和 $\chi^2$ xxx的有效性，目前，还没有许多可资利用的理论结果。作者找到了某些例子，其中 KS xxx比 $\chi^2$ xxx更明确地指出非xxx性，而在其它例子中，则是 $\chi^2$ xxx给出了更有意义的结果。例如，如果把上边提到的 100 个xxx编号为 $0, 1, \cdots, 99$，而且如果同xxx值的偏差在 0 到 49 的间隔是正的，而在 50 到 99 的间隔是负的，则xxxxx函数将更多地由 $F(x)$ 的而不是由 $\chi^2$ 的值所指出；但如果在间隔 $0, 2, \cdots, 98$ 中出现正的xxx，而在间隔 $1, 3, \cdots, 99$ 中出现负的xxx，则xxxxx函数将趋向于更紧密地靠拢 $F(x)$。因此，测定的偏差种类稍有不同。应用 $\chi^2$ xxx形成图 4 的 200 个xxx量，其中 $k = 10$，所得的 $V$ 的值分别是 9.4, 17.7 和 39.3；所以在这个具体的情况下这些值同在 (16) 中给出的 KS 的值是十分相近的。由于 $\chi^2$ xxx本来就不太精确，而且又要求有充分大的 $n$ 值，因此当有待xxx的是一个xxxxxx时，KS xxx就具有若干优点了。
+
+还有一个有趣的例子。导致图 2 的数据是对于 $1 \leqslant t \leqslant 5$，以"$t$ 的极大值"为原则，以 $n = 200$ 个xxx量为基础的 $\chi^2$ xxx，且这个范围分成 10 个同等可能的部分。KS xxx量 $K_{200}^+$ 和 $K_{200}^-$ 可由完全相同的 200 个xxx量的诸组来计算，而且这些结果可以以和我们在图 2 中所采用的完全相同的方式造表（指出哪些 KS 值超过 99\% 的水平，等等）。图 5 中示出了在这种情况下的结果。注意，生成程序 D（Lehmer 原来的方法）在图 5 中显得非常坏，而对于相同的数据，$\chi^2$ xxx在图 2 上则显得非常顺利；相反，生成程序 E（xxx方法）在图 5 中看起来还不那么坏。好的生成程序 A 和 B，令人满意地通过所有xxx。图 2 和图 5 之间出现矛盾的原因，主要是：(a) xxx量个数 200，对于一个功能很强的xxx来说实际上不够大；(b) "xxx"、"xxx"、"几乎xxx"的排列规则本身就是xxx的。
+
+（附带说一下，由于在 20 世纪 40 年代使用一个"坏的"xxx数生成程序而责备 Lehmer 是不公正的，因为他对生成程序 D 的实际使用十分有效。ENIAC xxx是一台高度并行的机器，它借助于一个线路连接板进行xxx设计；Lehmer 把它设置成使它的xxx之一重复地以 23 乘它自己的内容（模 $10^8 + 1$），在几毫秒内就得到一个新值。由于xxx 23 太小了，我们知道，通过这个过程得到的每个值和它前边得到的值就太密切相关了，因而难以认为它是充分xxx的；但是由伴随的程序所使用的特殊xxx，其中实际使用的值之间的持续时间是相对较长的，而且有某些变动。所以对于很大的而且变化的 $k$ 值有效的xxx是 $23^k$。）
+
+% 图 5 的描述（此处省略图示内容）
+\begin{center}
+图 5 \quad KS xxx应用于和图 2 相同的数据
+\end{center}
+
+\textbf{C.\,历史、文献和理论} \quad 1900 年，Karl Pearson 引进了 $\chi^2$ xxx [\textit{Philosophical Magazine}, Series 5, \textbf{50}, 157--175]。Pearson 的重要论文被认为是现代xxx学的基础
+
+\noindent 之一，因为在这以前，人们只是简单地用图形来画出实验的结果，并断定它们是正确的。在这篇论文中，Pearson 举出了以前滥用xxx学的若干有趣的例子；他还证明了xxx中的某些机遇（1892 年他在蒙特卡罗实验了两周时间），同xxx的频率相差竟如此之远，以致对于一个公正的轮子也只能以大约 $10^{29}$ 对 1 的赌注打赌！William G.\,Cochran 的评述论文中有关于 $\chi^2$ xxx的一般讨论和广泛的文献。见 \textit{Annals of Math.\ Stat.}\ \textbf{23}（1952），315--345。
+
+现在我们给出关于 $\chi^2$ xxx的简单理论推导。容易看出，$Y_1 = y_1, \cdots, Y_k = y_k$ 的精确xxx是
+
+\begin{equation}
+\frac{n!}{y_1!\cdots y_k!}\,p_1^{y_1}\cdots p_k^{y_k} \tag{17}
+\end{equation}
+
+如果我们假定，$Y_s$ 以xxx（Poisson）xxx
+\[
+\frac{\mathrm{e}^{-np_s}(np_s)^{y_s}}{y_s!}
+\]
+有值 $y_s$，而且这些 $Y$ 是xxx的，则 $(Y_1, \cdots, Y_k)$ 等于 $(y_1, \cdots, y_k)$ 的xxx是
+\[
+\prod_{s=1}^{k} \frac{\mathrm{e}^{-np_s}(np_s)^{y_s}}{y_s!}
+\]
+而且 $Y_1 + \cdots + Y_k$ 等于 $n$ 的xxx是
+\[
+\sum_{\substack{y_1 + \cdots + y_k = n \\ y_1, \cdots, y_k \geqslant 0}} \prod_{s=1}^{k} \frac{\mathrm{e}^{-np_s}(np_s)^{y_s}}{y_s!} = \frac{\mathrm{e}^{-n} n^n}{n!}
+\]
+如果我们假定，除了条件 $Y_1 + \cdots + Y_k = n$ 外，它们是xxx的，则 $(Y_1, \cdots, Y_k) =$
+
+\noindent $(y_1, \cdots, y_k)$ 的xxx是商
+\[
+\left( \prod_{s=1}^{k} \frac{\mathrm{e}^{-np_s}(np_s)^{y_s}}{y_s!} \right) \bigg/ \left( \frac{\mathrm{e}^{-n} n^n}{n!} \right)
+\]
+这等于式 (17)。因此，除了它们有固定的和这一事实之外，我们可以认为这些 $Y$ 是xxx的xxxxxx。
+
+做一下变量的改动是方便的，令
+
+\begin{equation}
+Z_s = \frac{Y_s - np_s}{\sqrt{np_s}} \tag{18}
+\end{equation}
+
+\noindent 使得 $V = Z_1^2 + \cdots + Z_k^2$。条件 $Y_1 + \cdots + Y_k = n$ 等价于要求
+
+\begin{equation}
+\sqrt{p_1}\,Z_1 + \cdots + \sqrt{p_k}\,Z_k = 0 \tag{19}
+\end{equation}
+
+让我们考察使得式 (19) 成立的所有向量 $(Z_1, \cdots, Z_k)$ 构成的 $(k-1)$ 维空间 S。对于大的 $n$ 值，每个 $Z_s$ 有近乎xxx的xxx（参考习题 1.2.10-15）；因此，在 S 的一个xxx体积 $\mathrm{d}z_2 \cdots \mathrm{d}z_k$ 内的点以近似正比于 $\exp(-(z_1^2 + \cdots + z_k^2)/2)$ 的xxx出现（在推导中，正是这一点使 $\chi^2$ xxx对于大的 $n$ 仅仅成为一个近似方法）。于是 $V \leqslant v$ 的xxx为
+
+\begin{equation}
+\frac{\displaystyle\int_{\substack{(z_1^2, \cdots, z_k^2) \text{ 在 S 中且} \\ z_1^2 + \cdots + z_k^2 \leqslant v}} \exp(-(z_1^2 + \cdots + z_k^2)/2)\,\mathrm{d}z_2 \cdots \mathrm{d}z_k}{\displaystyle\int_{(z_1, \cdots, z_k) \text{ 在 S 中}} \exp(-(z_1^2 + \cdots + z_k^2)/2)\,\mathrm{d}z_2 \cdots \mathrm{d}z_k} \tag{20}
+\end{equation}
+
+由于xxx (19) 通过 $k$ 维空间的原点，故 (20) 中的分子是对一个中心在原点的 $(k-1)$ 维xxx内部的一个xxx。对于某个函数 $f$，以径 $\chi$ 和角度 $\omega_1, \cdots, \omega_{k-2}$ 做适当的广义xxx变换，把式 (20) 变成为
+\[
+\frac{\displaystyle\int_{\chi^2 \leqslant v} \mathrm{e}^{-\chi^2/2}\,\chi^{k-2}\,f(\omega_1, \cdots, \omega_{k-2})\,\mathrm{d}\chi\,\mathrm{d}\omega_1 \cdots \mathrm{d}\omega_{k-2}}{\displaystyle\int \mathrm{e}^{-\chi^2/2}\,\chi^{k-2}\,f(\omega_1, \cdots, \omega_{k-2})\,\mathrm{d}\chi\,\mathrm{d}\omega_1 \cdots \mathrm{d}\omega_{k-2}}
+\]
+（见习题 15）；然后对角度 $\omega_1, \cdots, \omega_{k-2}$ 的xxx给出一个常数因子，从分子和分母中消去之。最后我们得到 $V \leqslant v$ 的近似xxx的公式
+
+\begin{equation}
+\frac{\displaystyle\int_0^{\sqrt{v}} \mathrm{e}^{-\chi^2/2}\,\chi^{k-2}\,\mathrm{d}\chi}{\displaystyle\int_0^{\infty} \mathrm{e}^{-\chi^2/2}\,\chi^{k-2}\,\mathrm{d}\chi} \tag{21}
+\end{equation}
+
+上述的推导使用了符号 $\chi$ 来表示径长度，恰如 Pearson 在他的开创性论文中所做的那样；这就是 $\chi^2$ xxx得名的由来。代入 $t = \chi^2/2$，这一xxx可以借助于不完备的xxx函数来表示，这就是我们在 1.2.11.3 节中讨论的
+
+\begin{equation}
+\lim_{n \to \infty} \Pr(V \leqslant v) = \gamma\!\left(\frac{k-1}{2}, \frac{v}{2}\right) \bigg/ \Gamma\!\left(\frac{k-1}{2}\right) \tag{22}
+\end{equation}
+这正是具有 $k-1$ xxx的 $\chi^2$ xxx的定义。
+
+再来看 KS xxx。1933 年 A.\,N.\,Kolmogorov 提出了一个以xxx
+
+\begin{equation}
+K_n = \sqrt{n} \max_{-\infty < x < +\infty} |F_n(x) - F(x)| = \max(K_n^+, K_n^-) \tag{23}
+\end{equation}
+
+\noindent 为基础的xxx。N.\,V.\,Smirnov 于 1939 年对这个xxx做了若干修正，包括我们在上边已经提到的个别地考察 $K_n^+$ 和 $K_n^-$ 在内。类似的xxx有很多，但 $K_n^+$ 和 $K_n^-$ 似乎最便于xxx应用。J.\,Durbin 在 \textit{Regional Conf.\ Series on Applied Math.}\ \textbf{9}（SIAM, 1973）的专题文章中，详尽地评述了有关 KS xxx及它们的推广的文献，其中包括一份广泛的文献目录。
+
+为了研究 $K_n^+$ 和 $K_n^-$ 的xxx，我们从下面的基本事实出发：如果 $X$ 是具有xxxxxx的 $F(x)$ 的一个xxx变量，则 $F(X)$ 是一致xxx于 0 与 1 之间的实数。为证明这一点，仅仅需要验证，如果 $0 \leqslant y \leqslant 1$，则 $F(X) \leqslant y$ 的xxx为 $y$。由于 $F$ 是xxx的，故对于某个 $x_0$ 有 $F(x_0) = y$，于是 $F(X) \leqslant y$ 的xxx是 $X \leqslant x_0$ 的xxx。由定义，后者的xxx为 $F(x_0)$，即它为 $y$。
+
+对于 $1 \leqslant j \leqslant n$，令 $Y_j = nF(X_j)$，其中诸 $X$ 如同在上边的步骤 2 中那样是已排好序的。于是诸变量 $Y_j$ 和xxx的、已经xxx成为非递减次序的 0 和 $n$ 之间的一致xxxxxx数一样，$Y_1 \leqslant Y_2 \leqslant \cdots \leqslant Y_n$；而且式 (13) 的头一个等式现在可以变换成为
+\[
+K_n^+ = \frac{1}{\sqrt{n}} \max(1 - Y_1, 2 - Y_2, \cdots, n - Y_n)
+\]
+如果 $0 \leqslant t \leqslant n$，则 $K_n^+ \leqslant t/\sqrt{n}$ 的xxx是对于 $1 \leqslant j \leqslant n$，$Y_j \geqslant j - t$ 的xxx。借助于 $n$ 维xxx这不难表示
+
+\begin{equation}
+\frac{\displaystyle\int_{a_n}^{n} \mathrm{d}y_n \int_{a_{n-1}}^{y_n} \mathrm{d}y_{n-1} \cdots \int_{a_1}^{y_2} \mathrm{d}y_1}{\displaystyle\int_0^{n} \mathrm{d}y_n \int_0^{y_n} \mathrm{d}y_{n-1} \cdots \int_0^{y_2} \mathrm{d}y_1}, \quad \text{其中} \quad a_j = \max(j - t, 0) \tag{24}
+\end{equation}
+
+这里分母可以立即算出：它等于 $n^n / n!$，这是有意义的，因为具有 $0 \leqslant y_j < n$ 的所有向量 $(y_1, y_2, \cdots, y_n)$ 的xxx的体积是 $n^n$，而且它可以划分成对应于诸 $y$ 每个可能的xxx的 $n!$ 个相等部分。分子中的xxx稍难些，但可按习题 17 中提示的方法求解，使我们得到一般的公式
+
+\begin{equation}
+\Pr\!\left( K_n^+ \leqslant \frac{t}{\sqrt{n}} \right) = \frac{t}{n^n} \sum_{0 \leqslant k \leqslant t} \binom{n}{k} (k - t)^k (t + n - k)^{n-k-1} = \tag{25}
+\end{equation}
+
+\begin{equation}
+1 - \frac{t}{n^n} \sum_{t < k \leqslant n} \binom{n}{k} (k - t)^k (t + n - k)^{n-k-1} \tag{26}
+\end{equation}
+
+$K_n^-$ 的xxx与此完全一样。式 (26) 首先由 N.\,V.\,Smirnov 得出 [\textit{Uspekhi Mat.\ Nauk} \textbf{10}（1944），176--206]；也可参考 Z.\,W.\,Birnbaum 和 Fred H.\,Tingey, \textit{Annals Math.\ Stat.}\ \textbf{22}（1951），592--596。Smirnov 对于所有固定的 $s \geqslant 0$，推导出下列近似公式：
+
+\begin{equation}
+\Pr(K_n^+ \leqslant s) = 1 - \mathrm{e}^{-2s^2} \left( 1 - \frac{2}{3}\,s/\sqrt{n} + O(1/n) \right) \tag{27}
+\end{equation}
+
+\noindent 这产生出在表 2 中出现的对于很大的 $n$ 的近似值。
+
+xxx的xxx定理，即式 1.2.6-(16) 证明了 (25) 和 (26) 的等价性。使用这两个公式的任何一个我们可以扩充表 2，但有一个有趣的折中：当给定 $s = t/\sqrt{n}$ 时，尽管 (25) 中的和只有大约 $s\sqrt{n}$ 项，但必须以xxx算术来计算之，因为这些项很大，而且它们的前导xxx都消失掉了。在 (26) 中却没有这样的问题，因为它的项都是正的，但 (26) 有 $n - s\sqrt{n}$ 项。
+
+\begin{center}
+\Large\textbf{习 \quad 题}
+\end{center}
+
+1. $[00]$ 应当使用 $\chi^2$ 表的哪一行来xxx式 (5) 的值 $V = 7\,\dfrac{7}{48}$ 是否是过于高了？
+
+2. $[20]$ 如果两个xxx被"装铅"，使得一个xxx上值为 1 的那一面朝上的次数恰是其它任何一面朝上次数的两倍，而另一个xxx则类似地xxx于 6，试计算xxx $p_s$，即对于 $2 \leqslant s \leqslant 12$，两个xxx的和数为 $s$ 的xxx。
+
+$\blacktriangleright$ 3. $[23]$ 两个如上题所述那样装了铅的xxx被投掷 144 次，并且xxx到下列的一些值：
+\[
+\begin{array}{lcccccccccccc}
+s \text{ 值} &=& 2 & 3 & 4 & 5 & 6 & 7 & 8 & 9 & 10 & 11 & 12 \\
+\text{xxx数，} Y_s &=& 2 & 6 & 10 & 16 & 18 & 32 & 20 & 13 & 16 & 9 & 2
+\end{array}
+\]
+利用式 (1) 中的xxx对这些值进行 $\chi^2$ xxx，并假装不知道这个xxx事实上是有毛病的。试问它能否发现这个xxx是坏的？如果不能，说明原因。
+
+$\blacktriangleright$ 4. $[23]$ 通过xxx这样一对xxx，其中一个是正常的，而另一个被装铅，使得它经常使 1 或 6 朝上（后两者的xxx是同等的），作者实际得到了 (9) 中实验 1 的数据。试计算在这种情况下的xxx以代替 (1)，并利用 $\chi^2$ xxx判断这个实验的结果与如此装铅的xxx是否一致？
+
+5. $[22]$ 设 $F(x)$ 为一致xxx，如图 3(b) 所示。请对下列 20 个xxx值求 $K_{20}^+$ 和 $K_{20}^-$：
+\[
+0.414, 0.732, 0.236, 0.162, 0.259, 0.442, 0.189, 0.693, 0.098, 0.302,
+\]
+\[
+0.442, 0.434, 0.141, 0.017, 0.318, 0.869, 0.772, 0.678, 0.354, 0.718
+\]
+并指出这些xxx量相对于这两个xxx的每一个是否同预期的特性有重大差异。
+
+6. $[M20]$ 对于固定的 $x$，考虑式 (10) 中给出的 $F_n(x)$。给定一整数 $s$，问 $F_n(x) = s/n$ 的xxx是多少？$F_n(x)$ 的平xxx是多少？xxx是多少？
+
+7. $[M15]$ 证明 $K_n^+$ 和 $K_n^-$ 绝不能为负，$K_n^+$ 最大可能的值是多少？
+
+8. $[00]$ 正文中描述了一个实验，实验中在研究一个xxx序列时得到了xxx量 $K_{10}^+$ 的 20 个值。画出这些值，得到图 4，并从得到的图形算出了xxx量 KS。问为什么用 $n = 20$ 的表项来研究得到的xxx，而不用 $n = 10$ 的表项？
+
+$\blacktriangleright$ 9. $[20]$ 正文中叙述的实验由画出 $K_{10}^+$ 的 20 个值组成。它们是把 5 的极大值xxx应用于一个xxx序列的不同部分而算出的。也可以计算 $K_{10}^-$ 的相应的 20 个值；因为 $K_{10}^-$ 与 $K_{10}^+$ 有相同的xxx，所以可以把这样得到的 40 个值（即 $K_{10}^+$ 的 20 个值和 $K_{10}^-$ 的 20 个值）总括起来，并可应用 KS xxx得到 $K_{40}^+$、$K_{40}^-$ 的新值。试讨论这一设想的优点。
+
+$\blacktriangleright$ 10. $[20]$ 假设通过做 $n$ 次xxx来完成一个 $\chi^2$ xxx，并得到值 $V$。若再用同样的 $n$ 次xxx重复这个xxx（当然，得到相同的结果），并且把两次xxx的数据放在一起，把它当做对 $2n$ 次xxx的一次单独的 $\chi^2$ xxx（这个过程违背了正文中指出的所有xxx必须彼此xxx的约定）。试问第二个
+
+\noindent $V$ 值如何相关于头一个值？
+
+11. $[10]$ 以 KS xxx代替 $\chi^2$ xxx，解习题 10。
+
+12. $[M28]$ 假设对 $n$ 个xxx量的一个集合进行 $\chi^2$ xxx，同时假定 $p_s$ 是每个xxx量落入xxx $s$ 的xxx；但又假设事实上这些xxx量落入xxx $s$ 的xxx为 $q_s$，$q_s \neq p_s$（参看习题 3）。当然，我们希望 $\chi^2$ xxx能检测出关于 $p_s$ 的假定是不正确的这一事实。试证，当 $n$ 充分大时能做到这一点，并证明对于 KS xxx也有类似的结果。
+
+13. $[M24]$ 证明式 (13) 等价于式 (11)。
+
+$\blacktriangleright$ 14. $[HM26]$ 设 $Z_s$ 由式 (18) 给出。如果当 $n \to \infty$ 时 $Z_1, Z_2, \cdots, Z_k$ xxx，试利用xxx近似公式直接证明xxxxx
+\[
+n!\,p_1^{Y_1} \cdots p_k^{Y_k} / Y_1! \cdots Y_k! = \mathrm{e}^{-V/2} / \sqrt{(2n\pi)^{k-1} p_1 \cdots p_k} + O(n^{-k/2})
+\]
+（这个思想导致了 $\chi^2$ xxx的一个更接近于"基本原则"的证明，而且比正文中的推导省事。）
+
+15. $[HM24]$ 二维xxx习惯上都由等式 $x = r\cos\theta$ 和 $y = r\sin\theta$ 定义。为了xxx的目的，我们取 $\mathrm{d}x\,\mathrm{d}y = r\,\mathrm{d}r\,\mathrm{d}\theta$。更一般地说，在 $n$ 维空间中，我们可以命
+\[
+\begin{aligned}
+x_k &= r\sin\theta_1 \cdots \sin\theta_{k-1}\cos\theta_k, \quad 1 \leqslant k < n \\
+x_n &= r\sin\theta_1 \cdots \sin\theta_{n-1}
+\end{aligned}
+\]
+试证在这种情况下
+\[
+\mathrm{d}x_1\,\mathrm{d}x_2 \cdots \mathrm{d}x_n = \left| r^{n-1} \sin^{n-2}\theta_1 \cdots \sin\theta_{n-2}\,\mathrm{d}r\;\mathrm{d}\theta_1 \cdots \mathrm{d}\theta_{n-1} \right|
+\]
+
+$\blacktriangleright$ 16. $[HM35]$ 推广定理 1.2.11.3A 以求出对于大 $x$ 和固定的 $y$、$z$，
+\[
+\gamma(x+1, x+z\sqrt{2x+y}\,)/\Gamma(x+1)
+\]
+的值。忽略答案中的 $O(1/x)$ 项，用这个结果来找出对于大 $\nu$ 和固定的 $p$，方程
+\[
+\gamma\!\left(\frac{\nu}{2}, \frac{t}{2}\right) \bigg/ \Gamma\!\left(\frac{\nu}{2}\right) = p
+\]
+的xxx解 $t$，由此解释表 1 中指出的xxx公式。[提示：见习题 1.2.11.3-8。]
+
+17. $[MH26]$ 设 $t$ 是一个固定的实数，对于 $0 \leqslant k \leqslant n$，设
+\[
+P_{nk}(x) = \int_{n-t}^{x} \mathrm{d}x_n \int_{n-1-t}^{x_n} \mathrm{d}x_{n-1} \cdots \int_{k+1-t}^{x_{k+2}} \mathrm{d}x_{k+1} \int_0^{x_{k+1}} \mathrm{d}x_k \cdots \int_0^{x_2} \mathrm{d}x_1
+\]
+约定 $P_{00}(x) = 1$。证明下列关系：
+
+a) $P_{nk}(x) = \displaystyle\int_n^{x+t} \mathrm{d}x_n \int_{n-1}^{x_n} \mathrm{d}x_{n-1} \cdots \int_{k+1}^{x_{k+2}} \mathrm{d}x_{k+1} \int_t^{x_{k+1}} \mathrm{d}x_k \cdots \int_t^{x_2} \mathrm{d}x_1$。
+
+b) $P_{n0}(x) = (x+t)^n / n! - (x+t)^{n-1} / (n-1)!$。
+
+c) $P_{nk}(x) - P_{n(k-1)}(x) = \dfrac{(k-t)^k}{k!}\,P_{(n-k)0}(x-k)$，其中 $1 \leqslant k \leqslant n$。
+
+d) 求得 $P_{nk}(x)$ 的一个一般公式，并应用它计算式 (24)。
+
+18. $[M20]$ 说明为什么 $K_n^-$ 与 $K_n^+$ 有同样的xxxxxx的"简单"原因。
+
+19. $[HM48]$ 提出类似于 KS xxx的xxx，以便使用于多元xxx $F(x_1, \cdots, x_r) = \Pr(X_1 \leqslant x_1, \cdots, X_r \leqslant x_r)$。（例如，这样的过程可用来代替下节中的"序列xxx"。）
+
+20. $[HM41]$ 导出 KS xxx的xxx特性的高次项并推广 (27)。
+
+21. $[M40]$ 尽管正文指出，KS xxx仅可应用于 $F(x)$ 是xxx的xxx函数的情况，但是甚至当xxx有跳跃时，仍有可能试图计算 $K_n^+$ 和 $K_n^-$。试分析对于各种不xxx的 $F(x)$，$K_n^+$ 和 $K_n^-$ 的xxx特性。对于若干xxx数的xxx，试把所得到的xxxxx的有效性与 $\chi^2$ xxx作比较。
+
+22. $[HM46]$ 试研究在习题 6 的答案中建议的"改进了的"KS xxx。
+
+23. $[M22]$（T.\,Gonzalez, S.\,Sahni 及 W.\,R.\,Franta）(a) 假设 KS xxx量 $K_n^+$ 的公式 (13) 中的极大值在一个给定的下标 $j$ 处出现，其中 $\lfloor nF(X_j) \rfloor = k$。证明 $F(X_j) = \max_{1 \leqslant i \leqslant n} \{F(X_i) \mid \lfloor nF(X_i) \rfloor = k\}$。(b) 设计在 $O(n)$ 步内计算 $K_n^+$ 和 $K_n^-$ 的一个算法（不用xxx）。
+
+$\blacktriangleright$ 24. $[40]$ 对不同的 $n$ 计算 $\chi^2$ xxx量 $V$ 的精确xxx，实验在三个xxx上的各种xxxxxx $(p, q, r)$，其中 $p + q + r = 1$，由此确定具有两个xxx的一个近似 $\chi^2$ xxx的精确程度。
+
+25. $[HM26]$ 假设对于 $1 \leqslant i \leqslant m$，$Y_i = \sum_{j=1}^{n} a_{ij} X_j + \mu_i$，其中 $X_1, \cdots, X_n$ 是xxx为 0、xxx为 1 的xxxxxx变量，而且矩阵 $A = (a_{ij})$ 有阶 $n$。
+
+a) 借助于矩阵 $A$ 表达xxx矩阵 $C = (c_{ij})$，其中 $c_{ij} = \mathrm{E}\,(Y_i - \mu_i)(Y_j - \mu_j)$。
+
+b) 证明：如果 $\bar{C} = (\bar{c}_{ij})$ 是使得 $C\bar{C}C = C$ 的任何矩阵，则xxx
+\[
+W = \sum_{i=1}^{m} \sum_{j=1}^{m} (Y_i - \mu_i)(Y_j - \mu_j)\bar{c}_{ij}
+\]
+等于 $X_1^2 + \cdots + X_n^2$。[因此，如果 $X_j$ 有xxxx，则 $W$ 是有 $n$ 个xxx的 $\chi^2$ xxx。]
+
+\begin{flushright}
+\textit{The equanimity of your average tosser of coins}\\
+\textit{depends upon a law \ldots\ which ensures that}\\
+\textit{he will not upset himself by losing too much}\\
+\textit{nor upset his opponent by winning too often.}\\[6pt]
+你对于普通的xxx投掷持顺其自然的态度\\
+同一个定律有关……这个定律确保\\
+你将不会由于输得太多而心烦意乱，\\
+也不会由于赢得太频繁而使你的对手烦恼不宁。\\[6pt]
+--- TOM STOPPARD, \textit{Rosencrantz \& Guildenstern are Dead}（1966）
+\end{flushright}
