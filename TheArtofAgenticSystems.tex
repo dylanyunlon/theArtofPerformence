@@ -906,6 +906,77 @@ This question is not academic. Anthropic's engineering team has demonstrated tha
 
 The analogy to Chapter~3.1's discussion of random number generation is precise. Just as a linear congruential generator $X_{n+1} = (aX_n + c) \bmod m$ appears to produce random sequences but is entirely determined by its parameters, so too does a ``hardware-portable'' training framework \emph{appear} to abstract away hardware differences but is entirely determined by the quality of its lowest-level kernel implementations. The parameters $m$, $a$, $c$ of the congruential generator correspond to the hardware ISA, the kernel optimization strategy, and the compiler/runtime overhead respectively. Change $m$---change the hardware---and the entire sequence changes character, even if the abstract formula remains identical.
 
+Figure~\ref{fig:system-arch} shows the complete system architecture spanning both repositories.
+
+\begin{figure}[ht]
+\centering
+\begin{tikzpicture}[
+  layer/.style={draw, rounded corners, minimum width=12cm, minimum height=1.1cm, font=\small},
+  module/.style={draw, rounded corners, minimum width=3.4cm, minimum height=0.7cm, font=\footnotesize},
+  hw/.style={draw, fill=gray!15, rounded corners, minimum width=12cm, minimum height=0.9cm, font=\small},
+  arrow/.style={-{Stealth[length=3pt]}, thick},
+  brace/.style={decorate, decoration={brace, amplitude=6pt}},
+  label/.style={font=\footnotesize\itshape}
+]
+% Hardware layer
+\node[hw] (hw) at (0, 0) {Hardware: \ \ NVIDIA GPU (CUDA/NCCL) \ \ $|$ \ \ Google TPU (XLA) \ \ $|$ \ \ AWS Trainium2 (NKI/VLIW)};
+
+% Kernel layer (operatorRL)
+\node[layer, fill=blue!8] (L1) at (0, 1.5) {};
+\node[module, fill=blue!15] at (-3.8, 1.5) {\texttt{primitives}};
+\node[module, fill=blue!15] at (0, 1.5) {\texttt{iatp} (trust)};
+\node[module, fill=blue!15] at (3.8, 1.5) {\texttt{cmvk} (verify)};
+\node[anchor=west, font=\scriptsize\bfseries] at (-6.2, 1.5) {L1--L2};
+
+% Policy layer (operatorRL)
+\node[layer, fill=blue!8] (L3) at (0, 3.0) {};
+\node[module, fill=blue!20] at (-3.8, 3.0) {\texttt{emk} (memory)};
+\node[module, fill=blue!20] at (0, 3.0) {\texttt{policy engine}};
+\node[module, fill=blue!20] at (3.8, 3.0) {\texttt{nexus} (multi-agent)};
+\node[anchor=west, font=\scriptsize\bfseries] at (-6.2, 3.0) {L3};
+
+% SCAK layer (operatorRL)
+\node[layer, fill=blue!8] (L4) at (0, 4.5) {};
+\node[module, fill=blue!25] at (-2.5, 4.5) {\texttt{scak} (self-correct)};
+\node[module, fill=blue!25] at (2.5, 4.5) {\texttt{observability}};
+\node[anchor=west, font=\scriptsize\bfseries] at (-6.2, 4.5) {L4};
+
+% Agent Lightning layer
+\node[layer, fill=orange!8] (agl) at (0, 6.0) {};
+\node[module, fill=orange!15] at (-4.2, 6.0) {\texttt{runner}};
+\node[module, fill=orange!15] at (-1.4, 6.0) {\texttt{store}};
+\node[module, fill=orange!15] at (1.4, 6.0) {\texttt{trainer/verl}};
+\node[module, fill=orange!15] at (4.2, 6.0) {\texttt{tracer}};
+
+% Daemon/Algorithm layer
+\node[layer, fill=orange!8] (algo) at (0, 7.5) {};
+\node[module, fill=orange!20] at (-3.0, 7.5) {\texttt{daemon} (v0/v1)};
+\node[module, fill=orange!20] at (0.5, 7.5) {\texttt{algorithm} (GRPO/PPO)};
+\node[module, fill=orange!20] at (3.8, 7.5) {\texttt{adapter}};
+
+% Agent
+\node[draw, fill=green!10, rounded corners, minimum width=12cm, minimum height=0.9cm, font=\small] (agent) at (0, 9.0) {Agent (Claude Code / LangChain / CrewAI / custom) $\xrightarrow{\text{rollout}}$ Environment $\xrightarrow{R}$ Reward};
+
+% Braces for repos
+\draw[brace] (6.5, 0.8) -- node[right=4pt, label] {Operator RL} (6.5, 5.2);
+\draw[brace] (6.5, 5.4) -- node[right=4pt, label] {Agent Lightning} (6.5, 8.2);
+
+% Arrows
+\draw[arrow] (hw.north) -- (L1.south);
+\draw[arrow] (L1.north) -- (L3.south);
+\draw[arrow] (L3.north) -- (L4.south);
+\draw[arrow, dashed] (L4.north) -- node[right, font=\scriptsize] {integration bridge} (agl.south);
+\draw[arrow] (agl.north) -- (algo.south);
+\draw[arrow] (algo.north) -- (agent.south);
+
+% Validation feedback loop
+\draw[arrow, red!60!black, dashed] (agent.east) -- ++(1.5, 0) |- node[pos=0.25, right, font=\scriptsize, red!60!black] {§3.3 validation} (L4.east);
+
+\end{tikzpicture}
+\caption{System architecture of the Operator RL + Agent Lightning stack. Operator RL (blue) provides 4-layer kernel governance from hardware primitives (L1--L2) through policy engine (L3) to self-correcting agent kernel (L4). Agent Lightning (orange) provides the RL training pipeline: daemon orchestration, algorithm backends (GRPO/PPO via VERL), trajectory storage, and framework adapters. The dashed integration bridge is implemented in \texttt{operatorRL/src/agent\_os/integrations/agent\_lightning/}. The red feedback loop represents the \S\ref{sec:3.3} validation tests feeding anomaly signals back to SCAK for self-correction.}
+\label{fig:system-arch}
+\end{figure}
+
 \subsection{The Megatron Ecosystem: A Primer}
 \label{sec:3.2.megatron}
 
