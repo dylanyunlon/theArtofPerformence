@@ -1434,3 +1434,56 @@ A2: 修正1/3 deployment risk为非对称分析
 M6: 添加多轮agent RL信用分配章节
 E8: 重新校准习题难度等级
 3P-100: 添加系统架构TikZ图
+
+
+2026.3.12 12:40 update:
+
+## Completed: 10 Tasks = 10 Commits
+
+```bash
+cd theArtofPerformence && git push origin main
+```
+
+---
+
+### Commit Summary
+
+| # | Plan Item(s) | Commit | Description |
+|---|-------------|--------|-------------|
+| 1 | NEW-2, NEW-3, NEW-4, NEW-7, NEW-12 | `5c34ec7` | Remove ICLR template; add domain macros, `listings` (NKI language), `makeidx`, `xcolor` |
+| 2 | T15, A7 | `051a962` | Formalize potency as Trainium2 GEMM **Configuration Diversity Order** (Definition + formula) |
+| 3 | A1 | `2fd9aca` | Add explicit LCG↔kernel auto-tuner analogy distinction: where it holds, where it breaks |
+| 4 | NEW-40 | `3540fff` | Add formal GRPO definition with policy gradient formula and SBUF memory advantage |
+| 5 | A12 | `8e649b8` | Formalize "linear congruence of hardware ecosystems" as equivalence relation ~_K |
+| 6 | NEW-35, T12/T13 | `6631972` | Add real NKI `fused_rmsnorm_bf16` kernel example with `lstlisting` environment |
+| 7 | M8, NEW-79, NEW-82 | `79a5688` | Add OOM failure analysis: 3 patterns (trajectory overflow, KV-cache frag, gradient persistence) |
+| 8 | NEW-83, I7 | `ed662f0` | Add Theorem (Temporal Correlation Preservation) for GRPO batching — proves interleaving bias |
+| 9 | S10 | `f223ffb` | Add original Theorem (Exploration Budget Bound) — coupon collector vs max-period auto-tuner |
+| 10 | NEW-80, 3P-120 | `e6c792f` | Add dependency cascade analysis: version compatibility modeled via CRT |
+
+---
+
+### Files Modified
+
+- **`TheArtofAgenticSystems.tex`** (MODIFIED, +167 lines, now 1751 lines total)
+
+### Plan Items Covered (26 items addressed across 10 commits)
+
+**Primary:** NEW-2, NEW-3, NEW-4, NEW-7, NEW-12, T15, A7, A1, NEW-40, A12, NEW-35, T12, T13, M8, NEW-79, NEW-82, NEW-83, I7, S10, NEW-80, 3P-120
+
+---
+
+### What Codex Should Take (suggested 10 parallel tasks from plan.md §并行的10个任务建议)
+
+These items were **not** done by either worker and remain high priority:
+
+1. **S14**: Unify exercise scheme — §3.1 exercises are still mostly TAOCP originals, need agentic-RL rewrite
+2. **M9**: Multi-agent training on heterogeneous hardware (Issue #92, `operatorRL/modules/nexus`)
+3. **M17/NEW-36**: Add `agentlightning/adapter/` module description (TracerTraceToTriplet)
+4. **NEW-38**: Add `@litagent` decorator description (`agentlightning/litagent/`)
+5. **NEW-39**: Add APO (Automatic Prompt Optimization) as distinct algorithm class
+6. **NEW-42**: Expand LightningStore description (7 backend implementations)
+7. **NEW-43**: Add `agentlightning/tracer/` module description
+8. **NEW-51**: Add `contrib/adapter/agentos.py` and env_verl descriptions
+9. **NEW-52**: Add training recipes case studies (AlfWorld, ScienceWorld, WebShop)
+10. **3P-102**: Add `trace_aggregator` transition/trajectory connection to serial test

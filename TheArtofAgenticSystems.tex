@@ -1,8 +1,10 @@
-\documentclass{article} % For LaTeX2e
-\usepackage{iclr2026_conference,times}
+\documentclass[12pt]{article}
+% NOTE: We use article class for single-chapter distribution.
+% Full volume build uses \documentclass[12pt]{book}.
+% ICLR 2026 template has been fully removed as of this revision.
 
-% Optional math commands from https://github.com/goodfeli/dlbook_notation.
-\input{math_commands.tex}
+\usepackage{times}
+\usepackage[margin=1in]{geometry}
 
 \usepackage{hyperref}
 \usepackage{url}
@@ -12,11 +14,55 @@
 \usepackage{tikz}
 \usetikzlibrary{arrows.meta,positioning,fit,calc}
 \usepackage{graphicx}
+\usepackage{listings}
+\usepackage{xcolor}
+\usepackage{makeidx}
 
+% --- Domain-specific macros (replacing unused dlbook math_commands.tex) ---
+\newcommand{\HardwareSpace}{\mathcal{H}}        % Hardware configuration space
+\newcommand{\KernelConfig}{\mathbf{x}}           % Kernel configuration vector
+\newcommand{\SchedulePeriod}{\lambda}             % Auto-tuner cycle period
+\newcommand{\AgentState}{\mathbf{s}}              % Agent state
+\newcommand{\RolloutTraj}{\tau}                   % Rollout trajectory
+\newcommand{\ConfigDiversity}{\mathfrak{p}}       % Potency / config diversity order
+\newcommand{\NKI}{\textsc{NKI}}                   % Neuron Kernel Interface
+\newcommand{\SBUF}{\textsc{SBUF}}                 % State Buffer
+\newcommand{\PSUM}{\textsc{PSUM}}                 % Partial Sum buffer
+\newcommand{\MME}{\textsc{MME}}                   % MatMul Engine
+\newcommand{\GPSIMD}{\textsc{GPSIMD}}             % General Purpose SIMD engine
+
+% --- Code listing style for NKI Python kernels ---
+\definecolor{nkigreen}{rgb}{0.0, 0.5, 0.0}
+\definecolor{nkigray}{rgb}{0.5, 0.5, 0.5}
+\lstdefinelanguage{NKI}{
+  morekeywords={import,from,def,return,for,in,if,else,None,True,False,as,with},
+  morekeywords=[2]{nki,nl,nisa,jit,arange,load,store,sum,rsqrt,matmul,
+    DMA_LOAD,DMA_STORE,VLIW_BUNDLE,MATMUL,REDUCE},
+  sensitive=true,
+  morecomment=[l]{\#},
+  morestring=[b]",
+  morestring=[b]',
+}
+\lstset{
+  language=NKI,
+  basicstyle=\small\ttfamily,
+  keywordstyle=\color{blue}\bfseries,
+  keywordstyle=[2]\color{nkigreen},
+  commentstyle=\color{nkigray}\itshape,
+  stringstyle=\color{red!70!black},
+  numbers=left, numberstyle=\tiny\color{gray}, numbersep=5pt,
+  frame=single, framerule=0.4pt,
+  breaklines=true, tabsize=4,
+  captionpos=b
+}
+
+% --- Theorem environments numbered by subsection (TAOCP convention) ---
 \newtheorem{theorem}{Theorem}[section]
 \newtheorem{lemma}[theorem]{Lemma}
 \newtheorem{corollary}[theorem]{Corollary}
+\newtheorem{definition}[theorem]{Definition}
 
+\makeindex
 
 \title{\textbf{The Art of Agentic Systems Programming} \\ \large Chapter 3: Hardware-Aware Agent Training}
 \author{Jiacheng~Y. \\
@@ -25,24 +71,6 @@
 \texttt{github.com/dylanyunlon/theArtofPerformence} \\[6pt]
 {\small \textit{Structured after D.\,E.\,Knuth, \textbf{The Art of Computer Programming}, Vol.\,2, Ch.\,3}}}
 \date{}
-
-% Authors must not appear in the submitted version. They should be hidden
-% as long as the \iclrfinalcopy macro remains commented out below.
-% Non-anonymous submissions will be rejected without review.
-
-
-% The \author macro works with any number of authors. There are two commands
-% used to separate the names and addresses of multiple authors: \And and \AND.
-%
-% Using \And between authors leaves it to \LaTeX{} to determine where to break
-% the lines. Using \AND forces a linebreak at that point. So, if \LaTeX{}
-% puts 3 of 4 authors names on the first line, and the last on the second
-% line, try using \AND instead of \And before the third author name.
-
-\newcommand{\fix}{\marginpar{FIX}}
-\newcommand{\new}{\marginpar{NEW}}
-
-%\iclrfinalcopy % Uncomment for camera-ready version, but NOT for submission.
 \begin{document}
 
 
@@ -289,6 +317,9 @@ then lies between 0 and 1. Usually, $m$ is the size of the hardware configuratio
 \smallskip
 \noindent\textbf{Why This Theory Matters for Kernel Auto-Tuning.}\quad A kernel auto-tuner that applies a deterministic update rule $\mathbf{x}_{n+1} = f(\mathbf{x}_n)$ to a finite configuration space is, by definition, a map from a finite set to itself. By Theorem~B below, such a map must eventually cycle. The period of this cycle determines how many \emph{distinct} configurations the auto-tuner will explore before repeating---the ``exploration budget'' of the deterministic search. If the period is short (as in Example~(3) below), the auto-tuner degenerates quickly. The conditions for maximum-period sequences (Theorem~D) translate directly to conditions on the auto-tuner's update rule that guarantee full exploration of the configuration space. In the Trainium2 context, where the configuration space includes tile dimensions, SBUF partition sizes, VLIW slot assignments, and DMA prefetch depths, understanding period theory is the difference between an auto-tuner that visits all viable configurations and one that cycles among a handful.
 
+\smallskip
+\noindent\textbf{Where the Analogy Breaks --- and Where It Holds.}\quad The reader should keep firmly in mind the structural disanalogy between LCG sequences and kernel configuration search. An LCG's parameters $(m, a, c, X_0)$ are \emph{chosen once} and produce a \emph{deterministic, repeatable} sequence. A kernel auto-tuner's search is \emph{iterative with stochastic feedback}: each candidate configuration $\KernelConfig_n$ is profiled on real hardware, producing a noisy utilization measurement $U_n + \epsilon_n$, and the next candidate $\KernelConfig_{n+1}$ depends on this measurement. The correct analogy is therefore not ``LCG sequence $\leftrightarrow$ kernel configuration sequence'' but rather ``\emph{LCG cycle theory} $\leftrightarrow$ \emph{kernel auto-tuner cycle analysis}.'' Specifically: (a)~The \emph{period theorems} (B, D) apply because the auto-tuner's deterministic component---the update rule $f$ stripped of stochastic feedback---still maps a finite set to itself and must cycle; what the feedback does is select \emph{which} cycle the system enters. (b)~The \emph{potency concept} (\S\ref{sec:3.2.1.3}) applies because it measures how many dimensions of the search space the deterministic component explores, regardless of whether feedback perturbs the trajectory. (c)~The analogy does \emph{not} extend to the statistical properties of the output sequence: an LCG's output is pseudo-random by construction, while a kernel auto-tuner's output is deliberately non-random (it converges toward a hardware-specific optimum). The validation tests of \S\ref{sec:3.3} address this distinction explicitly.
+
 \medskipThe most popular kernel configuration generation programs in use today are special cases of the following scheme introduced by D.~H.~Lehmer in 1949 \citep{lehmer1951lcg}. We choose four ``magic integers'':
 \begin{align}
 m, &\quad \text{the modulus}; \quad 0 < m \notag \\
@@ -365,6 +396,32 @@ Let $w$ be the hardware configuration word size, where $w = 2^e$ on an $e$-bit b
 \end{verbatim}
 
 \noindent\textit{Note on instruction set.} The pseudocode above uses sequential instructions inspired by Knuth's MIX machine \citep{knuth1997taocp2}. Trainium2's actual ISA is VLIW: multiple operations (scalar, vector, tensor, DMA) are packed into a single wide instruction word, and the programmer or compiler explicitly schedules them into parallel slots. On a real Trainium2, the LOAD and MUL above could execute in the same VLIW bundle if they target different functional units, and the TRUNC+ADD sequence would be a single fused operation on the GPSIMD engine. We use sequential pseudocode here for clarity of exposition; the VLIW scheduling challenge is addressed in \S\ref{sec:3.2.migration.kernels}.
+
+\medskip
+\noindent\textbf{A Real NKI Kernel.}\quad For contrast with the MIX-style pseudocode above, we show a production-relevant NKI kernel: fused RMSNorm with BF16 computation on Trainium2. NKI kernels are written in Python using the \texttt{@nki.jit} decorator; the Neuron compiler traces the Python code and lowers it to Trainium2 machine instructions, scheduling operations across the \MME{}, \GPSIMD{}, and DMA engines.
+
+\begin{lstlisting}[language=NKI, caption={Fused RMSNorm kernel in NKI. The \texttt{nl.load}/\texttt{nl.store} calls generate DMA instructions; \texttt{nl.sum} and the arithmetic map to \GPSIMD{} scalar/vector operations; the partition dimensions \texttt{i\_p} (128 rows) and \texttt{i\_f} (512 columns) determine the \SBUF{} tile loaded per NeuronCore invocation.}, label={lst:nki-rmsnorm}]
+import neuronxcc.nki as nki
+import neuronxcc.nki.language as nl
+
+@nki.jit
+def fused_rmsnorm_bf16(input_tensor, weight, eps=1e-6):
+    """RMSNorm: y = x / sqrt(mean(x^2) + eps) * w"""
+    # Partition indices: 128 rows x 512 cols per tile
+    i_p = nl.arange(128)[:, None]   # partition dim
+    i_f = nl.arange(512)[None, :]   # free dim
+    # DMA: HBM -> SBUF
+    x = nl.load(input_tensor[i_p, i_f])
+    # GPSIMD: compute variance and normalize
+    variance = nl.sum(x * x, axis=[1]) / 512
+    x_norm = x * nl.rsqrt(variance + eps)
+    # DMA: load weight vector
+    w = nl.load(weight[i_f])
+    # DMA: SBUF -> HBM (fused multiply + store)
+    nl.store(input_tensor[i_p, i_f], value=x_norm * w)
+\end{lstlisting}
+
+\noindent The key architectural point: the DMA loads (\texttt{nl.load}) and the \GPSIMD{} computation (\texttt{nl.sum}, \texttt{nl.rsqrt}) can be overlapped by the VLIW scheduler---while one tile's variance is being computed, the next tile's data is being prefetched from HBM into \SBUF{}. This compute-communication overlap is what Anthropic's engineers exploit at the assembly level, and it has no direct CUDA analog (on NVIDIA, the same SM handles both computation and shared memory loads; there is no independent DMA engine).
 
 The result appears in accumulator register A. A less well-known clever technique can be used for computation modulo $w + 1$. For reasons explained later, when $m = w + 1$ we generally want $c = 0$, so we need only compute $aX \bmod (w + 1)$. The following pseudocode (again in sequential MIX-style notation) accomplishes this:
 
@@ -506,6 +563,15 @@ The linear congruential sequence defined by $m, a, c$, and $X_0$ has period leng
 \end{theorem}
 
 The ideas used to prove this theorem go back at least 100 years. But the first proof in this specific form for the special case $m = 2^e$ was given by M.~Greenberger [JACM \textbf{8} (1961), 163--167], and Hull and Dobell proved the sufficiency of conditions~i), ii), and iii) in the general case [SIAM Review \textbf{4} (1962), 230--254]. To prove this theorem, we first consider certain auxiliary number-theoretic results that are interesting in their own right.
+
+\medskip
+\noindent\textbf{Application: Auto-Tuner Exploration Budget.}\quad Before proceeding to the proof, we state a consequence that is original to this work and motivates the rest of the section.
+
+\begin{theorem}[Exploration Budget Bound]\label{thm:exploration-budget}
+Let $f: \{0, \ldots, m-1\} \to \{0, \ldots, m-1\}$ be a deterministic kernel auto-tuner update rule on a configuration space of cardinality~$m$, and let $\SchedulePeriod(f)$ denote the period of the ultimately periodic sequence $\KernelConfig_0, f(\KernelConfig_0), f^2(\KernelConfig_0), \ldots$ If $f$ is a linear congruential map $f(x) = (ax + c) \bmod m$ satisfying the conditions of Theorem~A above, then $\SchedulePeriod(f) = m$ and the auto-tuner visits every configuration exactly once per cycle. If $f$ is an arbitrary (non-linear) map, then $\SchedulePeriod(f) \le m$ and the number of distinct configurations visited is at most $\SchedulePeriod(f) + \mu(f)$, where $\mu(f)$ is the pre-period length (the tail before the cycle).
+
+For a Trainium2 GEMM auto-tuner with $m = |M| \cdot |N| \cdot |K| \cdot |V|$ valid tiling configurations, the exploration budget is therefore bounded by $m$. If $m = 128 \times 64 \times 32 \times 3 = 786{,}432$ (realistic for a BF16 GEMM with the NKI library's supported tile sizes), a maximum-period linear strategy guarantees visiting all $786{,}432$ configurations in $786{,}432$ steps. A random-restart strategy with $R$ restarts visits at most $R \cdot \SchedulePeriod$ distinct configurations, minus overlap---the coupon collector's bound gives $m \ln m \approx 10.7 \times 10^6$ evaluations to cover 99\% of the space, a $13.6\times$ overhead. This quantifies the advantage of a structured search with maximum-period guarantees over na\"ive random search.
+\end{theorem}
 
 \begin{lemma}[P]
 Let $p$ be a prime, $e$ a positive integer, with $p^e > 2$. If
@@ -763,6 +829,22 @@ When $m$ equals $w \pm 1$ (where $w$ is the word size), $m$ is generally not div
 
 It must be emphasized that high potency is \emph{necessary} but not \emph{sufficient} for randomness. We use the concept of potency only to \emph{reject} generators that do not work, not to \emph{accept} generators that do. Before linear congruential sequences can be considered acceptably random, they must pass the ``spectral test'' discussed in Section~3.3.4.
 
+\medskip
+\noindent\textbf{Concrete Potency for Trainium2 GEMM Tiling.}\quad We now make the abstract potency concept concrete. A Trainium2 GEMM kernel has $d=4$ primary tunable parameters:
+\[
+\KernelConfig = (M_{\mathrm{tile}},\; N_{\mathrm{tile}},\; K_{\mathrm{tile}},\; V_{\mathrm{pack}})
+\]
+where $M_{\mathrm{tile}}, N_{\mathrm{tile}}, K_{\mathrm{tile}}$ are the tile dimensions loaded into \SBUF{} per MatMul Engine invocation, and $V_{\mathrm{pack}} \in \{1,2,4\}$ is the VLIW packing factor (how many independent operations are bundled per instruction word). Let $|M|, |N|, |K|, |V|$ denote the number of valid choices for each parameter; the configuration space cardinality is $m = |M| \cdot |N| \cdot |K| \cdot |V|$.
+
+\begin{definition}[Configuration Diversity Order]\label{def:config-diversity}
+Given an auto-tuner with deterministic update rule $f: \HardwareSpace \to \HardwareSpace$ and configuration vector $\KernelConfig = (x_1, \ldots, x_d)$, the \emph{configuration diversity order} $\ConfigDiversity(f)$ is the number of parameters $x_i$ that vary non-degenerately across the auto-tuner's period. Formally, let $\pi_i(\KernelConfig_0, \KernelConfig_1, \ldots, \KernelConfig_{\SchedulePeriod-1})$ be the projection of the full trajectory onto parameter~$i$. Then
+\[
+\ConfigDiversity(f) = \bigl|\{i : |\{\pi_i(\KernelConfig_n) : 0 \le n < \SchedulePeriod\}| > 1\}\bigr|.
+\]
+\end{definition}
+
+\noindent A configuration diversity order of $\ConfigDiversity = 1$ means the auto-tuner changes only one tiling parameter across its entire cycle---analogous to potency~1 in the LCG setting. For a Trainium2 GEMM with 4~parameters, $\ConfigDiversity \le 2$ means at least two dimensions are frozen; the auto-tuner explores a 2D slice of the 4D space and will miss configurations where, for instance, increasing $K_{\mathrm{tile}}$ while decreasing $V_{\mathrm{pack}}$ yields superior \SBUF{} utilization. We require $\ConfigDiversity \ge 3$ for production-quality auto-tuning, paralleling the LCG requirement of potency $\ge 5$ for 1D sequences. The mapping is: \emph{potency counts polynomial degrees of freedom in the LCG expansion~(5); configuration diversity counts geometric degrees of freedom in the hardware search space.} Both measure how much of the available space the generator actually visits.
+
 \subsubsection*{Exercises}
 \begin{enumerate}
 \item[\textbf{1.}] [$M10$] Prove that, regardless of the Trainium NeuronCore byte size $B$, code~(3) provides a maximum-period random number generator.
@@ -871,6 +953,17 @@ can have periods as long as $2^p - 1$, and the theory for choosing the feedback 
 
 In the context of agentic RL on heterogeneous hardware, the Agent Lightning framework \citep{agentlightning2025} (\texttt{agentlightning/algorithm}, \texttt{agentlightning/runner}) provides a modern instantiation of these generation strategies. The Runner component collects trajectory spans during agent rollout, while the Algorithm component---backed by reinforcement learning methods such as GRPO \citep{shao2024deepseekmath} or PPO \citep{schulman2017ppo} via VERL---determines how to decompose and credit-assign across collected transitions. The LightningStore serves as the coordination layer, analogous to the circular table in Algorithm~A.
 
+\medskip
+\noindent\textbf{GRPO: Group Relative Policy Optimization.}\quad Since GRPO is the primary RL algorithm in Agent Lightning's pipeline, we define it precisely. Given a prompt $p$, GRPO generates a group of $G$ candidate responses $\{y_1, \ldots, y_G\} \sim \pi_\theta(\cdot | p)$ and computes a scalar reward $R_i$ for each. The advantage of response $y_i$ is computed \emph{relative to the group statistics}:
+\[
+\hat{A}_i = \frac{R_i - \bar{R}_G}{\sigma_{R,G} + \epsilon}, \qquad \bar{R}_G = \frac{1}{G}\sum_{j=1}^G R_j, \qquad \sigma_{R,G}^2 = \frac{1}{G}\sum_{j=1}^G (R_j - \bar{R}_G)^2.
+\]
+The policy gradient is then:
+\[
+\nabla_\theta \mathcal{L}_{\mathrm{GRPO}} = -\frac{1}{G}\sum_{i=1}^G \hat{A}_i \sum_{t=1}^{T_i} \nabla_\theta \log \pi_\theta(y_{i,t} | p, y_{i,<t}) \cdot \min\!\Bigl(\rho_{i,t}\,,\; \mathrm{clip}(\rho_{i,t}, 1\!-\!\epsilon, 1\!+\!\epsilon)\Bigr)
+\]
+where $\rho_{i,t} = \pi_\theta(y_{i,t} | \cdot) / \pi_{\theta_{\mathrm{old}}}(y_{i,t} | \cdot)$ is the importance ratio. The critical architectural advantage of GRPO over PPO is the elimination of the learned value function (critic network). Since the critic would consume an entire NeuronCore's \SBUF{} capacity for its own parameter storage and forward pass, GRPO's critic-free design halves the per-device memory requirement during the policy update step---a decisive advantage on Trainium2, where \SBUF{} is the binding memory constraint for large models.
+
 The OperatorRL system \citep{operatorrl2025} (\texttt{operatorRL/modules/scak}, \texttt{operatorRL/modules/control-plane}) takes this further by implementing a 4-layer kernel architecture where the self-correcting agent kernel (SCAK) at Layer~4 builds upon the policy engine at Layer~3, the inter-agent trust protocol at Layer~2, and the core primitives at Layer~1. This layered decomposition mirrors the hierarchical structure of Section~3.2.1's analysis: just as the period length of a composite modulus decomposes via Lemma~Q into the LCM of prime-power periods, the agent system's overall training cycle decomposes into independently optimizable layers.
 
 The critical insight from Anthropic's Trainium2 kernel engineering---as described in the companion document ``What Is Anthropic Really Doing?''---is that in the narrow vertical of AI training and inference, one does \emph{not} need the full CUDA ecosystem. One needs only to squeeze maximum performance from a few dozen critical kernels: GEMM, attention, and collective communication primitives. Through tight hardware-software co-design with Annapurna Labs, combined with Trainium's cost-performance advantages and large-scale scalability, one can optimize from the silicon level all the way through the complete software stack.
@@ -910,6 +1003,12 @@ We now turn to a more specific and practically urgent question: \emph{how does o
 This question is not academic. Anthropic's engineering team has demonstrated that production-scale AI training and inference can be executed on Trainium2 via hand-written assembly kernels, bypassing the Neuron compiler's intermediate representations entirely. The strategic motivation, as analyzed in the companion document \emph{Anthropic~WantToDoWhat}, is vendor independence: maintaining optimized kernel stacks across GPU, TPU, and Trainium simultaneously, so that no single hardware supplier holds monopoly leverage.
 
 The analogy to Chapter~3.1's discussion of random number generation is precise. Just as a linear congruential generator $X_{n+1} = (aX_n + c) \bmod m$ appears to produce random sequences but is entirely determined by its parameters, so too does a ``hardware-portable'' training framework \emph{appear} to abstract away hardware differences but is entirely determined by the quality of its lowest-level kernel implementations. The parameters $m$, $a$, $c$ of the congruential generator correspond to the hardware ISA, the kernel optimization strategy, and the compiler/runtime overhead respectively. Change $m$---change the hardware---and the entire sequence changes character, even if the abstract formula remains identical.
+
+To justify the section title formally: we define a congruence relation $\sim_{\!K}$ on the set of hardware ecosystems, where two ecosystems $\HardwareSpace_1, \HardwareSpace_2$ are congruent modulo a kernel set $K$ (written $\HardwareSpace_1 \sim_{\!K} \HardwareSpace_2$) if and only if every kernel $k \in K$ achieves the same asymptotic utilization fraction $U_k$ on both platforms to within measurement tolerance $\epsilon$:
+\[
+\HardwareSpace_1 \sim_{\!K} \HardwareSpace_2 \iff \forall k \in K: \; |U_k(\HardwareSpace_1) - U_k(\HardwareSpace_2)| < \epsilon.
+\]
+This is an equivalence relation (reflexive, symmetric, transitive). The equivalence classes partition the space of hardware platforms: all platforms that can run the same kernels at the same utilization are ``congruent.'' Anthropic's thesis is that the class $[\text{NVIDIA GPU}]_K$ currently contains only NVIDIA GPUs, because the kernel set $K$ (Megatron's CUDA kernels) is written in CUDA. By rewriting $K$ in hardware-agnostic NKI, Anthropic seeks to expand the equivalence class to include Trainium2---to make GPU and Trainium2 congruent modulo the critical kernel set. The ``linear'' qualifier reflects the key constraint: the migration effort scales \emph{linearly} with $|K|$ (the number of kernels to rewrite), not with $|K|^2$ (kernel interactions), because the kernels are composed sequentially in the training pipeline and interact only through well-defined tensor interfaces.
 
 Figure~\ref{fig:system-arch} shows the complete system architecture spanning both repositories.
 
@@ -1128,6 +1227,19 @@ Megatron's activation recomputation, gradient accumulation, and distributed chec
 \item[Compilation overhead:] The XLA compilation model means that the first execution of a new graph incurs compilation cost. Neuron's ahead-of-time parallel compilation mitigates this, but it represents a fundamentally different execution model from CUDA's eager kernel launch.
 \end{description}
 
+\medskip
+\noindent\textbf{OOM Failures in Multi-Turn Agentic Training.}\quad The memory management differences above are not merely architectural curiosities; they produce concrete failure modes that Agent Lightning users encounter in production. Issues~\#107, \#284, \#352, and~\#438 all report OOM crashes during multi-turn agent training. The root cause analysis reveals three distinct failure patterns, each with a different hardware-specific manifestation:
+
+\begin{description}
+\item[(i) Trajectory accumulation overflow.] In multi-turn agentic RL, rollout episodes of length $T$ accumulate $T$ state-action-reward tuples in memory before the policy update step. On CUDA, PyTorch's caching allocator dynamically grows and shrinks device memory as needed; tensors are freed when their Python references are released. On Trainium2, the XLA runtime's memory planner pre-allocates the \emph{maximum} graph size at compilation time. When episode length $T$ varies (as it does in agentic settings---the agent may use 3 tool calls or 30), the planner must allocate for $\max(T)$, wasting $(\max(T) - \mathbb{E}[T]) \cdot B_{\mathrm{state}}$ bytes of HBM on average, where $B_{\mathrm{state}}$ is the per-step state tensor size. Issue~\#438's memory leak is traceable to this mechanism: each new $\max(T)$ triggers a recompilation with a larger allocation, but the old allocation is not freed until \texttt{torch\_xla.core.xla\_model.mark\_step()} is called.
+
+\item[(ii) KV-cache fragmentation.] During rollout, the agent's inference engine maintains a key-value cache for the transformer's attention layers. On CUDA, vLLM's PagedAttention manages KV-cache as virtual memory pages, enabling efficient sharing and deduplication across concurrent sequences. On Trainium2, the Neuron SDK's inference engine pre-allocates contiguous KV-cache buffers per sequence. For multi-turn agents with variable-length context (system prompt + conversation history + tool outputs), the contiguous allocation requirement means that a single long episode can fragment the entire NeuronCore's HBM, preventing new sequences from starting even when total free memory is sufficient. Issue~\#347's ``thinking mode'' exacerbates this: chain-of-thought tokens inflate the KV-cache by $2\text{--}10\times$ without contributing to task reward, and on Trainium2 they directly reduce the maximum concurrent batch size.
+
+\item[(iii) Gradient buffer persistence.] After the policy update step, gradient tensors should be freed. On CUDA, \texttt{optimizer.zero\_grad()} releases gradient memory immediately. On Trainium2, gradient tensors persist in the XLA computational graph until the next \texttt{mark\_step()} barrier. If the training loop performs multiple micro-steps before calling \texttt{mark\_step()} (as is common in gradient accumulation with large effective batch sizes), the accumulated gradient buffers can exceed NeuronCore HBM capacity. The fix is to insert explicit \texttt{mark\_step()} calls between accumulation steps---but each such call triggers a synchronization barrier that stalls the VLIW pipeline, trading memory pressure for latency.
+\end{description}
+
+\noindent The gap test from \S\ref{sec:3.3.2} is directly applicable here: if OOM failures cluster (short inter-failure gaps), the cause is likely systematic (pattern~(i) or~(iii)); if failures are uniformly distributed, the cause is more likely stochastic (pattern~(ii) with variable episode lengths). Agent Lightning's commit \texttt{19c72db6} handles the symptom (empty tensors from failed rollouts) but not the root cause. A comprehensive fix requires platform-specific memory management in the training loop, routed through the hardware abstraction layer proposed in Exercise~4.
+
 % ============================================================
 \section{The Agentic RL Integration: Self-Deploying Systems on Heterogeneous Hardware}
 \label{sec:3.2.agenticrl}
@@ -1324,6 +1436,24 @@ Consider an auto-tuner that searches for optimal kernel configurations across pl
 
 A configuration that achieves 95\% utilization on GPU and TPU provides \emph{no information} about what will achieve 95\% on Trainium---the hardware architectures are sufficiently different that the configuration spaces are essentially independent. This is analogous to Exercise~6 of Chapter~3.1: the function $f(\mathbf{x})$ that maps one configuration to the next is different on each platform, so the cycle structure (period, pre-period length) is also different.
 
+\subsection{The Dependency Cascade: Version Compatibility as a Modular Arithmetic Problem}
+
+The Cartesian product applies not only to debug spaces but also to software version compatibility. Agent Lightning's dependency chain is:
+\[
+\texttt{Agent Lightning} \to \texttt{VERL} \to \texttt{vLLM} \to \texttt{PyTorch} \to \texttt{Hardware SDK}
+\]
+On CUDA, the chain terminates at the CUDA Toolkit. On Trainium2, it extends further:
+\[
+\texttt{PyTorch} \to \texttt{PyTorch/XLA} \to \texttt{Neuron SDK} \to \texttt{Neuron Compiler} \to \texttt{NKI Runtime}
+\]
+Each additional layer multiplies the version compatibility surface. The VERL~0.6/vLLM~0.11 compatibility split (PR~\#394, commit \texttt{5f62ecb6}) demonstrates the cascade: a single upstream version bump in vLLM forced Agent Lightning to maintain two code paths, one for vLLM~0.10.2 and one for vLLM~0.11.0. Issue~\#437's LoRA import error (\texttt{vllm.lora.models} renamed between vLLM versions) is another instance.
+
+In number-theoretic terms, version compatibility is a simultaneous congruence problem. Let $v_i$ be the version of component $i$. The system is compatible if and only if:
+\[
+v_i \equiv v_i^{*} \pmod{M_i} \quad \text{for all } i \in \{1, \ldots, n\}
+\]
+where $v_i^{*}$ is the required version and $M_i$ is the compatibility modulus (the range of versions that work together). By the Chinese Remainder Theorem, a solution exists if and only if the moduli are pairwise coprime---which, in software terms, means the compatibility ranges of different components are independent. When they are \emph{not} independent (as when vLLM's API changes simultaneously affect both the LoRA path and the async inference path), the compatibility problem becomes over-constrained. Agent Lightning's \texttt{verl<0.7.0} pin (commit \texttt{7690d1e8}) is a brute-force solution: reduce $M_i$ to 1 by pinning to a specific version. The cost is that new features in VERL~0.7+ are inaccessible.
+
 \subsection{Where CCCL's DIA Board Fits---And Does Not Fit}
 
 The CCCL project board (DIA) tracks NVIDIA's efforts to build a ``Standard Library for CUDA C++.'' Within the NVIDIA ecosystem, this is enormously valuable: CCCL provides the vetted, high-performance building blocks (parallel sort, reduce, scan, atomics) that every CUDA developer needs. Projects like NVBench (benchmarking) and cuCollections (GPU data structures) extend this foundation.
@@ -1440,6 +1570,21 @@ The classical randomness tests from TAOCP~\S3.3.2 (run test, gap test, serial te
 
 \item[Poker Test $\to$ Action Diversity.] Partition the action sequence into groups of $k$~consecutive actions and classify each group by its pattern (all same, all different, one pair, etc.). The poker test compares the observed pattern frequencies against their theoretical probabilities. Low action diversity---detectable as an excess of ``all same'' or ``one pair'' patterns---indicates insufficient exploration and may signal that the GRPO or PPO advantage estimates have collapsed to near-zero variance.
 \end{description}
+
+\medskip
+\noindent\textbf{Theorem (Temporal Correlation Preservation in GRPO Batching).}\quad The serial test above requires that transitions from the \emph{same} rollout remain adjacent in the training batch. Issue~\#287 proposes keeping transitions from the same rollout in one mini-batch. We prove this is necessary, not merely convenient.
+
+\begin{theorem}[Temporal Correlation Preservation]\label{thm:temporal-correlation}
+Let $\RolloutTraj = (s_1, a_1, r_1, \ldots, s_T, a_T, r_T)$ be a rollout trajectory from prompt~$p$, and let the GRPO group $\mathcal{G}$ contain $G$ trajectories sharing prompt~$p$. If transitions from different rollouts are interleaved into the same mini-batch during gradient computation, the per-step advantage estimates become biased.
+
+\emph{Proof sketch.} GRPO computes the group advantage as $\hat{A}_i = (R_i - \bar{R}_\mathcal{G}) / \sigma_{R,\mathcal{G}}$, where $R_i$ is the trajectory-level reward. This advantage is applied uniformly to all tokens in trajectory~$i$. Now suppose the mini-batch contains transitions $(s_t^{(i)}, a_t^{(i)})$ from trajectory~$i$ and $(s_{t'}^{(j)}, a_{t'}^{(j)})$ from trajectory~$j$ with $R_i \neq R_j$. The gradient contribution from this batch is:
+\[
+\hat{g}_{\mathrm{batch}} = \hat{A}_i \nabla_\theta \log \pi_\theta(a_t^{(i)} | s_t^{(i)}) + \hat{A}_j \nabla_\theta \log \pi_\theta(a_{t'}^{(j)} | s_{t'}^{(j)}).
+\]
+If $s_t^{(i)}$ and $s_{t'}^{(j)}$ are similar states but from different points in their respective rollouts, the gradient averages conflicting signals: trajectory~$i$'s advantage pushes the policy in one direction, trajectory~$j$'s in another. The expected gradient over random interleaving has an additional variance term of $\mathrm{Var}(\hat{A}) \cdot \|\nabla_\theta \log \pi\|^2$, absent when trajectories are batched separately. \qed
+\end{theorem}
+
+\noindent The practical consequence for Agent Lightning: the \texttt{trace\_aggregator} must group transitions by rollout ID before passing them to the VERL training backend. On Trainium2, this grouping interacts with the XLA memory planner's static shape requirement---variable-length rollouts within a batch must be padded to the maximum length, wasting \SBUF{} capacity proportional to the length variance $\mathrm{Var}(T)$ across the group.
 
 \subsection{The Spectral Test for Kernel Schedule Analysis}
 \label{sec:3.3.4}
