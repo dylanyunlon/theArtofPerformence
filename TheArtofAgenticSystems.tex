@@ -49,7 +49,7 @@
 \maketitle
 
 \begin{abstract}
-This chapter develops the theory and practice of hardware-aware agent training by transposing the structure of Knuth's analysis of random number generation (TAOCP Vol.~2, Ch.~3) onto the domain of agentic reinforcement learning systems with heterogeneous accelerator backends. \S\ref{sec:3.1} introduces the problem: why assembly-level kernel optimization is necessary for self-deploying, self-evolving agent systems. \S\ref{sec:3.2} constructs the migration map from NVIDIA's Megatron-LM ecosystem to AWS Trainium2, analyzing each layer---parallelism primitives, fused kernels, communication overlap, memory management---and identifying the CCCL/DIA project's position in the NVIDIA fortress. \S\ref{sec:3.3} provides validation tests (chi-square, run test, spectral test, credit assignment) for assessing agentic training quality on heterogeneous hardware. The technical substrate is drawn from two open-source projects: \texttt{operatorRL} (kernel-level agent governance) and \texttt{agent-lightning} (RL training framework with VERL backend).
+This chapter develops the theory and practice of hardware-aware agent training by transposing the structure of Knuth's analysis of random number generation (TAOCP Vol.~2, Ch.~3) onto the domain of agentic reinforcement learning systems with heterogeneous accelerator backends. \S\ref{sec:3.1} introduces the problem: why assembly-level kernel optimization is necessary for self-deploying, self-evolving agent systems. \S\ref{sec:3.2} develops the mathematical framework of configuration periodicity and \S\ref{sec:3.2.hw} constructs the migration map from NVIDIA's Megatron-LM ecosystem to AWS Trainium2, analyzing each layer---parallelism primitives, fused kernels, communication overlap, memory management---and identifying the CCCL/DIA project's position in the NVIDIA fortress. \S\ref{sec:3.3} provides validation tests (chi-square, run test, spectral test, credit assignment) for assessing agentic training quality on heterogeneous hardware. The technical substrate is drawn from two open-source projects: \texttt{operatorRL} (kernel-level agent governance) and \texttt{agent-lightning} (RL training framework with VERL backend).
 \end{abstract}
 
 
@@ -894,8 +894,13 @@ To summarize in one sentence: DeepSeek is the best prisoner in NVIDIA's jail; An
 
 
 % ============================================================
+% APPLICATION: Hardware Ecosystem Analysis (§3.2 continued)
+% This section applies the mathematical framework of §3.2 (Generating
+% Uniform Kernel Configurations) to the concrete problem of migrating
+% the Megatron training stack from NVIDIA to Trainium2.
+% ============================================================
 \section{The Linear Congruence of Hardware Ecosystems}
-\label{sec:3.2}
+\label{sec:3.2.hw}
 % ============================================================
 
 In Chapter~3.1, we established that an agentic RL system---one that self-deploys, gathers environment feedback, and self-evolves its own training loop---requires assembly-level kernel optimization to achieve viable throughput on any accelerator. We described the general framework: an agent autonomously running on a cluster of heterogeneous accelerators, generating rollout trajectories, computing gradient updates, and continuously retraining itself, all orchestrated by the Operator RL method (see \texttt{operatorRL/src/agent\_os}) with training algorithms from Agent Lightning (\texttt{agentlightning/trainer}, \texttt{agentlightning/runner}).
