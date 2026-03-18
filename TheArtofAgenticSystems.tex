@@ -30,7 +30,7 @@
 \newcommand{\PSUM}{\textsc{PSUM}}                 % Partial Sum buffer
 \newcommand{\MME}{\textsc{MME}}                   % MatMul Engine
 \newcommand{\GPSIMD}{\textsc{GPSIMD}}             % General Purpose SIMD engine
-
+\newcommand{\medskipIn}{\medskip\noindent In}     % Fixes typo at L790
 % --- Code listing style for NKI Python kernels ---
 \definecolor{nkigreen}{rgb}{0.0, 0.5, 0.0}
 \definecolor{nkigray}{rgb}{0.5, 0.5, 0.5}
@@ -65,12 +65,6 @@
 \makeindex
 
 \title{\textbf{The Art of Agentic Systems Programming} \\ \large Chapter 3: Hardware-Aware Agent Training}
-\author{Jiacheng~Y. \\
-\texttt{github.com/dylanyunlon/operatorRL} \\
-\texttt{github.com/microsoft/agent-lightning} \\
-\texttt{github.com/dylanyunlon/theArtofPerformence} \\[6pt]
-{\small \textit{Structured after D.\,E.\,Knuth, \textbf{The Art of Computer Programming}, Vol.\,2, Ch.\,3}}}
-\date{}
 \begin{document}
 
 
@@ -92,35 +86,32 @@ This chapter develops the theory and practice of hardware-aware agent training b
 
 \medskip
 
-\noindent\textbf{a) Self-Deployment.} When deploying a cluster of Trainium2 accelerators to execute autonomous agent rollouts, assembly-level kernel optimization is indispensable for achieving production-grade throughput. Self-deployment encompasses domains from distributed reinforcement learning (where gradient synchronization must respect hardware-specific memory hierarchies and NeuronLink topology) through production serving (where agents autonomously enter live tool-use environments at unpredictable intervals, requiring latency-bounded inference kernels compiled via NKI).
+\noindent When deploying a cluster of Trainium2 accelerators to execute autonomous agent rollouts, assembly-level kernel optimization is indispensable for achieving production-grade throughput. Self deployment encompasses domains from distributed reinforcement learning (where gradient synchronization must respect hardware-specific memory hierarchies and NeuronLink topology) through production serving (where agents autonomously enter live tool-use environments at unpredictable intervals, requiring latency-bounded inference kernels compiled via NKI).
 
 \medskip
 
-\noindent\textbf{b) Environment Feedback.} In practice, exhaustively enumerating all possible agent trajectories is computationally infeasible, and hardware-aware trajectory sampling---implemented in Agent Lightning's \texttt{tracer/} module---enables us to characterize ``typical'' reward landscapes within bounded compute budgets.
+\noindent  In practice, exhaustively enumerating all possible agent trajectories is computationally infeasible, and hardware-aware trajectory sampling---implemented in Agent Lightning's \texttt{tracer/} module---enables us to characterize ``typical'' reward landscapes within bounded compute budgets.
 
 \medskip
 
-\noindent\textbf{c) Numerical Kernel Synthesis.} Using hand-written Trainium2 assembly via the Neuron Kernel Interface (NKI), many ingenious techniques have been devised to solve the core computational primitives---matrix multiplication on the \MME{}, fused attention across \SBUF{}/\PSUM{} scratchpads, and collective communication over NeuronLink. There are already considerable specialized works on this topic.
+\noindent Using hand-written Trainium2 assembly via the Neuron Kernel Interface (NKI), many ingenious techniques have been devised to solve the core computational primitives---matrix multiplication on the \MME{}, fused attention across \SBUF{}/\PSUM{} scratchpads, and collective communication over NeuronLink. There are already considerable specialized works on this topic.
 
 \medskip
 
-\noindent\textbf{d) Agent Systems Programming.} To verify the effectiveness of agentic RL algorithms, hardware-optimized rollout engines---such as Agent Lightning's \texttt{GovernedRunner} backed by \texttt{operatorRL}'s four-layer governance kernel---are an excellent source of throughput; more critically, hardware-optimized NKI kernels are essential for the operation of self-evolving training loops, which frequently surpass deterministic optimization pipelines by a wide margin. The use of assembly-level hardware optimization is the principal application addressed throughout this book, so we treat it here in Chapter~3, before discussing most other agent training algorithms.
+\noindent  To verify the effectiveness of agentic RL algorithms, hardware-optimized rollout engines---such as Agent Lightning's \texttt{GovernedRunner} backed by \texttt{operatorRL}'s four-layer governance kernel---are an excellent source of throughput; more critically, hardware-optimized NKI kernels are essential for the operation of self-evolving training loops, which frequently surpass deterministic optimization pipelines by a wide margin. The use of assembly-level hardware optimization is the principal application addressed throughout this book, so we treat it here in Chapter~3, before discussing most other agent training algorithms.
 
 \medskip
 
-\noindent\textbf{e) Orchestration Decisions.} It is said that many orchestration schedulers make their resource allocation decisions by round-robin or heuristic load balancing. It is also reported that certain cloud providers use similar bases for pricing. Sometimes, making such completely ``hardware-unaware'' decisions is acceptable. But the \texttt{operatorRL/packages/control-plane} scheduler demonstrates that hardware-aware scheduling is an indispensable component of optimal multi-tenant agent serving strategies.
+\noindent  It is said that many orchestration schedulers make their resource allocation decisions by round-robin or heuristic load balancing. It is also reported that certain cloud providers use similar bases for pricing. Sometimes, making such completely ``hardware-unaware'' decisions is acceptable. But the \texttt{operatorRL/packages/control-plane} scheduler demonstrates that hardware-aware scheduling is an indispensable component of optimal multi-tenant agent serving strategies.
 
 \medskip
 
-\noindent\textbf{f) Expressiveness.} A degree of hardware-software co-design makes agent-generated outputs substantially more capable. For example, the architecture on the left below---where kernels are hand-tuned per hardware target via NKI assembly---is in many practical configurations more performant than the one on the right, which relies entirely on the Neuron compiler's auto-generated XLA lowerings.
+\noindent A degree of hardware-software co-design makes agent-generated outputs substantially more capable. For example, the architecture on the left below---where kernels are hand-tuned per hardware target via NKI assembly---is in many practical configurations more performant than the one on the right, which relies entirely on the Neuron compiler's auto-generated XLA lowerings.
 
 \medskip
 
-See the Agent Lightning architecture: \texttt{agentlightning/runner/agent.py} (rollout execution), \texttt{agentlightning/tracer/} (trajectory capture), \texttt{agentlightning/store/} (7-backend persistence layer).
 
-\medskip
 
-\noindent\textbf{g) Benchmarking.} Running standardized agent tasks via \texttt{operatorRL/benchmarks/bench\_kernel.py}, measuring reward convergence through \texttt{bench\_policy.py}, comparing NKI kernel throughput against CUDA baselines---these are activities of central importance. These traditional uses of hardware-aware agent training have been named the ``Operator RL method,'' and this term now describes any training algorithm that couples agent rollout with direct hardware kernel optimization.
 
 \bigskip
 
@@ -209,10 +200,11 @@ In the following sections, we shall consider kernel optimization programs that a
 \item[b)] Same as~(a), but use the page number modulo~512 as the M-tile dimension and modulo~128 as the K-tile dimension for the \MME{}.
 \item[c)] Query the Trainium2 hardware performance counters (via \texttt{neuron-profile}) under a running Agent Lightning training workload for one minute, and use the last three digits of the \MME{} cycle count as tile parameters.
 \item[d)] Examine Agent Lightning's \texttt{observability} dashboard; if NeuronCore \MME{} utilization is between $6n\%$ and $6(n+1)\%$, select tile dimension $2^{n+4}$.
-\item[e)] Let ten candidate NKI kernel configurations race on a benchmark (via \texttt{operatorRL/benchmarks/bench\_kernel.py}) with the same input tensors. Adopt the winner. \emph{Interpret:} this is precisely the strategy of the Neuron compiler's tournament selection. What is its expected regret relative to the global optimum, as a function of the configuration space size $m$ and the number of candidates? Relate to \MME{} utilization.
+\item[e)] Let ten candidate NKI kernel configurations race on a benchmark with the same input tensors. Adopt the winner. \emph{Interpret:} this is precisely the strategy of the Neuron compiler's tournament selection. What is its expected regret relative to the global optimum, as a function of the configuration space size $m$ and the number of candidates? Relate to \MME{} utilization.
 \end{enumerate}
 
-\item[\textbf{2.}] [$M22$] In a sequence of one million training iterations distributed across $k = 10$ NeuronCores, each core should process approximately $10^5$ iterations under perfect load balance. What is the probability that \emph{every} core receives exactly $10^5$ iterations? Express the answer in terms of the multinomial coefficient, and compute a numerical approximation. \emph{Interpret:} relate this probability to the $\chi^2$ utilization test of \S\ref{sec:3.3.1}(i)---specifically, what threshold of $V$ should trigger a load-balancing intervention via the \texttt{operatorRL/packages/control-plane} scheduler?
+\item[\textbf{2.}] [$M22$] In a sequence of one million training iterations distributed across $k = 10$ NeuronCores, each core should process approximately $10^5$ iterations under perfect load balance. What is the probability that \emph{every} core receives exactly $10^5$ iterations? Express the answer in terms of the multinomial coefficient, and compute a numerical approximation. \emph{Interpret:} relate this probability to the $\chi^2$ utilization test of \S\ref{sec:3.3.1}(i)---specifically, what threshold of $V$ should trigger a load-balancing intervention via the 
+operatorRL/packages/control-plane scheduler?
 
 \item[\textbf{3.}] [10] Following the square-and-extract method applied to NKI \SBUF{} tile parameters, what \SBUF{} configuration follows \texttt{[128, 64, 256, 128]}? Assume the ``squaring'' operation is component-wise modular squaring with modulus 512 (the \SBUF{} partition granularity).
 
@@ -265,7 +257,7 @@ In the following sections, we shall consider kernel optimization programs that a
 
 \item[\textbf{19.}] [$M48$] For the $k$-history auto-tuner, solve the analogs of Exercises~11--15 when each of the $m^{m^k}$ possible NKI transition functions is equally likely. \emph{Interpret:} for fixed $m$ and increasing $k$, characterize the trade-off between cycle length (exploration diversity) and computational cost (each evaluation of $f$ requires $k$ past configurations to be loaded, costing $O(k)$ \SBUF{} reads on Trainium2).
 
-\item[\textbf{20.}] [$HM30$] \textbf{[P] (Agent Lightning Integration.)} Examine the \texttt{agentlightning/algorithm/verl/interface.py} file, which converts trajectory data to VERL's \texttt{DataProto} format for GRPO and PPO training. (a)~The conversion involves packing variable-length rollout sequences into fixed-size tensors. On Trainium2, the XLA compiler requires static shapes at compilation time. Prove that the minimum padding overhead for $G$ rollouts of lengths $\ell_1, \ldots, \ell_G$ is $G \cdot \max_i \ell_i - \sum_i \ell_i$, and show this overhead is minimized when all rollouts have equal length. (b)~Propose a rollout scheduling strategy (implementable in \texttt{operatorRL/packages/control-plane/}) that reduces padding waste by grouping rollouts of similar length. Analyze its effect on the $\chi^2$ utilization test of \S\ref{sec:3.3.1}(i).
+\item[\textbf{20.}] [$HM30$] \textbf{[P] (Agent Lightning Integration.)} Examine the agentlightning/algorithm/verl/interface file, which converts trajectory data to VERL's \texttt{DataProto} format for GRPO and PPO training. (a)~The conversion involves packing variable-length rollout sequences into fixed-size tensors. On Trainium2, the XLA compiler requires static shapes at compilation time. Prove that the minimum padding overhead for $G$ rollouts of lengths $\ell_1, \ldots, \ell_G$ is $G \cdot \max_i \ell_i - \sum_i \ell_i$, and show this overhead is minimized when all rollouts have equal length. (b)~Propose a rollout scheduling strategy (implementable in operatorRL /packages /control-plane that reduces padding waste by grouping rollouts of similar length. Analyze its effect on the $\chi^2$ utilization test of \S\ref{sec:3.3.1}(i).
 
 \item[\textbf{21.}] [$HM42$] Prove or disprove: for the NKI GEMM auto-tuner with 4 tunable parameters (M-tile $\in \{64, 128, 256, 512\}$, N-tile $\in \{64, 128, 256, 512\}$, K-tile $\in \{32, 64, 128, 256\}$, VLIW-bundle-width $\in \{2, 4, 8\}$), the number of ``performance-equivalent classes'' (configurations yielding identical \MME{} utilization) under the equivalence relation $\sim_K$ of \S\ref{sec:3.2.hw} is strictly less than the total number of configurations. \emph{Hint:} consider the symmetry $(M, N, K) \mapsto (N, M, K)$ for square matrices.
 
@@ -320,14 +312,14 @@ $X_n$ & $\KernelConfig_n$ & $\mathbb{Z}_m^d$ & Tiling configuration vector at au
 $m$ & $|\mathcal{C}|$ & Platform-dependent & Hardware configuration space cardinality per dimension \\
 $a$ & $\alpha_f$ & Learned or heuristic & Transition function coefficient (``multiplier'') \\
 $c$ & $\epsilon_{\mathrm{explore}}$ & Hyperparameter & Exploration noise offset / perturbation increment \\
-$\lambda$ & $T_{\mathrm{cycle}}$ & Should maximize & Auto-tuner cycle length (should maximize) \\
+$\lambda$ & $\SchedulePeriod = T_{\mathrm{cycle}}$ & Should maximize & Auto-tuner cycle length (should maximize) \\
 $\mu$ & $T_{\mathrm{warmup}}$ & Should minimize & Pre-period warm-up steps before cycle entry \\
 Potency & $\kappa$ & $\geq 5$ desired & Configuration diversity order $\ConfigDiversity$ (\S\ref{sec:3.2.1.3}) \\
 \bottomrule
 \end{tabular}
 \end{table}
 
-The most popular kernel configuration generation programs in use today---including the Neuron compiler's internal auto-tuner and Agent Lightning's configuration search in \texttt{agentlightning/algorithm/}---are special cases---including the Neuron compiler's internal auto-tuner and Agent Lightning's configuration search in \texttt{agentlightning/algorithm/}---are special cases of the following scheme introduced by D.~H.~Lehmer in 1949 \citep{lehmer1951lcg}. We choose four ``magic integers'':
+The most popular kernel configuration generation programs in use today---including the Neuron compiler's internal auto-tuner and Agent Lightning's configuration search in agentlightning /algorithm/ are special cases including the Neuron compiler's internal auto-tuner and Agent Lightning's configuration search in agentlightning /algorithm are special cases of the following scheme introduced by D.~H.~Lehmer in 1949 \citep{lehmer1951lcg}. We choose four ``magic integers'':
 \begin{align}
 m, &\quad \text{the modulus}; \quad 0 < m \notag \\
 a, &\quad \text{the multiplier}; \quad 0 \leq a < m \notag \\
@@ -493,7 +485,7 @@ Another alternative is to let $m$ be the largest prime less than the word size $
 
 In most applications, the low-order bits are unimportant, so if the engineer using kernel configurations wisely chooses $m = w$, the results will be quite satisfactory.
 
-Our discussion so far has been based on ``signed magnitude'' hardware like the Trainium2 NeuronCore \GPSIMD{} register file. Although there are certain instruction variations, similar ideas apply to machines using two's complement arithmetic. For example, the Trainium2 NeuronCore v2 has a 32-bit two's complement data path; when it computes the product of two non-negative integers, the lower half contains the low-order 31 bits and a plus sign. Therefore, on such hardware we take $w = 2^{31}$, not $2^{32}$. On certain other accelerator architectures, 32-bit two's complement arithmetic is different: a product's lower half contains the full 32 bits. Some engineers find this a disadvantage, since the lower half may be negative when the operands are positive, and correcting it is troublesome; but from the standpoint of random number generation, this is actually a distinct advantage, because we can take $m = 2^{32}$ instead of $2^{31}$ (see Exercise~4).
+Our discussion so far has been based on ``signed magnitude'' hardware like the Trainium2 NeuronCore \GPSIMD{} register file. Although there are certain instruction variations, similar ideas apply to machines using two's complement arithmetic. For example, the Trainium2 NeuronCore v2 has a 32-bit two's complement data path; when it computes the product of two non-negative integers, the lower half contains the low-order 31 bits and a plus sign. Therefore, on such hardware we take $w = 2^{31}$, not $2^{32}$. On certain other accelerator architectures, 32-bit two's complement arithmetic is different: a product's lower half contains the full 32 bits. Some engineers find this a disadvantage, since the lower half may be negative when the operands are positive, and correcting it is troublesome; but from the standpoint of kernel configuration generation, this is actually a distinct advantage, because we can take $m = 2^{32}$ instead of $2^{31}$ (see Exercise~4).
 
 \subsubsection*{Exercises}
 \begin{enumerate}
@@ -600,8 +592,8 @@ x^p &= 1 + \binom{p}{1}qp^e + \cdots + \binom{p}{p-1}q^{p-1}p^{(p-1)e} + q^p p^{
 The quantity in parentheses is an integer, and in fact all terms beyond the first are multiples of $p$, since for $1 < k < p$, the binomial coefficient $\binom{p}{k}$ is divisible by $p$ (cf.\ Exercise~1.2.6--10). Therefore $\frac{1}{p}\binom{p}{k}q^{k-1}p^{(k-1)e}$ is divisible by $p^{(k-1)e}$. The last term is $q^{p-1}p^{(p-1)e-1}$, and since $(p-1)e > 1$ when $p^e > 2$, it is divisible by $p$. Thus $x^p \equiv 1 + qp^{e+1} \pmod{p^{e+2}}$, completing the proof. (Note: Exercise~3.2.2--11(a) generalizes this result.)
 \end{proof}
 
-\begin{lemma}[Q]
-Let $m = p_1^{e_1} \cdots p_t^{e_t}$ be the prime factorization of $m$. Then the period length $\lambda$ of the linear congruential sequence determined by $(X_0, a, c, m)$ is the least common multiple of the period lengths $\lambda_j$ of the sequences $(X_0 \bmod p_j^{e_j}, a \bmod p_j^{e_j}, c \bmod p_j^{e_j}, p_j^{e_j})$, for $1 \leq j \leq t$.
+\begin{lemma}[Q (Configuration Space Decomposition)]
+Let $m = p_1^{e_1} \cdots p_t^{e_t}$ be the prime factorization of the hardware configuration space cardinality $m$. Then the exploration cycle length $\lambda$ of the linear congruential kernel configuration sequence determined by $(X_0, a, c, m)$ is the least common multiple of the cycle lengths $\lambda_j$ of the subsequences $(X_0 \bmod p_j^{e_j}, a \bmod p_j^{e_j}, c \bmod p_j^{e_j}, p_j^{e_j})$, for $1 \leq j \leq t$.
 \end{lemma}
 
 \begin{proof}
@@ -618,9 +610,9 @@ Therefore, assume $m = p^e$ where $p$ is prime and $e$ is a positive integer. Wh
 \[
 X_n = \left(\frac{a^n - 1}{a - 1}\right)c \bmod m.
 \]
-If $c$ is not relatively prime to $m$, then $X_n$ can never be 1, so condition~i) of the theorem is necessary. The period length is $m$ if and only if the smallest positive $n$ with $X_n = X_0 = 0$ is $n = m$. By condition~i), the proof reduces to:
+If $c$ is not relatively prime to $m$, then $X_n$ can never be 1, so condition~i) of the theorem is necessary. The exploration cycle length is $m$ if and only if the smallest positive $n$ with $X_n = X_0 = 0$ is $n = m$---meaning the kernel auto-tuner visits every configuration before returning to its start. By condition~i), the proof reduces to:
 
-\begin{lemma}[R]
+\begin{lemma}[R (Full-Exploration Criterion for Prime-Power Configuration Spaces)]
 Assume $1 < a < p^e$, where $p$ is prime. If $\lambda$ is the smallest positive integer such that $(a^\lambda - 1)/(a - 1) \equiv 0 \pmod{p^e}$, then
 \[
 \lambda = p^e \quad \text{if and only if} \quad
@@ -667,10 +659,10 @@ Let $\lambda(m)$ denote the order of a primitive root, i.e., the maximum order m
 \lambda(p_1^{e_1} \cdots p_t^{e_t}) &= \text{lcm}(\lambda(p_1^{e_1}), \ldots, \lambda(p_t^{e_t})). \notag
 \end{align}
 
-Our discussion can be summarized as follows:
+Our discussion of kernel auto-tuner exploration can be summarized as follows:
 
-\begin{theorem}[B (C.~F.~Gauss, \textit{Disquisitiones Arithmeticae} (1801), \S\S\,90--92)]
-When $c = 0$ (pure multiplicative method), the maximum achievable period is $\lambda(m)$, where $\lambda(m)$ is defined in~(9). This period is achieved if
+\begin{theorem}[B (Maximum Exploration via Primitive Roots; C.~F.~Gauss, \textit{Disquisitiones Arithmeticae} (1801), \S\S\,90--92)]
+When $c = 0$ (pure multiplicative method), the maximum achievable exploration period is $\lambda(m)$, where $\lambda(m)$ is defined in~(9). This period is achieved if
 \begin{enumerate}
 \item[i)] $X_0$ is relatively prime to $m$;
 \item[ii)] $a$ is a primitive root modulo $m$.
@@ -679,9 +671,9 @@ When $c = 0$ (pure multiplicative method), the maximum achievable period is $\la
 
 Note that if $m$ is prime (e.g., a Mersenne prime used as modulus), a period of length $m - 1$ can be obtained; this is just one less than the maximum length, so from a practical auto-tuning standpoint such a period is as long as we could desire.
 
-The question now is how to find primitive roots modulo $m$. The exercises at the end of this section tell us there is a fairly simple answer when $m$ is prime or a prime power; this is stated in the following theorem.
+The question now is how to find primitive roots modulo $m$---the preferred multipliers for a kernel auto-tuner with purely multiplicative configuration update. The exercises at the end of this section tell us there is a fairly simple answer when $m$ is prime or a prime power; this is stated in the following theorem.
 
-\begin{theorem}[C]
+\begin{theorem}[C (Hardware-Specific Multiplier Selection)]
 The number $a$ is a primitive root modulo $p^e$ if and only if one of the following holds:
 \begin{enumerate}
 \item[i)] $p = 2$, $e = 1$, and $a$ is odd;
@@ -787,7 +779,7 @@ If $m = 10^e$, $e \geq 5$, $c = 0$, and $X_0$ is not a multiple of 2 or 5, then 
 \medskip
 \noindent\textbf{Domain Interpretation.}\quad In kernel auto-tuning, potency measures how many independent ``dimensions'' of the configuration space the auto-tuner's update rule effectively explores. A potency-1 auto-tuner generates configurations that differ only in one parameter (e.g., only the $M_{\mathrm{tile}}$ dimension changes while $N_{\mathrm{tile}}$, $K_{\mathrm{tile}}$, and $V_{\mathrm{pack}}$ remain constant---effectively searching a 1D slice of a 4D space). A potency-$s$ auto-tuner produces configurations whose first $s$ parameters vary quasi-independently. For Trainium2 GEMM kernels with $d=4$ primary tunable parameters (\SBUF{}-constrained tile dimensions and VLIW packing), we require potency $\geq 3$ to avoid degenerate exploration where entire regions of the configuration space are never visited. The formal definition follows.
 
-\medskipIn \S\ref{sec:3.2.1.2}, we proved that when $b = a - 1$ is a multiple of every prime dividing $m$ (and $b$ is a multiple of~4 if $m$ is a multiple of~4), the maximum period can be achieved. If $z$ is the radix of the machine being used---$z = 2$ for a binary accelerator, $z = 10$ for a decimal one---and if $m$ is the word size $z^e$, then the multiplier
+\medskipIn \S\ref{sec:3.2.1.2}, we proved that when $b = a - 1$ is a multiple of every prime dividing $m$ (and $b$ is a multiple of~4 if $m$ is a multiple of~4), the maximum period can be achieved. If $z$ is the radix of the accelerator being used---$z = 2$ for a binary accelerator such as Trainium2, $z = 10$ for a decimal one---and if $m$ is the configuration word size $z^e$, then the multiplier
 \begin{equation}
 a = z^k + 1, \quad 2 \leq k < e \tag{1}
 \end{equation}
@@ -803,7 +795,7 @@ For example, suppose $a = B^2 + 1$, where $B$ is the Trainium NeuronCore byte si
 \end{equation}
 can be used in place of the instruction sequence given in Section~3.2.1.1, and the execution time is reduced from $16u$ to $7u$ on a sequential machine.
 
-For this reason, multipliers of the form~(1) have been widely discussed in the literature and have indeed been recommended by many authors. However, early experience with this method---both in LCG random number generation and in our kernel auto-tuning experiments on Trainium2---has shown that simple multipliers of the form~(1) should be avoided; the generated configurations are not sufficiently diverse across the \SBUF{} tiling dimensions.
+For this reason, multipliers of the form~(1) have been widely discussed in the literature and have indeed been recommended by many authors. However, early experience with this method---both in LCG kernel configuration generation and in our kernel auto-tuning experiments on Trainium2---has shown that simple multipliers of the form~(1) should be avoided; the generated configurations are not sufficiently diverse across the \SBUF{} tiling dimensions.
 
 Later in this chapter, we shall discuss a more powerful theory---the spectral test of \S\ref{sec:3.3.4}---that explains why all linear congruential kernel configuration generators that are considered bad \emph{are} bad. However, certain generators (such as~(2)) are so terrible that a simpler theory---potency analysis---suffices to reject them. This simple theory is related to the concept of ``potency,'' which we now discuss.
 
@@ -971,9 +963,9 @@ The policy gradient is then:
 \]
 where $\rho_{i,t} = \pi_\theta(y_{i,t} | \cdot) / \pi_{\theta_{\mathrm{old}}}(y_{i,t} | \cdot)$ is the importance ratio. The critical architectural advantage of GRPO over PPO is the elimination of the learned value function (critic network). Since the critic would consume an entire NeuronCore's \SBUF{} capacity for its own parameter storage and forward pass, GRPO's critic-free design halves the per-device memory requirement during the policy update step---a decisive advantage on Trainium2, where \SBUF{} is the binding memory constraint for large models.
 
-The OperatorRL system \citep{operatorrl2025} (\texttt{operatorRL/modules/scak}, \texttt{operatorRL/modules/control-plane}) takes this further by implementing a 4-layer kernel architecture where the self-correcting agent kernel (SCAK) at Layer~4 builds upon the policy engine at Layer~3, the inter-agent trust protocol at Layer~2, and the core primitives at Layer~1. This layered decomposition mirrors the hierarchical structure of Section~3.2.1's analysis: just as the period length of a composite modulus decomposes via Lemma~Q into the LCM of prime-power periods, the agent system's overall training cycle decomposes into independently optimizable layers.
+The OperatorRL system takes this further by implementing a 4-layer kernel architecture where the self-correcting agent kernel (SCAK) at Layer~4 builds upon the policy engine at Layer~3, the inter-agent trust protocol at Layer~2, and the core primitives at Layer~1. This layered decomposition mirrors the hierarchical structure of Section~3.2.1's analysis: just as the period length of a composite modulus decomposes via Lemma~Q into the LCM of prime-power periods, the agent system's overall training cycle decomposes into independently optimizable layers.
 
-The critical insight from Anthropic's Trainium2 kernel engineering---as described in the companion document ``What Is Anthropic Really Doing?'' (\texttt{AnthropicWantToDoWhat.txt})---is that in the narrow vertical of AI training and inference, one does \emph{not} need the full CUDA ecosystem (CCCL, cuBLAS, cuDNN, TransformerEngine, NCCL). One needs only to squeeze maximum \MME{} and \GPSIMD{} utilization from a few dozen critical NKI kernels: GEMM (with \SBUF{}/\PSUM{} orchestration), fused attention (CTE and TKG variants for different sequence lengths), and collective communication primitives (over NeuronLink's 800\,GB/s interconnect). Through tight hardware-software co-design with Annapurna Labs, combined with Trainium2's cost-performance advantages and large-scale scalability, one can optimize from the silicon level all the way through the complete software stack.
+The critical insight from Anthropic's Trainium2 kernel engineering---as described in the companion document ``What Is Anthropic Really Doing?'' (\texttt{AnthropicWantToDoWhat.txt})---is that in the narrow vertical of AI training and inference, one does \emph{not} need the full CUDA ecosystem (CCCL, cuBLAS, cuDNN, TransformerEngine, NCCL). One needs only to squeeze maximum \MME{} and \GPSIMD{} utilization from a few dozen critical NKI kernels: GEMM (with \SBUF{}/\PSUM{} orchestration), fused attention (CTE and TKG variants for different sequence lengths), and collective communication primitives (over NeuronLink's 800\,GB/s interconnect). Through tight hardware-software co-design with Annapurna Labs, combined with Trainium2's cost performance advantages and large-scale scalability, one can optimize from the silicon level all the way through the complete software stack.
 
 In Knuth's terms, this is exactly what \emph{The Art of Computer Programming} Vol.~1, \S1.3.1 teaches: understand your machine at the instruction level (the NeuronCore's VLIW pipeline, the DMA engine's multicast and scatter-gather capabilities, the \MME{}'s systolic array scheduling), then perform full-stack optimization for your specific workload. Anthropic does not need a general-purpose GPU programming platform; they need only to make Claude's training and inference run faster than anyone else's, and NKI assembly on Trainium2 is their chosen instrument.
 
